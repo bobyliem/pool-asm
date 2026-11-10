@@ -1,0 +1,13 @@
+.git
+.gitignore
+*.exe
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+docker/mysql_data/
+docker/init-db/
+scratch/
+MyWork/
+test_*.go
+cookies.txt

@@ -1,0 +1,547 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Critical Inventory - Sampurna Workshop HO</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Sticky header table custom styling */
+    #criticalTable thead th {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background-color: #f1f5f9; /* Slate 100 solid */
+    }
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Critical Inventory"></app-sidebar>
+
+    <!-- MAIN DASHBOARD CONTENT (Natural vertical scrollable area) -->
+    <main class="flex-1 p-4 overflow-y-auto bg-slate-50 flex flex-col space-y-3">
+      
+      <!-- Top Header & Breadcrumb (Compact) -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-white px-4 py-2.5 rounded-xl border border-gray-200 shadow-sm shrink-0">
+        <div>
+          <div class="flex items-center space-x-2 text-[11px] text-gray-500 mb-0.5">
+            <span class="font-semibold text-blue-600">PRJ-HO</span>
+            <span>/</span>
+            <span>Warehouse</span>
+            <span>/</span>
+            <span class="text-gray-700 font-medium">Critical Inventory</span>
+          </div>
+          <div class="flex items-center space-x-2.5">
+            <h1 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <i class="fa-solid fa-boxes-stacked text-blue-600"></i>
+              Critical Inventory Monitoring
+            </h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <span class="w-1.5 h-1.5 mr-1 bg-emerald-500 rounded-full animate-pulse"></span>
+              Server HO (Production)
+            </span>
+          </div>
+        </div>
+
+        <!-- Last update and action buttons -->
+        <div class="flex items-center space-x-3 self-end md:self-auto">
+          <div class="text-right">
+            <p class="text-[10px] text-gray-400 font-medium leading-tight">Terakhir Diperbarui</p>
+            <p id="lastUpdateText" class="text-xs font-semibold text-gray-700 leading-tight">-</p>
+          </div>
+          <button id="btnRefresh" onclick="loadCriticalInventory()" class="p-1.5 px-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition shadow-sm text-xs" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-rotate"></i>
+          </button>
+          <button onclick="exportToExcel()" class="inline-flex items-center px-2.5 py-1.5 border border-emerald-600 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm gap-1.5">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i>
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CONTROLS (Compact) -->
+      <div class="bg-white px-3.5 py-2.5 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-2.5 text-xs shrink-0">
+        <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <!-- Filter Site -->
+          <div class="flex items-center space-x-1.5">
+            <label for="siteFilter" class="font-bold text-gray-600 uppercase tracking-tight text-[11px]">Site:</label>
+            <select id="siteFilter" onchange="loadCriticalInventory()" class="bg-gray-50 border border-gray-300 text-gray-800 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2.5 py-1.5 font-medium">
+              <option value="ALL">Semua Site (ALL)</option>
+              <option value="Cicangkal">Cicangkal</option>
+              <option value="Cilegon">Cilegon</option>
+              <option value="Lampung">Lampung</option>
+            </select>
+          </div>
+
+          <!-- Filter Note / Urgensi -->
+          <div class="flex items-center space-x-1.5">
+            <label for="noteFilter" class="font-bold text-gray-600 uppercase tracking-tight text-[11px]">Status:</label>
+            <select id="noteFilter" onchange="applyLocalFilters()" class="bg-gray-50 border border-gray-300 text-gray-800 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2.5 py-1.5 font-medium">
+              <option value="ALL">Semua Status</option>
+              <option value="UrgentReStock">Urgent ReStock</option>
+              <option value="LowStock">Low Stock</option>
+              <option value="Check">Check (Minus)</option>
+            </select>
+          </div>
+
+          <!-- PO Filter -->
+          <div class="flex items-center space-x-1.5">
+            <label for="poFilter" class="font-bold text-gray-600 uppercase tracking-tight text-[11px]">PO:</label>
+            <select id="poFilter" onchange="applyLocalFilters()" class="bg-gray-50 border border-gray-300 text-gray-800 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 px-2.5 py-1.5 font-medium">
+              <option value="ALL">Semua PO</option>
+              <option value="HAS_PO">Sudah Ada PO</option>
+              <option value="NO_PO">Belum Ada PO</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative w-full md:w-64">
+          <input type="text" id="searchInput" oninput="applyLocalFilters()" placeholder="Cari SKU / nama produk..." 
+                 class="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50" />
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-gray-400 text-xs"></i>
+        </div>
+      </div>
+
+      <!-- KPI / SUMMARY CARDS (Slim & Compact) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 shrink-0">
+        <!-- Card 1: Total Item Kritis -->
+        <div class="bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-layer-group text-sm"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-tight leading-none">Total Kritis</p>
+            <h3 id="cardTotalItems" class="text-base font-extrabold text-gray-900 leading-tight mt-0.5">-</h3>
+          </div>
+        </div>
+
+        <!-- Card 2: Urgent ReStock -->
+        <div class="bg-white px-3 py-2 rounded-xl border border-red-200 bg-red-50/20 shadow-sm flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-red-600 font-bold uppercase tracking-tight leading-none">Urgent ReStock</p>
+            <h3 id="cardUrgentRestock" class="text-base font-extrabold text-red-700 leading-tight mt-0.5">-</h3>
+          </div>
+        </div>
+
+        <!-- Card 3: Low Stock -->
+        <div class="bg-white px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/20 shadow-sm flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-circle-exclamation text-sm"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-amber-600 font-bold uppercase tracking-tight leading-none">Low Stock</p>
+            <h3 id="cardLowStock" class="text-base font-extrabold text-amber-700 leading-tight mt-0.5">-</h3>
+          </div>
+        </div>
+
+        <!-- Card 4: Check / Stok Negatif -->
+        <div class="bg-white px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/20 shadow-sm flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-circle-question text-sm"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-purple-600 font-bold uppercase tracking-tight leading-none">Check (Minus)</p>
+            <h3 id="cardCheck" class="text-base font-extrabold text-purple-700 leading-tight mt-0.5">-</h3>
+          </div>
+        </div>
+
+        <!-- Card 5: PO Pending -->
+        <div class="bg-white px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50/20 shadow-sm flex items-center space-x-2.5 col-span-2 sm:col-span-1">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-clipboard-list text-sm"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-indigo-600 font-bold uppercase tracking-tight leading-none">Total Qty PO</p>
+            <h3 id="cardTotalQtyPo" class="text-base font-extrabold text-indigo-700 leading-tight mt-0.5">-</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN TABLE SECTION (Expanded & Roomy) -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col min-h-[550px] mb-4">
+        
+        <!-- Table Toolbar Info -->
+        <div class="px-4 py-2 border-b border-gray-200 bg-gray-50/70 flex items-center justify-between text-xs text-gray-500 shrink-0">
+          <div class="flex items-center space-x-2">
+            <span>Menampilkan <strong id="displayedRowsCount" class="text-gray-800">0</strong> dari <strong id="totalRowsCount" class="text-gray-800">0</strong> item</span>
+            <span id="filterActiveBadge" class="hidden px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-semibold">Tersaring</span>
+          </div>
+          <div class="text-[11px] text-gray-400 italic">
+            * Kriteria kritis: Stock < Rata-rata Pemakaian 6 Bulan
+          </div>
+        </div>
+
+        <!-- Table Container with Natural Large Viewport -->
+        <div class="overflow-x-auto flex-1 min-h-[480px]">
+          <table id="criticalTable" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 text-slate-700 border-b border-gray-200 shadow-sm font-semibold uppercase tracking-wider text-[11px]">
+              <tr>
+                <th class="py-2.5 px-3 text-center w-12">No</th>
+                <th class="py-2.5 px-3">Site</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3">SKU</th>
+                <th class="py-2.5 px-3 min-w-[220px]">Nama Produk</th>
+                <th class="py-2.5 px-3 text-right bg-blue-50/50">Stock</th>
+                <th class="py-2.5 px-3 text-right bg-blue-50/50">Avg (6 Bln)</th>
+                <!-- 6 Bulan Headers -->
+                <th id="thBln1" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 1</th>
+                <th id="thBln2" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 2</th>
+                <th id="thBln3" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 3</th>
+                <th id="thBln4" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 4</th>
+                <th id="thBln5" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 5</th>
+                <th id="thBln6" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 6</th>
+                <!-- PO Information -->
+                <th class="py-2.5 px-3 text-right bg-amber-50/50">Qty PO</th>
+                <th class="py-2.5 px-3 bg-amber-50/50">No PO</th>
+                <th class="py-2.5 px-3 bg-amber-50/50">Tgl PO</th>
+                <th class="py-2.5 px-3 bg-amber-50/50">Estimasi</th>
+                <th class="py-2.5 px-3 bg-amber-50/50">Status PO</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
+              <!-- Loading Skeleton -->
+              <tr>
+                <td colspan="18" class="text-center py-16 text-gray-400">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i>
+                  <p class="text-sm font-medium">Memuat data Critical Inventory...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let rawInventoryData = [];
+    let currentMonthHeaders = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadCriticalInventory();
+    });
+
+    async function loadCriticalInventory() {
+      const siteSelect = document.getElementById("siteFilter");
+      const selectedSite = siteSelect ? siteSelect.value : "ALL";
+      const refreshIcon = document.getElementById("refreshIcon");
+
+      if (refreshIcon) refreshIcon.classList.add("fa-spin");
+
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="18" class="text-center py-16 text-gray-400">
+            <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i>
+            <p class="text-sm font-medium">Memuat data dari Server HO...</p>
+          </td>
+        </tr>
+      `;
+
+      try {
+        const url = `/api/v1/ho/warehouse/critical-inventory?site=${encodeURIComponent(selectedSite)}`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status !== "success") {
+          throw new Error(result.message || "Gagal mengambil data");
+        }
+
+        rawInventoryData = result.data || [];
+        currentMonthHeaders = result.month_headers || [];
+
+        // Update Sites options if available
+        if (result.sites && result.sites.length > 0) {
+          updateSiteDropdown(result.sites, selectedSite);
+        }
+
+        // Update Month Headers
+        updateMonthHeaders(currentMonthHeaders);
+
+        // Update Summary Cards
+        updateSummaryCards(result.summary);
+
+        // Update Last Update
+        document.getElementById("lastUpdateText").innerText = result.last_update || "-";
+
+        // Render Table
+        applyLocalFilters();
+
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="18" class="text-center py-12 text-red-500 bg-red-50/30">
+              <i class="fa-solid fa-triangle-exclamation text-2xl mb-2"></i>
+              <p class="text-sm font-semibold">Error: ${err.message}</p>
+              <button onclick="loadCriticalInventory()" class="mt-3 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Coba Lagi</button>
+            </td>
+          </tr>
+        `;
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove("fa-spin");
+      }
+    }
+
+    function updateSiteDropdown(sites, currentSelected) {
+      const sel = document.getElementById("siteFilter");
+      if (!sel) return;
+
+      const currentValue = currentSelected || sel.value || "ALL";
+      let html = '<option value="ALL">Semua Site (ALL)</option>';
+      sites.forEach(s => {
+        const selected = s === currentValue ? 'selected' : '';
+        html += `<option value="${s}" ${selected}>${s}</option>`;
+      });
+      sel.innerHTML = html;
+    }
+
+    function updateMonthHeaders(headers) {
+      if (!headers || headers.length < 6) return;
+      for (let i = 0; i < 6; i++) {
+        const th = document.getElementById(`thBln${i + 1}`);
+        if (th && headers[i]) {
+          th.innerText = headers[i].label;
+          th.title = `Pemakaian ${headers[i].label}`;
+        }
+      }
+    }
+
+    function updateSummaryCards(summary) {
+      if (!summary) return;
+      document.getElementById("cardTotalItems").innerText = (summary.total_items || 0).toLocaleString();
+      document.getElementById("cardUrgentRestock").innerText = (summary.urgent_restock_count || 0).toLocaleString();
+      document.getElementById("cardLowStock").innerText = (summary.low_stock_count || 0).toLocaleString();
+      document.getElementById("cardCheck").innerText = (summary.check_count || 0).toLocaleString();
+      document.getElementById("cardTotalQtyPo").innerText = (summary.total_qty_po_pending || 0).toLocaleString();
+    }
+
+    function applyLocalFilters() {
+      const noteFilter = document.getElementById("noteFilter").value;
+      const poFilter = document.getElementById("poFilter").value;
+      const searchKeyword = (document.getElementById("searchInput").value || "").toLowerCase().trim();
+
+      let filtered = rawInventoryData.filter(item => {
+        // Filter Note Status
+        if (noteFilter !== "ALL" && item.note !== noteFilter) {
+          return false;
+        }
+
+        // Filter PO Status
+        if (poFilter === "HAS_PO" && (!item.po || item.po.trim() === "")) {
+          return false;
+        }
+        if (poFilter === "NO_PO" && (item.po && item.po.trim() !== "")) {
+          return false;
+        }
+
+        // Search Keyword (SKU, Nama Produk, No PO, Site)
+        if (searchKeyword !== "") {
+          const sku = (item.sku || "").toLowerCase();
+          const name = (item.nama_produk || "").toLowerCase();
+          const po = (item.po || "").toLowerCase();
+          const site = (item.area || "").toLowerCase();
+          if (!sku.includes(searchKeyword) && !name.includes(searchKeyword) && !po.includes(searchKeyword) && !site.includes(searchKeyword)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      renderTable(filtered);
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById("tableBody");
+      document.getElementById("displayedRowsCount").innerText = data.length.toLocaleString();
+      document.getElementById("totalRowsCount").innerText = rawInventoryData.length.toLocaleString();
+
+      const filterBadge = document.getElementById("filterActiveBadge");
+      if (data.length !== rawInventoryData.length) {
+        filterBadge.classList.remove("hidden");
+      } else {
+        filterBadge.classList.add("hidden");
+      }
+
+      if (data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="18" class="text-center py-12 text-gray-400">
+              <i class="fa-solid fa-inbox text-3xl mb-2 text-gray-300"></i>
+              <p class="text-sm">Tidak ada data critical inventory yang cocok dengan filter.</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = "";
+      data.forEach((row, idx) => {
+        // Status badge
+        let statusBadge = "";
+        let rowClass = "hover:bg-slate-50 transition";
+        if (row.note === "UrgentReStock") {
+          statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200"><i class="fa-solid fa-triangle-exclamation mr-1 text-[9px]"></i>Urgent</span>`;
+          rowClass = "hover:bg-red-50/30 transition";
+        } else if (row.note === "LowStock") {
+          statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Low Stock</span>`;
+        } else if (row.note === "Check") {
+          statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">Check</span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">-</span>`;
+        }
+
+        // Format dates
+        const poDate = formatDate(row.po_date);
+        const estimasi = formatDate(row.estimasi);
+
+        // PO status badge
+        let poStatusBadge = "-";
+        if (row.statue) {
+          poStatusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">${escapeHtml(row.statue)}</span>`;
+        }
+
+        // Highlight stock if 0 or negative
+        let stockClass = "text-right font-semibold bg-blue-50/20";
+        if (row.stock <= 0) {
+          stockClass = "text-right font-extrabold text-red-600 bg-red-50/30";
+        }
+
+        html += `
+          <tr class="${rowClass}">
+            <td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">${idx + 1}</td>
+            <td class="py-2 px-3 font-semibold text-gray-800 whitespace-nowrap">${escapeHtml(row.area)}</td>
+            <td class="py-2 px-3 whitespace-nowrap">${statusBadge}</td>
+            <td class="py-2 px-3 font-mono text-[11px] text-blue-700 font-semibold whitespace-nowrap">${escapeHtml(row.sku)}</td>
+            <td class="py-2 px-3 font-medium text-gray-900">${escapeHtml(row.nama_produk)}</td>
+            <td class="py-2 px-3 ${stockClass}">${formatNumber(row.stock)}</td>
+            <td class="py-2 px-3 text-right font-semibold text-gray-700 bg-blue-50/20">${formatNumber(row.avg)}</td>
+            
+            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln1)}</td>
+            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln2)}</td>
+            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln3)}</td>
+            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln4)}</td>
+            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln5)}</td>
+            <td class="py-2 px-2 text-right font-mono text-gray-600 font-semibold text-slate-800">${formatNumber(row.bln6)}</td>
+
+            <td class="py-2 px-3 text-right font-semibold text-indigo-700 bg-amber-50/20">${row.qty_po != null ? formatNumber(row.qty_po) : '-'}</td>
+            <td class="py-2 px-3 font-mono text-[11px] text-gray-800 whitespace-nowrap bg-amber-50/20">${row.po ? escapeHtml(row.po) : '-'}</td>
+            <td class="py-2 px-3 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${poDate}</td>
+            <td class="py-2 px-3 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${estimasi}</td>
+            <td class="py-2 px-3 whitespace-nowrap bg-amber-50/20">${poStatusBadge}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function formatNumber(num) {
+      if (num == null) return "0";
+      return Number(num).toLocaleString();
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr || dateStr === "" || dateStr.startsWith("0000")) return "-";
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr.substring(0, 10);
+        return d.toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function exportToExcel() {
+      if (!rawInventoryData || rawInventoryData.length === 0) {
+        alert("Tidak ada data untuk diexport!");
+        return;
+      }
+
+      const exportRows = rawInventoryData.map((it, idx) => {
+        return {
+          "No": idx + 1,
+          "Site": it.area,
+          "Status Note": it.note,
+          "SKU": it.sku,
+          "Nama Produk": it.nama_produk,
+          "Stock": it.stock,
+          "Avg": it.avg,
+          [currentMonthHeaders[0]?.label || "Bln 1"]: it.bln1,
+          [currentMonthHeaders[1]?.label || "Bln 2"]: it.bln2,
+          [currentMonthHeaders[2]?.label || "Bln 3"]: it.bln3,
+          [currentMonthHeaders[3]?.label || "Bln 4"]: it.bln4,
+          [currentMonthHeaders[4]?.label || "Bln 5"]: it.bln5,
+          [currentMonthHeaders[5]?.label || "Bln 6"]: it.bln6,
+          "Qty PO": it.qty_po != null ? it.qty_po : "",
+          "No PO": it.po || "",
+          "Tgl PO": formatDate(it.po_date),
+          "Estimasi Delivery": formatDate(it.estimasi),
+          "Status PO": it.statue || ""
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Critical Inventory");
+
+      const siteVal = document.getElementById("siteFilter").value;
+      const fileName = `Critical_Inventory_${siteVal}_${new Date().toISOString().substring(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    }
+  </script>
+</body>
+</html>

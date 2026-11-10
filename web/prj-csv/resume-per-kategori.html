@@ -1,0 +1,609 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Resume Per Kategori</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: Resume Per Kategori) -->
+    <app-sidebar active-menu="Resume Per Kategori"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+      
+      <!-- TITLE & TOP CONTROLS -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>SPK Harian</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Resume Per Kategori</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-border-all text-blue-600"></i>
+            Resume SPK Per Kategori
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">Database CSV</span>
+          </h2>
+          <div id="lastUpdateText" class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5 font-medium">
+            <i class="fa-regular fa-clock text-slate-400"></i>
+            <span>Last Update: <span id="lastUpdateVal" class="text-slate-600 font-semibold">Memuat...</span></span>
+          </div>
+        </div>
+
+        <!-- ACTIONS & DISPLAY MODE TOGGLE -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Mode Switcher (Nominal Rp vs Qty SPK) -->
+          <div class="bg-slate-200 p-1 rounded-lg flex items-center text-xs font-semibold shadow-inner">
+            <button id="btnModeAmount" onclick="setDisplayMode('amount')"
+              class="px-3 py-1.5 rounded-md flex items-center gap-1.5 transition bg-white text-blue-600 shadow-xs cursor-pointer">
+              <i class="fa-solid fa-rupiah-sign"></i>
+              <span>Nilai (Rp)</span>
+            </button>
+            <button id="btnModeCount" onclick="setDisplayMode('count')"
+              class="px-3 py-1.5 rounded-md flex items-center gap-1.5 transition text-slate-600 hover:text-slate-900 cursor-pointer">
+              <i class="fa-solid fa-hashtag"></i>
+              <span>Jumlah SPK</span>
+            </button>
+          </div>
+
+          <!-- Export Excel Button -->
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CARD -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center gap-2 font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <i class="fa-solid fa-filter text-blue-600"></i>
+          <span>Filter Periode & Parameter</span>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <!-- 1. Periode -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input type="date" id="filterTglAwal"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <input type="date" id="filterTglAkhir"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- 2. Area Dropdown -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Area (Site)</label>
+            <select id="filterArea"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+              <option value="ALL">ALL (Semua Site)</option>
+            </select>
+          </div>
+
+          <!-- 3. Submit Button -->
+          <div class="space-y-1 flex flex-col justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan Resume
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- LOADING INDICATOR -->
+      <div id="loadingIndicator" class="bg-white border border-slate-300 rounded-xl p-12 text-center text-slate-400 shadow-xs">
+        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-blue-600"></i>
+        <div class="font-medium text-xs">Memuat data Resume Per Kategori...</div>
+      </div>
+
+      <!-- TABLES WRAPPER -->
+      <div id="contentTables" class="space-y-5 hidden">
+        
+        <!-- TABLE 1: GRAND TOTAL -->
+        <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-4 py-2 bg-slate-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-amber-400"></i>
+              <span>GRAND TOTAL</span>
+            </div>
+            <span class="text-[10px] text-slate-300 font-normal">Rekap Semua Customer</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="tableGrandTotal">
+              <thead class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300" id="headGrandTotal">
+              </thead>
+              <tbody class="divide-y divide-slate-200" id="bodyGrandTotal">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TABLE 2: TOTAL SPK -->
+        <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-4 py-2 bg-slate-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-table-list text-blue-400"></i>
+              <span>Total SPK</span>
+            </div>
+            <span class="text-[10px] text-slate-300 font-normal">Per Customer x Kategori</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="tableTotalSpk">
+              <thead class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300" id="headTotalSpk">
+              </thead>
+              <tbody class="divide-y divide-slate-200" id="bodyTotalSpk">
+              </tbody>
+              <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-400" id="footTotalSpk">
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- TABLE 3: SPK CLOSE -->
+        <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-4 py-2 bg-emerald-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-circle-check text-emerald-300"></i>
+              <span>SPK Close</span>
+            </div>
+            <span class="text-[10px] text-emerald-200 font-normal">Per Customer x Kategori</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="tableSpkClose">
+              <thead class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300" id="headSpkClose">
+              </thead>
+              <tbody class="divide-y divide-slate-200" id="bodySpkClose">
+              </tbody>
+              <tfoot class="bg-emerald-50 font-bold border-t-2 border-emerald-400 text-emerald-900" id="footSpkClose">
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- TABLE: SPK HOLD -->
+        <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-4 py-2 bg-amber-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-hand text-amber-300"></i>
+              <span>SPK HOLD</span>
+            </div>
+            <span class="text-[10px] text-amber-200 font-normal">Per Customer x Kategori</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="tableSpkHold">
+              <thead class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300" id="headSpkHold">
+              </thead>
+              <tbody class="divide-y divide-slate-200" id="bodySpkHold">
+              </tbody>
+              <tfoot class="bg-amber-50 font-bold border-t-2 border-amber-400 text-amber-900" id="footSpkHold">
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- TABLE 4: SPK OPEN -->
+        <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+          <div class="px-4 py-2 bg-rose-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-clock text-rose-300"></i>
+              <span>SPK Open</span>
+            </div>
+            <span class="text-[10px] text-rose-200 font-normal">Per Customer x Kategori</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse" id="tableSpkOpen">
+              <thead class="bg-slate-100 font-bold text-slate-700 border-b border-slate-300" id="headSpkOpen">
+              </thead>
+              <tbody class="divide-y divide-slate-200" id="bodySpkOpen">
+              </tbody>
+              <tfoot class="bg-rose-50 font-bold border-t-2 border-rose-400 text-rose-900" id="footSpkOpen">
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let resumeData = null;
+    let displayMode = 'amount'; // 'amount' | 'count'
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initDateRange();
+      loadFilterOptions();
+      loadResumeData();
+    });
+
+    function initDateRange() {
+      const getToday = () => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getToday(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getToday()
+      };
+
+      document.getElementById('filterTglAwal').value = range.tglAwal;
+      document.getElementById('filterTglAkhir').value = range.tglAkhir;
+    }
+
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch('/api/v1/csv/reports/spk-filter-options');
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const areaSelect = document.getElementById('filterArea');
+          if (json.data.areas) {
+            json.data.areas.forEach(a => {
+              if (a) {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                areaSelect.appendChild(opt);
+              }
+            });
+          }
+          if (json.data.last_update) {
+            document.getElementById('lastUpdateVal').textContent = json.data.last_update;
+          }
+        }
+      } catch (err) {
+        console.error('Error loading filter options:', err);
+      }
+    }
+
+    async function loadResumeData() {
+      // Ambil parameter tanggal DARI SESSION
+      const getToday = () => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getToday(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getToday()
+      };
+
+      const area = document.getElementById('filterArea').value;
+
+      document.getElementById('loadingIndicator').classList.remove('hidden');
+      document.getElementById('contentTables').classList.add('hidden');
+
+      try {
+        const url = `/api/v1/csv/reports/resume-per-kategori?area=${encodeURIComponent(area)}&tglawal=${tglAwal}&tglakhir=${tglAkhir}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          resumeData = json.data;
+          renderAllTables();
+          document.getElementById('loadingIndicator').classList.add('hidden');
+          document.getElementById('contentTables').classList.remove('hidden');
+        } else {
+          document.getElementById('loadingIndicator').innerHTML = `
+            <div class="text-rose-500 font-semibold text-xs">${json.message || 'Gagal memuat data.'}</div>
+          `;
+        }
+      } catch (err) {
+        console.error('Error fetching resume data:', err);
+        document.getElementById('loadingIndicator').innerHTML = `
+          <div class="text-rose-500 font-semibold text-xs">Terjadi kesalahan saat menghubungi server.</div>
+        `;
+      }
+    }
+
+    function applyFilter() {
+      // 1. Simpan input user ke session
+      const valAwal = document.getElementById('filterTglAwal').value;
+      const valAkhir = document.getElementById('filterTglAkhir').value;
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+        sessionStorage.setItem('csv_spk_tglawal', valAwal);
+        sessionStorage.setItem('csv_spk_tglakhir', valAkhir);
+      }
+
+      // 2. Query data menggunakan parameter dari session
+      loadResumeData();
+    }
+
+    function setDisplayMode(mode) {
+      displayMode = mode;
+      const btnAmount = document.getElementById('btnModeAmount');
+      const btnCount = document.getElementById('btnModeCount');
+
+      if (mode === 'amount') {
+        btnAmount.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition bg-white text-blue-600 shadow-xs cursor-pointer';
+        btnCount.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition text-slate-600 hover:text-slate-900 cursor-pointer';
+      } else {
+        btnCount.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition bg-white text-blue-600 shadow-xs cursor-pointer';
+        btnAmount.className = 'px-3 py-1.5 rounded-md flex items-center gap-1.5 transition text-slate-600 hover:text-slate-900 cursor-pointer';
+      }
+
+      if (resumeData) {
+        renderAllTables();
+      }
+    }
+
+    const formatCurrency = (val) => {
+      if (val === null || val === undefined || isNaN(val) || val === 0) return '-';
+      return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val);
+    };
+
+    const formatCount = (val) => {
+      if (!val) return '-';
+      return val + ' SPK';
+    };
+
+    const getCellValue = (cell) => {
+      if (!cell) return '-';
+      if (displayMode === 'amount') {
+        return formatCurrency(cell.amount);
+      } else {
+        return formatCount(cell.spk_count);
+      }
+    };
+
+    function renderAllTables() {
+      if (!resumeData) return;
+      renderGrandTotalTable();
+      renderMatrixSection('TotalSpk', resumeData.total_spk_section, 'slate');
+      renderMatrixSection('SpkClose', resumeData.spk_close_section, 'emerald');
+      renderMatrixSection('SpkHold', resumeData.spk_hold_section, 'amber');
+      renderMatrixSection('SpkOpen', resumeData.spk_open_section, 'rose');
+    }
+
+    function renderGrandTotalTable() {
+      const thead = document.getElementById('headGrandTotal');
+      const tbody = document.getElementById('bodyGrandTotal');
+      const cats = resumeData.categories || [];
+
+      // Build THEAD
+      let thHTML = '<tr>';
+      thHTML += '<th class="py-2.5 px-3 border border-slate-300 w-44 whitespace-nowrap bg-slate-200">Status</th>';
+      cats.forEach(c => {
+        thHTML += `<th class="py-2.5 px-3 border border-slate-300 text-right whitespace-nowrap">${c}</th>`;
+      });
+      thHTML += '<th class="py-2.5 px-3 border border-slate-300 text-right whitespace-nowrap bg-slate-200">Total</th>';
+      thHTML += '</tr>';
+      thead.innerHTML = thHTML;
+
+      // Rows: SPK Open, SPK HOLD, SPK Close, Total SPK
+      const statuses = [
+        { label: 'SPK Open', rawStatus: 'OPEN', color: 'text-rose-700 font-semibold hover:bg-rose-50/40' },
+        { label: 'SPK HOLD', rawStatus: 'HOLD', color: 'text-amber-700 font-semibold hover:bg-amber-50/40' },
+        { label: 'SPK Close', rawStatus: 'CLOSE', color: 'text-emerald-700 font-semibold hover:bg-emerald-50/40' },
+        { label: 'Total SPK', rawStatus: 'ALL', color: 'text-slate-900 font-extrabold bg-slate-50 hover:bg-slate-100' }
+      ];
+
+      let tbHTML = '';
+      statuses.forEach(st => {
+        const catMap = (resumeData.grand_total_matrix && resumeData.grand_total_matrix[st.label]) || {};
+        const totalCell = (resumeData.grand_total_summary && resumeData.grand_total_summary[st.label]) || {};
+
+        tbHTML += `<tr class="${st.color}">`;
+        tbHTML += `<td class="py-2 px-3 border border-slate-300 font-bold whitespace-nowrap cursor-pointer hover:underline text-blue-600" onclick="openDetailWindow('ALL', '${st.rawStatus}', 'ALL')" title="Klik untuk rincian window baru">${st.label}</td>`;
+        cats.forEach(c => {
+          const cell = catMap[c];
+          tbHTML += `<td class="py-2 px-3 border border-slate-300 text-right whitespace-nowrap cursor-pointer hover:bg-blue-100/60 hover:text-blue-700 transition" onclick="openDetailWindow('ALL', '${st.rawStatus}', '${c}')" title="Klik untuk rincian ${c} di window baru">${getCellValue(cell)}</td>`;
+        });
+        tbHTML += `<td class="py-2 px-3 border border-slate-300 text-right font-black whitespace-nowrap bg-slate-100 cursor-pointer hover:bg-blue-200/60 hover:text-blue-800 transition" onclick="openDetailWindow('ALL', '${st.rawStatus}', 'ALL')" title="Klik untuk rincian Total ${st.label} di window baru">${getCellValue(totalCell)}</td>`;
+        tbHTML += `</tr>`;
+      });
+
+      tbody.innerHTML = tbHTML;
+    }
+
+    function renderMatrixSection(idPrefix, sectionData, themeColor) {
+      const thead = document.getElementById('head' + idPrefix);
+      const tbody = document.getElementById('body' + idPrefix);
+      const tfoot = document.getElementById('foot' + idPrefix);
+      const cats = resumeData.categories || [];
+
+      let rawStatus = 'ALL';
+      if (idPrefix === 'SpkClose') rawStatus = 'CLOSE';
+      if (idPrefix === 'SpkHold') rawStatus = 'HOLD';
+      if (idPrefix === 'SpkOpen') rawStatus = 'OPEN';
+
+      // THEAD
+      let thHTML = '<tr>';
+      thHTML += '<th class="py-2.5 px-3 border border-slate-300 w-36 whitespace-nowrap bg-slate-200">Customer</th>';
+      cats.forEach(c => {
+        thHTML += `<th class="py-2.5 px-3 border border-slate-300 text-right whitespace-nowrap">${c}</th>`;
+      });
+      thHTML += '<th class="py-2.5 px-3 border border-slate-300 text-right whitespace-nowrap bg-slate-200">Total</th>';
+      thHTML += '</tr>';
+      thead.innerHTML = thHTML;
+
+      // TBODY
+      let tbHTML = '';
+      const rows = sectionData.rows || [];
+      rows.forEach((row, rIdx) => {
+        const isZebra = rIdx % 2 === 1;
+        tbHTML += `<tr class="${isZebra ? 'bg-slate-50/50' : 'bg-white'} hover:bg-blue-50/40">`;
+        tbHTML += `<td class="py-1.5 px-3 border border-slate-300 font-bold text-slate-800 whitespace-nowrap cursor-pointer hover:underline hover:text-blue-600" onclick="openDetailWindow('${row.customer}', '${rawStatus}', 'ALL')" title="Buka rincian ${row.customer} di window baru">${row.customer}</td>`;
+        cats.forEach(c => {
+          const cell = row.values ? row.values[c] : null;
+          tbHTML += `<td class="py-1.5 px-3 border border-slate-300 text-right whitespace-nowrap font-medium text-slate-700 cursor-pointer hover:bg-blue-100/60 hover:text-blue-700 transition" onclick="openDetailWindow('${row.customer}', '${rawStatus}', '${c}')" title="Buka rincian ${row.customer} - ${c} di window baru">${getCellValue(cell)}</td>`;
+        });
+        tbHTML += `<td class="py-1.5 px-3 border border-slate-300 text-right whitespace-nowrap font-bold text-slate-900 bg-slate-50 cursor-pointer hover:bg-blue-200/60 hover:text-blue-800 transition" onclick="openDetailWindow('${row.customer}', '${rawStatus}', 'ALL')" title="Buka rincian total ${row.customer} di window baru">${getCellValue(row.total)}</td>`;
+        tbHTML += `</tr>`;
+      });
+      tbody.innerHTML = tbHTML;
+
+      // TFOOT
+      const tot = sectionData.total_row;
+      let tfHTML = '<tr>';
+      tfHTML += `<td class="py-2 px-3 border border-slate-300 font-black uppercase whitespace-nowrap cursor-pointer hover:underline text-blue-600" onclick="openDetailWindow('ALL', '${rawStatus}', 'ALL')" title="Buka rincian Total di window baru">Total</td>`;
+      cats.forEach(c => {
+        const cell = tot && tot.values ? tot.values[c] : null;
+        tfHTML += `<td class="py-2 px-3 border border-slate-300 text-right font-black whitespace-nowrap cursor-pointer hover:bg-blue-100/60 hover:text-blue-700" onclick="openDetailWindow('ALL', '${rawStatus}', '${c}')" title="Buka rincian Total ${c} di window baru">${getCellValue(cell)}</td>`;
+      });
+      tfHTML += `<td class="py-2 px-3 border border-slate-300 text-right font-black whitespace-nowrap bg-slate-200 text-sm cursor-pointer hover:bg-blue-200/60" onclick="openDetailWindow('ALL', '${rawStatus}', 'ALL')" title="Buka rincian Grand Total di window baru">${getCellValue(tot ? tot.total : null)}</td>`;
+      tfHTML += '</tr>';
+      tfoot.innerHTML = tfHTML;
+    }
+
+    // ==========================================
+    // WINDOW DRILLDOWN DETAIL NOPOL & KATEGORI
+    // ==========================================
+    function openDetailWindow(cust, status, category) {
+      const getToday = () => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getToday(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getToday()
+      };
+
+      const area = document.getElementById('filterArea') ? document.getElementById('filterArea').value : 'ALL';
+      const c = encodeURIComponent(cust || 'ALL');
+      const s = encodeURIComponent(status || 'ALL');
+      const cat = encodeURIComponent(category || 'ALL');
+      const a = encodeURIComponent(area || 'ALL');
+      const t1 = encodeURIComponent(tglAwal);
+      const t2 = encodeURIComponent(tglAkhir);
+
+      const url = `/prj-csv/resume-per-kategori/detail?cust=${c}&status=${s}&cat=${cat}&area=${a}&tglawal=${t1}&tglakhir=${t2}`;
+
+      // Buka di Window Popup Baru yang mudah ditutup dengan ESC
+      const width = Math.min(1320, window.screen.availWidth - 80);
+      const height = Math.min(860, window.screen.availHeight - 80);
+      const left = Math.max(0, (window.screen.availWidth - width) / 2);
+      const top = Math.max(0, (window.screen.availHeight - height) / 2);
+
+      const win = window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`);
+      if (win) {
+        win.focus();
+      }
+    }
+
+    // EXPORT TO EXCEL
+    function exportToExcel() {
+      if (!resumeData) {
+        alert('Tidak ada data untuk diekspor');
+        return;
+      }
+
+      const cats = resumeData.categories || [];
+      const aoa = [];
+
+      // 1. SECTION GRAND TOTAL
+      aoa.push(['GRAND TOTAL']);
+      aoa.push(['', ...cats, 'Total']);
+
+      const statuses = ['SPK Open', 'SPK HOLD', 'SPK Close', 'Total SPK'];
+      statuses.forEach(st => {
+        const catMap = (resumeData.grand_total_matrix && resumeData.grand_total_matrix[st]) || {};
+        const tot = (resumeData.grand_total_summary && resumeData.grand_total_summary[st]) || {};
+        const row = [st];
+        cats.forEach(c => {
+          row.push((catMap[c] && catMap[c].amount) || 0);
+        });
+        row.push(tot.amount || 0);
+        aoa.push(row);
+      });
+
+      aoa.push([]); // blank line
+
+      // 2. HELPER UNTUK SECTION LAIN
+      const appendSection = (title, sec) => {
+        aoa.push([title]);
+        aoa.push(['Customer', ...cats, 'Total']);
+
+        (sec.rows || []).forEach(r => {
+          const row = [r.customer];
+          cats.forEach(c => {
+            row.push((r.values && r.values[c] && r.values[c].amount) || 0);
+          });
+          row.push((r.total && r.total.amount) || 0);
+          aoa.push(row);
+        });
+
+        // Total row
+        const tot = sec.total_row;
+        const totRow = ['Total'];
+        cats.forEach(c => {
+          totRow.push((tot && tot.values && tot.values[c] && tot.values[c].amount) || 0);
+        });
+        totRow.push((tot && tot.total && tot.total.amount) || 0);
+        aoa.push(totRow);
+
+        aoa.push([]); // blank line
+      };
+
+      appendSection('Total SPK', resumeData.total_spk_section);
+      appendSection('SPK Close', resumeData.spk_close_section);
+      appendSection('SPK HOLD', resumeData.spk_hold_section);
+      appendSection('SPK Open', resumeData.spk_open_section);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      // Auto-fit column widths
+      ws['!cols'] = [
+        { wch: 18 },
+        ...cats.map(() => ({ wch: 18 })),
+        { wch: 20 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Resume Per Kategori");
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      const filename = `Resume_Per_Kategori_${tglAwal}_sd_${tglAkhir}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    }
+  </script>
+</body>
+</html>

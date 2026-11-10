@@ -1,0 +1,593 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prior Unit - Master Data - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Prior Unit"></app-sidebar>
+
+    <!-- MAIN CONTENT (SUPER COMPACT DENSE VIEW) -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header, KPI Mini Pills, and Action Buttons (Single Row / Very Compact) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        
+        <!-- Left: Title & Mini KPI Badges -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-truck-fast text-blue-600 text-sm"></i>
+            <h2 class="text-sm font-bold text-slate-800">Prior Unit</h2>
+            <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Master</span>
+          </div>
+
+          <!-- Divider -->
+          <span class="text-slate-300">|</span>
+
+          <!-- Mini KPI Pills (Hemat Ruang Vertikal) -->
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <div class="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded flex items-center gap-1 shadow-2xs" title="Total Unit Terdaftar">
+              <span class="text-slate-500 font-medium">Total:</span>
+              <span id="statTotal" class="font-bold text-slate-800">0</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1 text-amber-800 shadow-2xs" title="Unit Status Open">
+              <i class="fa-solid fa-clock text-[9px] text-amber-500"></i>
+              <span class="font-medium">Open:</span>
+              <span id="statOpen" class="font-bold">0</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 text-emerald-800 shadow-2xs" title="Unit Status Done">
+              <i class="fa-solid fa-check text-[9px] text-emerald-500"></i>
+              <span class="font-medium">Done:</span>
+              <span id="statDone" class="font-bold">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons Compact -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="fetchPriorUnits()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+            <span>Refresh</span>
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Excel">
+            <i class="fa-solid fa-file-excel text-[11px]"></i>
+            <span>Export</span>
+          </button>
+          <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Tambah Unit Baru">
+            <i class="fa-solid fa-plus text-[11px]"></i>
+            <span>+ Unit</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER BAR COMPACT (Tinggi Ramping) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+          <!-- Search Input -->
+          <div class="relative flex-1 min-w-[180px] max-w-sm">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
+            <input type="text" id="filterSearch" oninput="debounceFetch()" placeholder="Cari Nopol, Cabin, Jenis, Catatan..." class="w-full pl-7 pr-2.5 py-1 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          </div>
+
+          <!-- Kategori Dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-500">Kategori:</span>
+            <select id="filterKategori" onchange="fetchPriorUnits()" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+              <option value="ALL">Semua</option>
+              <option value="lelang">Lelang</option>
+              <option value="asuransi">Asuransi</option>
+            </select>
+          </div>
+
+          <!-- Status Dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-500">Status:</span>
+            <select id="filterStatus" onchange="fetchPriorUnits()" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+              <option value="ALL">Semua</option>
+              <option value="0">0 = Open</option>
+              <option value="1">1 = Done</option>
+            </select>
+          </div>
+
+          <button onclick="resetFilters()" class="text-[11px] text-slate-500 hover:text-slate-800 underline px-1 py-0.5 cursor-pointer">
+            Reset
+          </button>
+        </div>
+
+        <div class="text-[11px] text-slate-500 font-medium shrink-0">
+          Total data: <span id="displayedCount" class="font-bold text-slate-800">0</span>
+        </div>
+      </div>
+
+      <!-- DATA TABLE CARD (Tinggi Maksimal & Padding Baris Ramping) -->
+      <div class="bg-white border border-slate-300 rounded-lg shadow-2xs flex-1 flex flex-col overflow-hidden">
+        <div class="overflow-x-auto overflow-y-auto flex-1">
+          <table class="w-full text-left text-slate-700 border-collapse">
+            <thead class="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-300 select-none">
+              <tr>
+                <th class="py-1.5 px-2 w-10 text-center">No</th>
+                <th class="py-1.5 px-2.5 w-28">Nopol</th>
+                <th class="py-1.5 px-2 w-20">Cabin</th>
+                <th class="py-1.5 px-2.5 w-24">Jenis</th>
+                <th class="py-1.5 px-2 w-20">Kategori</th>
+                <th class="py-1.5 px-2 w-20 text-center">Status</th>
+                <th class="py-1.5 px-3">Catatan</th>
+                <th class="py-1.5 px-2 w-28">Created</th>
+                <th class="py-1.5 px-2 w-16 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-200">
+              <tr>
+                <td colspan="9" class="py-10 text-center text-slate-400">
+                  <i class="fa-solid fa-circle-notch fa-spin text-xl mb-1 text-blue-600 block"></i>
+                  Memuat data Prior Unit...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL FORM (CREATE / EDIT) -->
+  <div id="unitModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden transform transition-all">
+      <!-- Modal Header -->
+      <div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-truck-fast text-blue-600"></i>
+          <h3 id="modalTitle" class="font-bold text-slate-800 text-sm">Tambah Prior Unit</h3>
+        </div>
+        <button onclick="closeUnitModal()" class="text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body Form -->
+      <form id="unitForm" onsubmit="handleFormSubmit(event)" class="p-4 space-y-3 text-xs">
+        <input type="hidden" id="formId" value="" />
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <!-- Nopol -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Nopol <span class="text-rose-500">*</span></label>
+            <input type="text" id="formNopol" required placeholder="Contoh: B 9672 JYU" class="w-full px-2.5 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 uppercase font-mono font-bold" />
+          </div>
+
+          <!-- Cabin -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Cabin</label>
+            <input type="text" id="formCabin" placeholder="Contoh: 23133" class="w-full px-2.5 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <!-- Jenis -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Jenis</label>
+            <input type="text" id="formJenis" placeholder="FIGHTER / CDD..." list="jenisOptions" class="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 uppercase" />
+            <datalist id="jenisOptions">
+              <option value="FIGHTER"></option>
+              <option value="CDD"></option>
+              <option value="TRONTON"></option>
+              <option value="DUMP TRUCK"></option>
+              <option value="TRAILER"></option>
+            </datalist>
+          </div>
+
+          <!-- Kategori (Dropdown: lelang, asuransi) -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Kategori <span class="text-rose-500">*</span></label>
+            <select id="formKategori" required class="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer font-medium">
+              <option value="lelang">Lelang</option>
+              <option value="asuransi">Asuransi</option>
+            </select>
+          </div>
+
+          <!-- Status (statue: 0 = Open; 1 = Done) -->
+          <div>
+            <label class="block font-semibold text-slate-700 mb-0.5">Status <span class="text-rose-500">*</span></label>
+            <select id="formStatue" required class="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer font-medium">
+              <option value="0">0 = Open</option>
+              <option value="1">1 = Done</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Catatan (Textarea, support enter) -->
+        <div>
+          <label class="block font-semibold text-slate-700 mb-0.5">Catatan</label>
+          <textarea id="formNote" rows="3" placeholder="Tuliskan catatan pengerjaan, instruksi, mekanik penanggung jawab, dll (tekan Enter untuk baris baru)..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 leading-normal"></textarea>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="pt-2.5 border-t border-slate-200 flex justify-end gap-2">
+          <button type="button" onclick="closeUnitModal()" class="px-3 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+            Batal
+          </button>
+          <button type="submit" id="btnSubmitForm" class="px-3.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-2xs transition cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-floppy-disk"></i> Simpan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DELETE CONFIRMATION -->
+  <div id="deleteModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden p-4 text-center">
+      <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-lg mx-auto mb-2">
+        <i class="fa-solid fa-trash-can"></i>
+      </div>
+      <h3 class="font-bold text-slate-800 text-sm mb-1">Hapus Prior Unit?</h3>
+      <p class="text-xs text-slate-500 mb-3">
+        Yakin ingin menghapus unit <span id="delUnitNopol" class="font-bold text-slate-800 font-mono">-</span>?
+      </p>
+      <input type="hidden" id="delUnitId" value="" />
+      <div class="flex justify-center gap-2">
+        <button onclick="closeDeleteModal()" class="px-3 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs transition cursor-pointer">
+          Batal
+        </button>
+        <button onclick="confirmDelete()" id="btnConfirmDel" class="px-3.5 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-2xs transition cursor-pointer">
+          Hapus Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentUnits = [];
+    let debounceTimer = null;
+
+    function debounceFetch() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchPriorUnits();
+      }, 300);
+    }
+
+    function resetFilters() {
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterKategori').value = 'ALL';
+      document.getElementById('filterStatus').value = 'ALL';
+      fetchPriorUnits();
+    }
+
+    async function fetchPriorUnits() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+      const search = document.getElementById('filterSearch').value.trim();
+      const kategori = document.getElementById('filterKategori').value;
+      const statue = document.getElementById('filterStatus').value;
+
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (kategori && kategori !== 'ALL') params.append('kategori', kategori);
+      if (statue && statue !== 'ALL') params.append('statue', statue);
+
+      try {
+        const res = await fetch(`/api/v1/csv/master/prior-unit?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          currentUnits = json.data || [];
+
+          // Update KPI Summary Mini Pills
+          if (json.summary) {
+            document.getElementById('statTotal').innerText = json.summary.total || 0;
+            document.getElementById('statOpen').innerText = json.summary.open || 0;
+            document.getElementById('statDone').innerText = json.summary.done || 0;
+          }
+
+          document.getElementById('displayedCount').innerText = currentUnits.length;
+          renderTable(currentUnits);
+        } else {
+          showToast('Gagal memuat data: ' + (json.message || 'Terjadi kesalahan'), 'error');
+        }
+      } catch (err) {
+        console.error('Error fetching prior units:', err);
+        showToast('Gagal terhubung ke server', 'error');
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+      }
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('tableBody');
+      if (!tbody) return;
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="py-8 text-center text-slate-400">
+              <i class="fa-solid fa-inbox text-2xl mb-1 text-slate-300 block"></i>
+              Tidak ada data Prior Unit.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map((item, idx) => {
+        // Status Badge Compact
+        const isOpen = String(item.statue) === '0';
+        const statusBadge = isOpen
+          ? `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 font-bold px-1.5 py-0 rounded text-[9px] border border-amber-300"><i class="fa-solid fa-circle-dot text-[7px] text-amber-500"></i> Open</span>`
+          : `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0 rounded text-[9px] border border-emerald-300"><i class="fa-solid fa-check text-[7px] text-emerald-500"></i> Done</span>`;
+
+        // Kategori Badge Compact
+        const kat = (item.kategori || '').toLowerCase();
+        let katBadge = `<span class="capitalize text-slate-700 text-[10px]">${item.kategori || '-'}</span>`;
+        if (kat === 'lelang') {
+          katBadge = `<span class="bg-purple-100 text-purple-700 font-semibold px-1.5 py-0 rounded text-[9px] border border-purple-200">Lelang</span>`;
+        } else if (kat === 'asuransi') {
+          katBadge = `<span class="bg-blue-100 text-blue-700 font-semibold px-1.5 py-0 rounded text-[9px] border border-blue-200">Asuransi</span>`;
+        }
+
+        // Format Created Date Compact
+        let createdStr = '-';
+        if (item.created) {
+          const d = new Date(item.created);
+          if (!isNaN(d.getTime())) {
+            const pad = n => String(n).padStart(2, '0');
+            createdStr = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          }
+        }
+
+        // Catatan: batasi tinggi vertikal dengan line-clamp / max-height agar tidak makan tempat
+        const rawNote = item.note || '';
+        const escapedNote = escapeHtml(rawNote);
+
+        return `
+          <tr class="hover:bg-blue-50/40 transition ${isOpen ? 'bg-amber-50/20' : ''}">
+            <td class="py-1 px-2 text-center text-slate-400 font-mono text-[10px]">${idx + 1}</td>
+            <td class="py-1 px-2.5">
+              <span class="font-bold text-slate-900 font-mono tracking-tight bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-[10px]">${item.nopol || '-'}</span>
+            </td>
+            <td class="py-1 px-2 font-mono text-slate-600 text-[11px]">${item.cabin || '-'}</td>
+            <td class="py-1 px-2.5 font-semibold text-slate-800 uppercase text-[10px]">${item.jenis || '-'}</td>
+            <td class="py-1 px-2">${katBadge}</td>
+            <td class="py-1 px-2 text-center">${statusBadge}</td>
+            <td class="py-1 px-3 text-slate-700 leading-snug">
+              <div class="max-h-10 overflow-y-auto whitespace-pre-line text-[11px]" title="${escapeHtml(rawNote)}">
+                ${escapedNote ? escapedNote : '<span class="text-slate-300 italic">-</span>'}
+              </div>
+            </td>
+            <td class="py-1 px-2 text-slate-400 text-[10px] font-mono whitespace-nowrap">${createdStr}</td>
+            <td class="py-1 px-2 text-center">
+              <div class="inline-flex items-center gap-1">
+                <button onclick="openEditModal(${item.id})" class="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition cursor-pointer text-xs" title="Edit Prior Unit">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="openDeleteModal(${item.id}, '${escapeJs(item.nopol)}')" class="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition cursor-pointer text-xs" title="Hapus Prior Unit">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeJs(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // Modal Operations
+    function openCreateModal() {
+      document.getElementById('modalTitle').innerText = 'Tambah Prior Unit';
+      document.getElementById('formId').value = '';
+      document.getElementById('formNopol').value = '';
+      document.getElementById('formCabin').value = '';
+      document.getElementById('formJenis').value = '';
+      document.getElementById('formKategori').value = 'lelang';
+      document.getElementById('formStatue').value = '0';
+      document.getElementById('formNote').value = '';
+      document.getElementById('unitModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('formNopol').focus(), 50);
+    }
+
+    function openEditModal(id) {
+      const item = currentUnits.find(u => u.id === id);
+      if (!item) {
+        showToast('Data tidak ditemukan', 'error');
+        return;
+      }
+
+      document.getElementById('modalTitle').innerText = 'Edit Prior Unit: ' + (item.nopol || '');
+      document.getElementById('formId').value = item.id;
+      document.getElementById('formNopol').value = item.nopol || '';
+      document.getElementById('formCabin').value = item.cabin || '';
+      document.getElementById('formJenis').value = item.jenis || '';
+      document.getElementById('formKategori').value = (item.kategori || 'lelang').toLowerCase();
+      document.getElementById('formStatue').value = String(item.statue || '0');
+      document.getElementById('formNote').value = item.note || '';
+      document.getElementById('unitModal').classList.remove('hidden');
+    }
+
+    function closeUnitModal() {
+      document.getElementById('unitModal').classList.add('hidden');
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('formId').value;
+      const nopol = document.getElementById('formNopol').value.trim();
+      const cabin = document.getElementById('formCabin').value.trim();
+      const jenis = document.getElementById('formJenis').value.trim();
+      const kategori = document.getElementById('formKategori').value;
+      const statue = document.getElementById('formStatue').value;
+      const note = document.getElementById('formNote').value;
+
+      if (!nopol) {
+        alert('Nopol wajib diisi!');
+        return;
+      }
+
+      const payload = { nopol, cabin, jenis, kategori, statue, note };
+      const btn = document.getElementById('btnSubmitForm');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Simpan...`;
+
+      try {
+        const isEdit = id && id.length > 0;
+        const url = isEdit ? `/api/v1/csv/master/prior-unit/${id}` : `/api/v1/csv/master/prior-unit`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        if (res.ok && json.status === 'success') {
+          showToast(json.message || 'Berhasil disimpan', 'success');
+          closeUnitModal();
+          fetchPriorUnits();
+        } else {
+          showToast('Gagal: ' + (json.message || 'Terjadi kesalahan'), 'error');
+        }
+      } catch (err) {
+        console.error('Error submitting form:', err);
+        showToast('Gagal menghubungi server', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan`;
+      }
+    }
+
+    // Delete Operations
+    function openDeleteModal(id, nopol) {
+      document.getElementById('delUnitId').value = id;
+      document.getElementById('delUnitNopol').innerText = nopol;
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    async function confirmDelete() {
+      const id = document.getElementById('delUnitId').value;
+      if (!id) return;
+
+      const btn = document.getElementById('btnConfirmDel');
+      btn.disabled = true;
+      btn.innerText = 'Menghapus...';
+
+      try {
+        const res = await fetch(`/api/v1/csv/master/prior-unit/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+
+        if (res.ok && json.status === 'success') {
+          showToast('Prior Unit berhasil dihapus', 'success');
+          closeDeleteModal();
+          fetchPriorUnits();
+        } else {
+          showToast('Gagal menghapus: ' + (json.message || 'Terjadi kesalahan'), 'error');
+        }
+      } catch (err) {
+        console.error('Error deleting unit:', err);
+        showToast('Gagal menghubungi server', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Hapus Sekarang';
+      }
+    }
+
+    // Export Excel using SheetJS
+    function exportToExcel() {
+      if (!currentUnits || currentUnits.length === 0) {
+        alert('Tidak ada data untuk diexport!');
+        return;
+      }
+
+      const rows = currentUnits.map((u, i) => ({
+        'No': i + 1,
+        'Nopol': u.nopol || '',
+        'Cabin': u.cabin || '',
+        'Jenis': u.jenis || '',
+        'Kategori': u.kategori || '',
+        'Status': String(u.statue) === '0' ? 'Open' : 'Done',
+        'Catatan': u.note || '',
+        'Created': u.created || ''
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Prior Unit");
+      XLSX.writeFile(wb, `Master_Prior_Unit_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    // Toast Notification Helper
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const isSuccess = type === 'success';
+      const bg = isSuccess ? 'bg-emerald-600' : 'bg-rose-600';
+      const icon = isSuccess ? 'fa-check-circle' : 'fa-circle-exclamation';
+
+      toast.className = `${bg} text-white text-xs px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Initial Load
+    window.onload = () => {
+      fetchPriorUnits();
+    };
+  </script>
+</body>
+</html>

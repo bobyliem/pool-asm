@@ -1,0 +1,634 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard (CSV) - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN DASHBOARD) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Dashboard"></app-sidebar>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-50">
+      
+      <!-- Top Filters & Last Update -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <div class="flex items-center space-x-3">
+            <h2 class="text-xl font-bold text-gray-800">Dashboard</h2>
+            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">Project CSV</span>
+          </div>
+          <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-[10px] text-slate-400"></i>
+            <span>Last Update: <span id="lastUpdateText" class="font-semibold text-slate-700">-</span></span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <!-- Filter Area Dropdown (Dari Query DISTINCT(site)) -->
+          <div class="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="onAreaChange(this.value)" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+              <option value="ALL">Semua Area</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. BAGIAN ATAS: 6 KARTU INFORMASI UTAMA -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        
+        <!-- CARD 1: Perbaikan -->
+        <div onclick="switchTab('Perbaikan')" id="kpiCard_Perbaikan" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between ring-2 ring-blue-500 border-blue-500">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Perbaikan</span>
+            <span id="badge_Perbaikan" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_Perbaikan">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_Perbaikan">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_Perbaikan">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_Perbaikan">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_Perbaikan">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_Perbaikan">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: Asuransi -->
+        <div onclick="switchTab('Asuransi')" id="kpiCard_Asuransi" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Asuransi</span>
+            <span id="badge_Asuransi" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_Asuransi">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_Asuransi">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_Asuransi">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_Asuransi">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_Asuransi">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_Asuransi">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3: Storing -->
+        <div onclick="switchTab('Storing')" id="kpiCard_Storing" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Storing</span>
+            <span id="badge_Storing" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_Storing">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_Storing">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_Storing">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_Storing">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_Storing">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_Storing">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 4: Standby -->
+        <div onclick="switchTab('Standby')" id="kpiCard_Standby" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Standby</span>
+            <span id="badge_Standby" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_Standby">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_Standby">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_Standby">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_Standby">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_Standby">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_Standby">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 5: Bongkar Muat -->
+        <div onclick="switchTab('BongkarMuat')" id="kpiCard_BongkarMuat" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Bongkar Muat</span>
+            <span id="badge_BongkarMuat" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_BongkarMuat">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_BongkarMuat">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_BongkarMuat">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_BongkarMuat">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_BongkarMuat">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_BongkarMuat">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 6: Tunggu DO -->
+        <div onclick="switchTab('TungguDO')" id="kpiCard_TungguDO" 
+             class="kpi-card bg-white border border-slate-300 rounded-lg p-2.5 shadow-xs hover:border-blue-500 hover:shadow-sm cursor-pointer transition select-none flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-slate-800 text-xs sm:text-sm">Tunggu DO</span>
+            <span id="badge_TungguDO" class="bg-slate-200 text-slate-800 font-bold px-1.5 py-0.5 rounded text-xs min-w-[22px] text-center">0</span>
+          </div>
+          <div class="text-[10px] text-slate-600 space-y-0.5">
+            <div class="flex justify-between items-center text-slate-500">
+              <span>Last Day</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="prev_in_TungguDO">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="prev_out_TungguDO">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="prev_saldo_TungguDO">0</span></span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center font-medium text-slate-700">
+              <span>Today</span>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-down text-emerald-600 text-[9px]"></i><span id="today_in_TungguDO">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up text-rose-600 text-[9px]"></i><span id="today_out_TungguDO">0</span></span>
+                <span class="inline-flex items-center gap-0.5"><i class="fa-solid fa-clock text-slate-500 text-[9px]"></i><span id="today_saldo_TungguDO">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 2. BAGIAN BAWAH: 6 TABS NAVIGASI -->
+      <div class="bg-white border border-slate-300 rounded-xl p-1.5 shadow-xs mb-3">
+        <div class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
+          <!-- Tab Button 1: Perbaikan -->
+          <button onclick="switchTab('Perbaikan')" id="tabBtn_Perbaikan" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer bg-blue-600 text-white shadow-xs">
+            <i class="fa-solid fa-wrench"></i>
+            <span>Perbaikan</span>
+            <span id="tabBadge_Perbaikan" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+          
+          <!-- Tab Button 2: Asuransi -->
+          <button onclick="switchTab('Asuransi')" id="tabBtn_Asuransi" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Asuransi</span>
+            <span id="tabBadge_Asuransi" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+          
+          <!-- Tab Button 3: Storing -->
+          <button onclick="switchTab('Storing')" id="tabBtn_Storing" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-truck-pickup"></i>
+            <span>Storing</span>
+            <span id="tabBadge_Storing" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+          
+          <!-- Tab Button 4: Standby -->
+          <button onclick="switchTab('Standby')" id="tabBtn_Standby" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-truck-front"></i>
+            <span>Standby</span>
+            <span id="tabBadge_Standby" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+          
+          <!-- Tab Button 5: Bongkar Muat -->
+          <button onclick="switchTab('BongkarMuat')" id="tabBtn_BongkarMuat" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-dolly"></i>
+            <span>Bongkar Muat</span>
+            <span id="tabBadge_BongkarMuat" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+          
+          <!-- Tab Button 6: Tunggu DO -->
+          <button onclick="switchTab('TungguDO')" id="tabBtn_TungguDO" 
+                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Tunggu DO</span>
+            <span id="tabBadge_TungguDO" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. KONTEN DARI 6 TAB (TABEL DATA AKTIF) -->
+      <div id="tabContainer">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const TAB_KEYS = ['Perbaikan', 'Asuransi', 'Storing', 'Standby', 'BongkarMuat', 'TungguDO'];
+    const TAB_PURPOSE_MAP = {
+      'Perbaikan': 'Perbaikan',
+      'Asuransi': 'Asuransi',
+      'Storing': 'Storing',
+      'Standby': 'Standby',
+      'BongkarMuat': 'Bongkar Muat',
+      'TungguDO': 'Tunggu DO'
+    };
+
+    let activeTabKey = 'Perbaikan';
+    let currentCategoryData = {};
+
+    // Load filter area options from backend
+    async function loadAreaOptions() {
+      try {
+        const res = await fetch('/api/v1/csv/dashboard/areas');
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const select = document.getElementById('filterArea');
+          const savedArea = sessionStorage.getItem('csv_dash_area') || 'ALL';
+          
+          select.innerHTML = '<option value="ALL">Semua Area</option>';
+          json.data.forEach(area => {
+            const opt = document.createElement('option');
+            opt.value = area;
+            opt.textContent = area;
+            select.appendChild(opt);
+          });
+
+          select.value = Array.from(select.options).some(o => o.value === savedArea) ? savedArea : 'ALL';
+        }
+      } catch (err) {
+        console.error('Failed to load areas:', err);
+      }
+    }
+
+    function updateLastUpdateDisplay(customTime) {
+      const el = document.getElementById('lastUpdateText');
+      if (!el) return;
+      const d = customTime ? new Date(customTime) : new Date();
+      if (isNaN(d.getTime())) return;
+      const pad = n => String(n).padStart(2, '0');
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      el.innerText = `${pad(d.getDate())}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    // Fetch dashboard categories & table data
+    async function fetchDashboardCategoryData() {
+      const area = sessionStorage.getItem('csv_dash_area') || document.getElementById('filterArea').value || 'ALL';
+      try {
+        const res = await fetch(`/api/v1/csv/dashboard/categories?area=${encodeURIComponent(area)}`);
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          currentCategoryData = json.data.categories || {};
+          const counts = json.data.counts || {};
+          const stats = json.data.stats || {};
+
+          // Update badges on cards and tabs, plus Last Day & Today stats
+          TAB_KEYS.forEach(k => {
+            const purpose = TAB_PURPOSE_MAP[k];
+            const cnt = counts[purpose] || 0;
+            const s = stats[purpose] || {
+              last_in: 0, last_out: 0, last_idle: 0,
+              today_in: 0, today_out: 0, today_idle: 0, total_idle: 0
+            };
+            
+            // Angka di sebelah Kategori (font paling besar) dihitung dari jumlah idle (total_idle)
+            const totalIdle = s.total_idle !== undefined ? s.total_idle : ((s.last_idle || 0) + (s.today_idle || 0));
+            const badgeCard = document.getElementById(`badge_${k}`);
+            const badgeTab = document.getElementById(`tabBadge_${k}`);
+            if (badgeCard) badgeCard.innerText = totalIdle;
+            if (badgeTab) badgeTab.innerText = totalIdle;
+
+            // 3. Last Day
+            // a. Arah panah bawah hijau: entrydate bukan hari ini
+            // b. Arah panah atas merah: entrydate bukan hari ini dan exitdate terisi
+            // c. Icon jam: nominal a - b (last_idle)
+            const elPrevIn = document.getElementById(`prev_in_${k}`);
+            const elPrevOut = document.getElementById(`prev_out_${k}`);
+            const elPrevSaldo = document.getElementById(`prev_saldo_${k}`);
+            if (elPrevIn) elPrevIn.innerText = s.last_in;
+            if (elPrevOut) elPrevOut.innerText = s.last_out;
+            if (elPrevSaldo) elPrevSaldo.innerText = s.last_idle !== undefined ? s.last_idle : (s.last_in - s.last_out);
+
+            // 4. Today
+            // a. Arah panah bawah hijau: entrydate hari ini
+            // b. Arah panah atas merah: entrydate hari ini dan exitdate terisi
+            // c. Icon jam: nominal a - b (today_idle)
+            const elTodayIn = document.getElementById(`today_in_${k}`);
+            const elTodayOut = document.getElementById(`today_out_${k}`);
+            const elTodaySaldo = document.getElementById(`today_saldo_${k}`);
+            if (elTodayIn) elTodayIn.innerText = s.today_in;
+            if (elTodayOut) elTodayOut.innerText = s.today_out;
+            if (elTodaySaldo) elTodaySaldo.innerText = s.today_idle !== undefined ? s.today_idle : (s.today_in - s.today_out);
+          });
+
+          // Update last update text from database log_imp
+          if (json.data.last_update) {
+            const el = document.getElementById('lastUpdateText');
+            if (el) el.innerText = json.data.last_update;
+          } else {
+            updateLastUpdateDisplay();
+          }
+
+          // Render active tab table
+          renderTabContent(activeTabKey);
+        }
+      } catch (err) {
+        console.error('Failed to load category data:', err);
+      }
+    }
+
+    function onAreaChange(val) {
+      sessionStorage.setItem('csv_dash_area', val);
+      fetchDashboardCategoryData();
+    }
+
+    function switchTab(activeKey) {
+      activeTabKey = activeKey;
+      TAB_KEYS.forEach(key => {
+        const btn = document.getElementById(`tabBtn_${key}`);
+        const badge = document.getElementById(`tabBadge_${key}`);
+        const kpiCard = document.getElementById(`kpiCard_${key}`);
+
+        if (key === activeKey) {
+          if (btn) {
+            btn.className = 'tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer bg-blue-600 text-white shadow-xs';
+          }
+          if (badge) {
+            badge.className = 'bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold';
+          }
+          if (kpiCard) {
+            kpiCard.classList.add('ring-2', 'ring-blue-500', 'border-blue-500');
+          }
+        } else {
+          if (btn) {
+            btn.className = 'tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100';
+          }
+          if (badge) {
+            badge.className = 'bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold';
+          }
+          if (kpiCard) {
+            kpiCard.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
+          }
+        }
+      });
+
+      renderTabContent(activeKey);
+    }
+
+    function getCardTheme(item) {
+      const note = (item.note || '').toLowerCase();
+      const notelate = (item.notelate || '').toLowerCase();
+      
+      if (note.includes('selesai') || note.includes('finished') || notelate.includes('selesai')) {
+        return { bg: 'bg-blue-600 text-white', label: 'text-blue-600' };
+      }
+      if (note.includes('onprogress') || notelate.includes('onprogress')) {
+        return { bg: 'bg-emerald-500 text-white', label: 'text-emerald-600' };
+      }
+      // Default: Antrian (Warna Orange)
+      return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
+    }
+
+    function renderTabContent(key) {
+      const purpose = TAB_PURPOSE_MAP[key];
+      const items = currentCategoryData[purpose] || [];
+      const container = document.getElementById('tabContainer');
+      if (!container) return;
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white border border-slate-300 rounded-lg p-10 text-center text-slate-400 shadow-2xs">
+            <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-2 block"></i>
+            <p class="font-semibold text-slate-700 text-xs">Tidak ada data unit untuk kategori ${purpose}</p>
+            <p class="text-[11px] text-slate-400 mt-1">Belum ada unit yang tercatat aktif pada filter area ini.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const cardsHtml = items.map((item, idx) => {
+        const theme = getCardTheme(item);
+
+        // Header status text: note + notelate (e.g. "Antrian [1 day/s late]" atau "OnProgress")
+        let headerStatus = item.note || 'Antrian';
+        if (item.notelate && item.notelate.startsWith('[') && !headerStatus.includes('[')) {
+          headerStatus = `${headerStatus} ${item.notelate}`;
+        }
+
+        // Driver formatting
+        let driverHtml = item.driver || '-';
+        if (item.driver && item.driver.startsWith('*')) {
+          driverHtml = `<span class="text-rose-600 font-bold">${item.driver}</span>`;
+        }
+
+        // Cek tanggal masuk: Jika bukan hari ini, icon truk berwarna merah
+        let isNotToday = item.is_not_today === 1;
+        if (!isNotToday && item.tglmasuk) {
+          const now = new Date();
+          const pad = n => String(n).padStart(2, '0');
+          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const todayPrefix = `${pad(now.getDate())}-${months[now.getMonth()]}-${String(now.getFullYear()).slice(-2)}`;
+          if (!item.tglmasuk.startsWith(todayPrefix)) {
+            isNotToday = true;
+          }
+        }
+        const truckIconColor = isNotToday ? 'text-rose-600' : 'text-slate-700';
+
+        const exitVal = (item.exitdate && typeof item.exitdate === 'string' && item.exitdate.trim().length > 0)
+          ? item.exitdate 
+          : 'Belum Keluar';
+
+        const isAsuransi = purpose === 'Asuransi' || 
+                           (item.purpose && item.purpose.toLowerCase().includes('asuransi')) || 
+                           (item.category && item.category.toLowerCase().includes('asuransi')) ||
+                           (item.catt && item.catt.toLowerCase().includes('asuransi'));
+        const shieldIcon = isAsuransi ? '<i class="fa-solid fa-shield-halved text-blue-600 ml-1 text-[10px]" title="Kategori Asuransi"></i>' : '';
+
+        return `
+          <div class="border border-slate-300 rounded bg-white text-[11px] overflow-hidden shadow-2xs hover:shadow-xs transition shrink-0">
+              <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex justify-between items-center">
+                  <span class="truncate pr-1">${idx + 1}. ${headerStatus}</span>
+                  <span class="font-normal text-[9px] shrink-0">${item.tglmasuk || '-'}</span>
+              </div>
+              <div class="px-2 pt-1.5 pb-2 flex gap-2 items-center">
+                  <i onclick="openUnitSpkDetail('${(item.no_pol || '').replace(/'/g, "\\'")}', '${item.tgl_masuk || ''}')" class="fa-solid fa-truck ${truckIconColor} text-lg shrink-0 cursor-pointer" title="Buka Detail SPK"></i>
+                  <div class="leading-tight w-full min-w-0">
+                      <div class="font-bold text-slate-900 truncate text-[11px]">${driverHtml}</div>
+                      <div class="flex justify-between text-[10px] text-slate-600 mt-0.5">
+                          <span class="font-semibold truncate flex items-center gap-0.5">
+                            <span class="truncate">${item.nopol || '-'}</span>
+                            ${shieldIcon}
+                          </span>
+                          <span class="font-bold text-slate-600 shrink-0 ml-1">${item.cust_code || '-'}</span>
+                      </div>
+                      <div class="text-[9px] ${theme.label} font-medium mt-1 pt-1 border-t border-slate-200 flex justify-between items-center">
+                          <span class="shrink-0">Tgl Keluar</span>
+                          <span class="font-semibold text-slate-800">${exitVal}</span>
+                      </div>
+                      ${item.catt ? `
+                        <div class="text-[9px] text-slate-500 mt-1 truncate border-t border-slate-100 pt-0.5" title="${item.catt}">
+                          <i class="fa-regular fa-comment-dots text-slate-400 mr-1"></i>${item.catt}
+                        </div>
+                      ` : ''}
+                  </div>
+              </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="space-y-2.5">
+          <!-- Header Bar Tab -->
+          <div class="flex items-center justify-between pb-1">
+            <h3 class="font-bold text-slate-800 text-xs flex items-center gap-2">
+              <span>Kartu Unit: ${purpose}</span>
+              <span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">${items.length} Unit</span>
+            </h3>
+            <button onclick="exportTabToExcel('${purpose}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-file-excel"></i> Export Excel
+            </button>
+          </div>
+
+          <!-- 4 CARDS PER ROW GRID (Menyamping) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 items-start">
+            ${cardsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function exportTabToExcel(purpose) {
+      const items = currentCategoryData[purpose] || [];
+      if (items.length === 0) {
+        alert('Tidak ada data untuk diexport!');
+        return;
+      }
+      const exportRows = items.map((r, i) => ({
+        'No': i + 1,
+        'Site': r.sitename || '',
+        'Nopol [Tipe]': r.nopol || '',
+        'Cust Code': r.cust_code || '',
+        'Driver': r.driver || '',
+        'Kategori': r.category || '',
+        'Tgl Masuk': r.tglmasuk || '',
+        'Note': r.note || '',
+        'Catatan': r.catt || '',
+        'Exit Date': r.exitdate || 'Belum Keluar',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, purpose);
+      XLSX.writeFile(wb, `Dashboard_${purpose}_${sessionStorage.getItem('csv_dash_area') || 'ALL'}.xlsx`);
+    }
+
+    // Buka Window SPK Detail untuk unit yang diklik
+    function openUnitSpkDetail(noPol, tglMasuk) {
+      if (!noPol || noPol === '-' || noPol === 'undefined') return;
+
+      const today = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const tglAkhir = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+      let tglAwal = tglMasuk;
+      if (tglAwal && tglAwal.includes('T')) {
+        tglAwal = tglAwal.split('T')[0];
+      } else if (tglAwal && tglAwal.includes(' ')) {
+        tglAwal = tglAwal.split(' ')[0];
+      }
+      if (!tglAwal || !/^\d{4}-\d{2}-\d{2}$/.test(String(tglAwal).trim())) {
+        tglAwal = tglAkhir;
+      } else {
+        tglAwal = String(tglAwal).trim();
+      }
+
+      const cleanNopol = noPol.trim();
+      const url = `/prj-csv/spk-detail?nopol=${encodeURIComponent(cleanNopol)}&tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+
+      const width = Math.min(1320, window.screen.availWidth - 80);
+      const height = Math.min(860, window.screen.availHeight - 80);
+      const left = Math.max(0, (window.screen.availWidth - width) / 2);
+      const top = Math.max(0, (window.screen.availHeight - height) / 2);
+
+      const win = window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`);
+      if (win) {
+        win.focus();
+      }
+    }
+
+    // Make fetchDashboardCategoryData available globally for navbar sync
+    window.fetchDashboardCategoryData = fetchDashboardCategoryData;
+    window.triggerCsvSync = () => {
+      if (typeof window.triggerNavCsvSync === 'function') {
+        window.triggerNavCsvSync();
+      }
+    };
+
+    window.onload = async () => {
+      await loadAreaOptions();
+      await fetchDashboardCategoryData();
+    };
+  </script>
+</body>
+</html>

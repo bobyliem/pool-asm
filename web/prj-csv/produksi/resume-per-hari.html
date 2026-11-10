@@ -1,0 +1,699 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Resume Per Hari</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar tipis */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: Resume Per Hari) -->
+    <app-sidebar active-menu="Resume Per Hari"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+      
+      <!-- TITLE & BREADCRUMB -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>Produksi</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Resume Per Hari (CSV)</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-day text-blue-600"></i>
+            Laporan Produksi: Resume Per Hari
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full font-mono">ss_pok</span>
+          </h2>
+          <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-truck-moving text-slate-400"></i>
+              <span>Monitoring ritase, tonase muat/setor, dan susut (waste) harian</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-slate-200/60 px-2 py-0.5 rounded text-slate-600">
+              <i class="fa-solid fa-clock text-slate-400"></i>
+              <span>Last Update: <span id="lastUpdateVal" class="text-slate-700 font-semibold">Memuat...</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchResumeData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer" title="Refresh data">
+            <i class="fa-solid fa-rotate text-blue-600"></i> Refresh
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FORM INPUT) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center gap-2 font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <i class="fa-solid fa-filter text-blue-600"></i>
+          <span>Filter Periode Produksi</span>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUMMARY CARDS (RINGKASAN SEBELUM TABEL) -->
+      <!-- SUMMARY CARDS & TARGET MONITORING -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
+        
+        <div class="flex items-center justify-between pb-2.5 border-b border-slate-200">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-chart-pie text-blue-600"></i>
+            <span>Ringkasan Produksi Periode Ini</span>
+          </div>
+          <span class="text-[11px] text-slate-400 italic" id="summaryPeriodLabel">Memuat akumulasi...</span>
+        </div>
+
+        <!-- TARGET PERFORMANCE HIGHLIGHT BANNER (Target 365 Ton/Hari) -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-xl p-4 shadow-sm border border-slate-700">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            
+            <!-- Kolom 1: Target vs Realisasi Harian -->
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0 text-blue-400 text-xl">
+                <i class="fa-solid fa-bullseye"></i>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-300 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                  <span>Target Produksi</span>
+                  <span class="bg-blue-500/30 text-blue-300 px-1.5 py-0.5 rounded text-[10px] font-bold">365 Ton / Hari</span>
+                </div>
+                <div class="flex items-baseline gap-2 mt-0.5">
+                  <span class="text-2xl font-black font-mono tracking-tight text-white" id="cardAvgSetorPerHari">0.00</span>
+                  <span class="text-xs text-slate-300">Ton / Hari (Realisasi)</span>
+                </div>
+                <div class="text-[10.5px] text-slate-400 font-medium">
+                  Rata-rata realisasi setor harian
+                </div>
+              </div>
+            </div>
+
+            <!-- Kolom 2: Status Kekurangan / Selisih Harian -->
+            <div class="flex flex-col justify-center px-4 py-2 rounded-lg bg-slate-800/80 border border-slate-700/80">
+              <div class="text-[11px] text-slate-300 font-medium flex items-center justify-between">
+                <span>Status vs Target (365 Ton):</span>
+                <span id="badgeTargetStatus" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-amber-500/20 text-amber-300">Kurang</span>
+              </div>
+              <div class="text-xl font-black font-mono mt-0.5 flex items-baseline gap-1.5" id="cardKekuranganPerHariText">
+                <span id="cardKekuranganVal">0.00</span> <span class="text-xs font-normal text-slate-300">Ton / Hari</span>
+              </div>
+              <div class="text-[10.5px] text-slate-400 mt-0.5 font-medium flex items-center justify-between" id="cardKekuranganSubText">
+                <span>Total Selisih:</span>
+                <span id="cardTotalSelisihVal" class="font-bold font-mono text-slate-200">0.00 Ton</span>
+              </div>
+            </div>
+
+            <!-- Kolom 3: Akumulasi Periode & Capaian (%) -->
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5 font-medium">
+                <span class="text-slate-300">Pencapaian Periode</span>
+                <span class="font-bold font-mono text-white text-base" id="cardPencapaianPersen">0.00%</span>
+              </div>
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-700/80 h-2.5 rounded-full overflow-hidden p-0.5">
+                <div id="targetProgressBar" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between items-center text-[10.5px] text-slate-400 mt-1.5 font-mono">
+                <span>Realisasi: <strong class="text-emerald-400 font-bold" id="cardSummaryTotalSetor">0.00</strong> Ton</span>
+                <span>Target: <strong class="text-slate-200 font-bold" id="cardSummaryTotalTarget">0.00</strong> Ton</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 5 STATISTIC CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <!-- 1. Total Ritase & Rit/Hari -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+              <span>Total Ritase</span>
+              <i class="fa-solid fa-truck-ramp-box text-blue-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-slate-800 font-mono" id="cardTotalRit">0</div>
+              <div class="text-[10.5px] text-slate-500 mt-1 flex flex-wrap items-center gap-1">
+                <span class="font-bold text-blue-700 font-mono" id="cardAvgRitPerHari">0.00</span> Rit/Hari
+                <span class="text-slate-300">|</span>
+                <span class="font-medium text-slate-600"><span id="cardTotalHari">0</span> Hari</span>
+                <span class="text-slate-300">|</span>
+                <span class="font-medium text-slate-600"><span id="cardTotalUnit">0</span> Unit</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Total Muat (Qty Awal) -->
+          <div class="bg-indigo-50/40 border border-indigo-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-indigo-700 font-semibold mb-1">
+              <span>Total Muat (Awal)</span>
+              <i class="fa-solid fa-boxes-stacked text-indigo-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-indigo-700 font-mono" id="cardTotalMuat">0.00</div>
+              <div class="text-[10px] text-indigo-500 mt-1 font-medium">Tonase / Qty Muat Awal</div>
+            </div>
+          </div>
+
+          <!-- 3. Total Setor (Qty Akhir) -->
+          <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-emerald-700 font-semibold mb-1">
+              <span>Total Setor (Akhir)</span>
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-emerald-700 font-mono" id="cardTotalSetor">0.00</div>
+              <div class="text-[10px] text-emerald-600 mt-1 font-medium">Tonase / Qty Diterima</div>
+            </div>
+          </div>
+
+          <!-- 4. Total Waste (Susut) -->
+          <div class="bg-amber-50/40 border border-amber-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-amber-800 font-semibold mb-1">
+              <span>Total Waste (Susut)</span>
+              <i class="fa-solid fa-scale-unbalanced text-amber-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black font-mono" id="cardTotalWaste">0.00</div>
+              <div class="text-[10.5px] text-amber-700 mt-1 flex items-center gap-1 font-medium">
+                <span>Susut:</span>
+                <span class="font-bold font-mono" id="cardWastePercent">0.00%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Rata-rata / Rit -->
+          <div class="bg-purple-50/40 border border-purple-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-purple-700 font-semibold mb-1">
+              <span>Rata-rata / Rit</span>
+              <i class="fa-solid fa-chart-line text-purple-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-purple-700 font-mono" id="cardRataPerRit">0.00</div>
+              <div class="text-[10.5px] text-purple-600 mt-1 flex items-center gap-1">
+                <span>Waste:</span>
+                <span class="font-bold font-mono" id="cardWastePerRit">0.00</span> /Rit
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MAIN DATA TABLE -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        
+        <!-- Table Topbar -->
+        <div class="p-3.5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 bg-slate-50">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xs text-slate-800">Tabel Rincian Resume Harian</span>
+            <span id="badgeRowCount" class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10.5px]">0 Hari</span>
+          </div>
+
+          <div class="relative w-full sm:w-64">
+            <input type="text" id="quickSearchInput" oninput="applyQuickSearch()" placeholder="Cari tanggal..."
+              class="w-full pl-8 pr-3 py-1 border border-slate-300 rounded-lg text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2 text-[11px]"></i>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto max-h-[580px]">
+          <table class="w-full text-[11px] text-left border-collapse" id="resumeTable">
+            <thead class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+              <tr>
+                <th class="py-2 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+                <th class="py-2 px-3 whitespace-nowrap">Tanggal</th>
+                <th class="py-2 px-2.5 text-center whitespace-nowrap">Jml Rit</th>
+                <th class="py-2 px-2.5 text-center whitespace-nowrap">Jml Unit</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap">Rit / Unit</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-indigo-700">Total Muat</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-emerald-700">Total Setor</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-blue-700">Target</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-slate-800">Selisih vs Target</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-amber-700">Total Waste</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-purple-700">Rata / Rit</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap">Waste / Rit</th>
+              </tr>
+            </thead>
+            <tbody id="resumeTableBody" class="divide-y divide-slate-200/70 text-[11px] font-normal">
+              <tr>
+                <td colspan="12" class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+                  Memuat data produksi resume per hari...
+                </td>
+              </tr>
+            </tbody>
+            <!-- Table Footer Akumulasi -->
+            <tfoot id="resumeTableFoot" class="bg-slate-100 border-t-2 border-slate-300 text-slate-800 font-bold text-[11px]">
+              <!-- Akan dirender dinamis via Javascript -->
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let rawResumeData = null;
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatInt(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID');
+    }
+
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        const cleanDate = dateStr.slice(0, 10);
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) {
+          const d = new Date(parts[0], parts[1] - 1, parts[2]);
+          const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          const dayName = days[d.getDay()];
+          const monName = months[d.getMonth()];
+          return `${dayName}, ${parts[2]} ${monName} ${parts[0]}`;
+        }
+      } catch (e) {}
+      return dateStr;
+    }
+
+    function getTodayString() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function initDates() {
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      document.getElementById('filterTglAwal').value = range.tglAwal;
+      document.getElementById('filterTglAkhir').value = range.tglAkhir;
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(today, today);
+      }
+      document.getElementById('filterTglAwal').value = today;
+      document.getElementById('filterTglAkhir').value = today;
+      fetchResumeData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+
+      const tglAwal = `${yyyy}-${mm}-01`;
+      const tglAkhir = `${yyyy}-${mm}-${dd}`;
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      }
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+      fetchResumeData();
+    }
+
+    function applyFilter() {
+      const valAwal = document.getElementById('filterTglAwal').value;
+      const valAkhir = document.getElementById('filterTglAkhir').value;
+
+      if (!valAwal || !valAkhir) {
+        alert('Silakan pilih Tgl Awal dan Tgl Akhir.');
+        return;
+      }
+
+      // 1. Simpan ke session
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+      }
+
+      // 2. Eksekusi query dengan parameter dari session
+      fetchResumeData();
+    }
+
+    async function fetchResumeData() {
+      // Ambil tglAwal & tglAkhir DARI SESSION
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      const tbody = document.getElementById('resumeTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="12" class="py-8 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+            Mengambil data resume produksi...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const url = `/api/v1/csv/produksi/resume-per-hari?tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          rawResumeData = json.data;
+          const lastUpdateEl = document.getElementById('lastUpdateVal');
+          if (lastUpdateEl) {
+            lastUpdateEl.innerText = rawResumeData.last_update || '-';
+          }
+          renderSummary(rawResumeData.summary, tglAwal, tglAkhir);
+          renderTable(rawResumeData.items || []);
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="12" class="py-8 text-center text-rose-500 font-semibold">
+                Gagal memuat data: ${json.message || 'Terjadi kesalahan sistem'}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        console.error('Error fetching resume data:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="12" class="py-8 text-center text-rose-500 font-semibold">
+              Terjadi kesalahan jaringan atau server tidak merespon.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderSummary(summary, tglAwal, tglAkhir) {
+      if (!summary) return;
+
+      document.getElementById('summaryPeriodLabel').innerText = `${tglAwal} s/d ${tglAkhir}`;
+
+      // 1. Target & Realisasi Harian
+      document.getElementById('cardAvgSetorPerHari').innerText = formatNumber(summary.avg_setor_per_hari, 2);
+      
+      const badgeStatus = document.getElementById('badgeTargetStatus');
+      const valEl = document.getElementById('cardKekuranganVal');
+      const subValEl = document.getElementById('cardTotalSelisihVal');
+      const progressBar = document.getElementById('targetProgressBar');
+
+      if (summary.total_selisih < 0) {
+        badgeStatus.className = 'px-2 py-0.5 rounded text-[10.5px] font-bold bg-rose-500/20 text-rose-300';
+        badgeStatus.innerText = 'Kurang / Defisit';
+        valEl.innerHTML = `<span class="text-rose-400">-${formatNumber(Math.abs(summary.kekurangan_per_hari), 2)}</span>`;
+        subValEl.className = 'font-bold font-mono text-rose-400';
+        subValEl.innerText = `${formatNumber(summary.total_selisih, 2)} Ton`;
+        progressBar.className = 'h-full bg-amber-500 rounded-full transition-all duration-500';
+      } else {
+        badgeStatus.className = 'px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300';
+        badgeStatus.innerText = 'Tercapai / Surplus';
+        valEl.innerHTML = `<span class="text-emerald-400">+${formatNumber(Math.abs(summary.kekurangan_per_hari), 2)}</span>`;
+        subValEl.className = 'font-bold font-mono text-emerald-400';
+        subValEl.innerText = `+${formatNumber(summary.total_selisih, 2)} Ton`;
+        progressBar.className = 'h-full bg-emerald-500 rounded-full transition-all duration-500';
+      }
+
+      document.getElementById('cardPencapaianPersen').innerText = `${formatNumber(summary.pencapaian_persen, 2)}%`;
+      progressBar.style.width = `${Math.min(Math.max(summary.pencapaian_persen, 0), 100)}%`;
+      document.getElementById('cardSummaryTotalSetor').innerText = formatNumber(summary.total_setor, 2);
+      document.getElementById('cardSummaryTotalTarget').innerText = formatNumber(summary.total_target, 2);
+
+      // 2. 5 Statistics Cards
+      document.getElementById('cardTotalRit').innerText = formatInt(summary.total_rit);
+      document.getElementById('cardAvgRitPerHari').innerText = formatNumber(summary.avg_rit_per_hari, 2);
+      document.getElementById('cardTotalHari').innerText = formatInt(summary.total_hari);
+      document.getElementById('cardTotalUnit').innerText = formatInt(summary.total_unit_unique);
+
+      document.getElementById('cardTotalMuat').innerText = formatNumber(summary.total_muat, 2);
+      document.getElementById('cardTotalSetor').innerText = formatNumber(summary.total_setor, 2);
+
+      const wasteEl = document.getElementById('cardTotalWaste');
+      wasteEl.innerText = formatNumber(summary.total_waste, 2);
+      if (summary.total_waste > 0) {
+        wasteEl.className = 'text-2xl font-black font-mono text-amber-700';
+      } else if (summary.total_waste < 0) {
+        wasteEl.className = 'text-2xl font-black font-mono text-emerald-700';
+      } else {
+        wasteEl.className = 'text-2xl font-black font-mono text-slate-800';
+      }
+
+      document.getElementById('cardWastePercent').innerText = `${formatNumber(summary.waste_percentage, 2)}%`;
+      document.getElementById('cardRataPerRit').innerText = formatNumber(summary.avg_setor_per_rit, 2);
+      document.getElementById('cardWastePerRit').innerText = formatNumber(summary.avg_waste_per_rit, 2);
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('resumeTableBody');
+      const tfoot = document.getElementById('resumeTableFoot');
+      document.getElementById('badgeRowCount').innerText = `${items.length} Hari`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="12" class="py-8 text-center text-slate-400">
+              <i class="fa-solid fa-inbox text-2xl text-slate-300 mb-2 block"></i>
+              Tidak ada data produksi pada periode tanggal ini.
+            </td>
+          </tr>
+        `;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      items.forEach((row, idx) => {
+        const wasteColor = row.total_waste > 0 ? 'text-amber-700' : (row.total_waste < 0 ? 'text-emerald-700' : 'text-slate-600');
+        const wasteRitColor = row.waste_per_rit > 0 ? 'text-amber-700' : (row.waste_per_rit < 0 ? 'text-emerald-700' : 'text-slate-600');
+
+        let selisihHtml = '';
+        if (row.selisih_ton < 0) {
+          selisihHtml = `
+            <div class="text-right">
+              <span class="font-bold font-mono text-rose-600">${formatNumber(row.selisih_ton, 2)}</span>
+              <span class="text-[9px] px-1 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold ml-1 whitespace-nowrap">
+                Kurang (${formatNumber(row.pencapaian, 1)}%)
+              </span>
+            </div>
+          `;
+        } else {
+          selisihHtml = `
+            <div class="text-right">
+              <span class="font-bold font-mono text-emerald-600">+${formatNumber(row.selisih_ton, 2)}</span>
+              <span class="text-[9px] px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold ml-1 whitespace-nowrap">
+                Capai (${formatNumber(row.pencapaian, 1)}%)
+              </span>
+            </div>
+          `;
+        }
+
+        html += `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight">
+            <td class="py-2 px-2.5 text-center text-slate-400 whitespace-nowrap">${idx + 1}</td>
+            <td class="py-2 px-3 font-semibold text-slate-900 whitespace-nowrap">
+              ${formatDisplayDate(row.tgl)}
+              <span class="text-[10px] text-slate-400 font-normal font-mono block">${row.tgl ? row.tgl.slice(0, 10) : '-'}</span>
+            </td>
+            <td class="py-2 px-2.5 text-center font-bold font-mono text-slate-800 whitespace-nowrap">${formatInt(row.jml_rit)}</td>
+            <td class="py-2 px-2.5 text-center font-semibold font-mono text-blue-700 whitespace-nowrap">${formatInt(row.jml_unit)}</td>
+            <td class="py-2 px-2.5 text-right font-mono text-slate-700 whitespace-nowrap">${formatNumber(row.rit_per_unit, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-indigo-700 font-semibold whitespace-nowrap">${formatNumber(row.ttl_muat, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-emerald-700 font-bold whitespace-nowrap">${formatNumber(row.ttl_setor, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-blue-700 font-semibold whitespace-nowrap">${formatNumber(row.target_ton || 365, 2)}</td>
+            <td class="py-2 px-3 whitespace-nowrap">${selisihHtml}</td>
+            <td class="py-2 px-3 text-right font-mono font-semibold ${wasteColor} whitespace-nowrap">${formatNumber(row.total_waste, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-purple-700 font-semibold whitespace-nowrap">${formatNumber(row.rata_per_rit, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono ${wasteRitColor} whitespace-nowrap">${formatNumber(row.waste_per_rit, 2)}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+
+      // Render tfoot jika ada summary
+      if (rawResumeData && rawResumeData.summary) {
+        const s = rawResumeData.summary;
+        const wasteColor = s.total_waste > 0 ? 'text-amber-800' : 'text-emerald-800';
+        
+        let selisihFootHtml = '';
+        if (s.total_selisih < 0) {
+          selisihFootHtml = `<span class="text-rose-600">${formatNumber(s.total_selisih, 2)}</span> <span class="text-[9.5px] font-normal text-rose-500">(${formatNumber(s.pencapaian_persen, 1)}%)</span>`;
+        } else {
+          selisihFootHtml = `<span class="text-emerald-600">+${formatNumber(s.total_selisih, 2)}</span> <span class="text-[9.5px] font-normal text-emerald-500">(${formatNumber(s.pencapaian_persen, 1)}%)</span>`;
+        }
+
+        tfoot.innerHTML = `
+          <tr class="leading-tight">
+            <td colspan="2" class="py-2.5 px-3 uppercase text-slate-700 font-bold tracking-wider">
+              TOTAL & RATA-RATA
+            </td>
+            <td class="py-2.5 px-2.5 text-center font-mono text-slate-900 font-black">${formatInt(s.total_rit)}</td>
+            <td class="py-2.5 px-2.5 text-center font-mono text-blue-800 font-black">${formatInt(s.total_unit_unique)}</td>
+            <td class="py-2.5 px-2.5 text-right font-mono text-slate-800">${formatNumber(s.avg_rit_per_unit, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-indigo-800 font-black">${formatNumber(s.total_muat, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-emerald-800 font-black">${formatNumber(s.total_setor, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-blue-800 font-black">${formatNumber(s.total_target, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-black">${selisihFootHtml}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-black ${wasteColor}">${formatNumber(s.total_waste, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-purple-800 font-black">${formatNumber(s.avg_setor_per_rit, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono">${formatNumber(s.avg_waste_per_rit, 2)}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function applyQuickSearch() {
+      const q = document.getElementById('quickSearchInput').value.toLowerCase().trim();
+      if (!rawResumeData || !rawResumeData.items) return;
+
+      if (!q) {
+        renderTable(rawResumeData.items);
+        return;
+      }
+
+      const filtered = rawResumeData.items.filter(item => {
+        return (item.tgl && item.tgl.toLowerCase().includes(q)) ||
+               (item.jml_rit && String(item.jml_rit).includes(q)) ||
+               (item.jml_unit && String(item.jml_unit).includes(q));
+      });
+
+      renderTable(filtered);
+    }
+
+    function exportToExcel() {
+      if (!rawResumeData || !rawResumeData.items || rawResumeData.items.length === 0) {
+        alert('Tidak ada data produksi untuk diexport!');
+        return;
+      }
+
+      const exportRows = rawResumeData.items.map((r, i) => ({
+        'No': i + 1,
+        'Tanggal': r.tgl ? r.tgl.slice(0, 10) : '',
+        'Jml Rit': r.jml_rit || 0,
+        'Jml Unit': r.jml_unit || 0,
+        'Rit / Unit': r.rit_per_unit || 0,
+        'Total Muat': r.ttl_muat || 0,
+        'Total Setor': r.ttl_setor || 0,
+        'Target (Ton)': r.target_ton || 365,
+        'Selisih vs Target': r.selisih_ton || 0,
+        '% Capaian': (r.pencapaian || 0) + '%',
+        'Total Waste': r.total_waste || 0,
+        'Rata / Rit': r.rata_per_rit || 0,
+        'Waste / Rit': r.waste_per_rit || 0,
+      }));
+
+      // Tambahkan baris total
+      if (rawResumeData.summary) {
+        const s = rawResumeData.summary;
+        exportRows.push({
+          'No': '',
+          'Tanggal': 'TOTAL / RATA-RATA',
+          'Jml Rit': s.total_rit,
+          'Jml Unit': s.total_unit_unique,
+          'Rit / Unit': s.avg_rit_per_unit,
+          'Total Muat': s.total_muat,
+          'Total Setor': s.total_setor,
+          'Target (Ton)': s.total_target,
+          'Selisih vs Target': s.total_selisih,
+          '% Capaian': (s.pencapaian_persen || 0) + '%',
+          'Total Waste': s.total_waste,
+          'Rata / Rit': s.avg_setor_per_rit,
+          'Waste / Rit': s.avg_waste_per_rit,
+        });
+      }
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Resume_Per_Hari");
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      XLSX.writeFile(wb, `Resume_Produksi_Per_Hari_${tglAwal}_sd_${tglAkhir}.xlsx`);
+    }
+
+    window.onload = () => {
+      initDates();
+      fetchResumeData();
+    };
+  </script>
+</body>
+</html>

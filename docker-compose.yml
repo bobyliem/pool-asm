@@ -1,0 +1,50 @@
+services:
+  db-csv:
+    image: mysql:8.0
+    container_name: asm-mysql-csv
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --sql_mode="STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
+    environment:
+      MYSQL_ROOT_PASSWORD: P@ssw0rd
+      MYSQL_DATABASE: imp_sampurna
+      TZ: Asia/Jakarta
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pP@ssw0rd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - asm-net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asm-app
+    restart: unless-stopped
+    depends_on:
+      db-csv:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_CSV_HOST=db-csv
+      - DB_CSV_PORT=3306
+      - TZ=Asia/Jakarta
+    networks:
+      - asm-net
+
+volumes:
+  mysql_data:
+
+networks:
+  asm-net:
+    driver: bridge

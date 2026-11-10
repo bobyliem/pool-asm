@@ -1,0 +1,681 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Laporan SPK Per Cust</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar tipis */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: SPK Per Cust) -->
+    <app-sidebar active-menu="SPK Per Cust"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+      
+      <!-- TITLE & BREADCRUMB -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>SPK Harian</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Laporan SPK Per Cust (CSV)</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice text-blue-600"></i>
+            Laporan SPK Per Customer
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">Database CSV</span>
+          </h2>
+          <div id="lastUpdateText" class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5 font-medium">
+            <i class="fa-regular fa-clock text-slate-400"></i>
+            <span>Last Update: <span id="lastUpdateVal" class="text-slate-600 font-semibold">Memuat...</span></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FORM INPUT) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center gap-2 font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <i class="fa-solid fa-filter text-blue-600"></i>
+          <span>Filter Laporan</span>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <!-- 1. Periode Date Picker -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input type="date" id="filterTglAwal" onchange="onPeriodChange()"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <input type="date" id="filterTglAkhir" onchange="onPeriodChange()"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- 2. Area Dropdown -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Area (Site)</label>
+            <select id="filterArea" onchange="onAreaChange(this.value)"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
+          <!-- 3. Customer Dropdown -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Customer</label>
+            <select id="filterCustomer" onchange="onCustomerChange(this.value)"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
+          <!-- 4. Purpose Dropdown & Submit Button -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Purpose (Category)</label>
+            <div class="flex gap-2">
+              <select id="filterPurpose" onchange="onPurposeChange(this.value)"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                <option value="ALL">ALL</option>
+              </select>
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition shrink-0 shadow-xs cursor-pointer">
+                <i class="fa-solid fa-magnifying-glass"></i> Filter
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUMMARY MATRIX CARD (TOTAL, OMSET / CLOSE, PENDING) -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-chart-pie text-blue-600"></i>
+            <span>Ringkasan Nilai SPK</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px] text-slate-500">
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600 inline-block"></span> Oranye: SPK Hold</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-yellow-300 border border-yellow-500 inline-block"></span> Kuning: SPK Belum Close</span>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-[11px] text-left border-collapse">
+            <thead class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-bold">
+              <tr>
+                <th class="py-2 px-3 whitespace-nowrap">Kategori Data</th>
+                <th class="py-2 px-3 text-center w-24 whitespace-nowrap">Total SPK</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap">Total Jasa (Servis)</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap">Total Part</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap">Total Ban</th>
+                <th class="py-2 px-3 text-right font-black whitespace-nowrap">Grand Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 text-[11px] font-medium">
+              <!-- Total Keseluruhan -->
+              <tr class="hover:bg-slate-50/80 transition">
+                <td class="py-1.5 px-3 whitespace-nowrap font-bold text-slate-800">
+                  <i class="fa-solid fa-database text-slate-500 mr-1.5"></i> Total SPK
+                </td>
+                <td id="summaryTotalCount" class="py-1.5 px-3 text-center font-bold text-slate-800">0</td>
+                <td id="summaryTotalService" class="py-1.5 px-3 text-right text-blue-700 font-semibold font-mono">0</td>
+                <td id="summaryTotalPart" class="py-1.5 px-3 text-right text-amber-700 font-semibold font-mono">0</td>
+                <td id="summaryTotalBan" class="py-1.5 px-3 text-right text-purple-700 font-semibold font-mono">0</td>
+                <td id="summaryTotalGrand" class="py-1.5 px-3 text-right font-black text-slate-900 font-mono">0</td>
+              </tr>
+              <!-- Selesai (Closed SPK) -->
+              <tr class="hover:bg-emerald-50/40 bg-emerald-50/20 transition">
+                <td class="py-1.5 px-3 whitespace-nowrap font-bold text-emerald-800">
+                  <i class="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i> SPK Selesai (Close)
+                </td>
+                <td id="summaryClosedCount" class="py-1.5 px-3 text-center font-bold text-emerald-800">0</td>
+                <td id="summaryClosedService" class="py-1.5 px-3 text-right text-emerald-700 font-semibold font-mono">0</td>
+                <td id="summaryClosedPart" class="py-1.5 px-3 text-right text-emerald-700 font-semibold font-mono">0</td>
+                <td id="summaryClosedBan" class="py-1.5 px-3 text-right text-emerald-700 font-semibold font-mono">0</td>
+                <td id="summaryClosedGrand" class="py-1.5 px-3 text-right font-black text-emerald-800 font-mono">0</td>
+              </tr>
+              <!-- Hold (Closed after tglAkhir) -->
+              <tr class="hover:bg-amber-100/60 bg-amber-50/40 transition">
+                <td class="py-1.5 px-3 whitespace-nowrap font-bold text-amber-800">
+                  <i class="fa-solid fa-hand text-amber-600 mr-1.5"></i> SPK Hold
+                </td>
+                <td id="summaryHoldCount" class="py-1.5 px-3 text-center font-bold text-amber-800">0</td>
+                <td id="summaryHoldService" class="py-1.5 px-3 text-right text-amber-700 font-semibold font-mono">0</td>
+                <td id="summaryHoldPart" class="py-1.5 px-3 text-right text-amber-700 font-semibold font-mono">0</td>
+                <td id="summaryHoldBan" class="py-1.5 px-3 text-right text-amber-700 font-semibold font-mono">0</td>
+                <td id="summaryHoldGrand" class="py-1.5 px-3 text-right font-black text-amber-800 font-mono">0</td>
+              </tr>
+              <!-- Berjalan (Pending / Close Kosong) -->
+              <tr class="hover:bg-yellow-200/50 bg-yellow-100/70 transition font-semibold">
+                <td class="py-1.5 px-3 whitespace-nowrap text-yellow-900">
+                  <i class="fa-solid fa-clock-rotate-left text-yellow-700 mr-1.5"></i> SPK Berjalan (Belum Close)
+                </td>
+                <td id="summaryOpenCount" class="py-1.5 px-3 text-center font-bold text-yellow-900">0</td>
+                <td id="summaryOpenService" class="py-1.5 px-3 text-right text-yellow-800 font-mono">0</td>
+                <td id="summaryOpenPart" class="py-1.5 px-3 text-right text-yellow-800 font-mono">0</td>
+                <td id="summaryOpenBan" class="py-1.5 px-3 text-right text-yellow-800 font-mono">0</td>
+                <td id="summaryOpenGrand" class="py-1.5 px-3 text-right font-black text-yellow-950 font-mono">0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORT TABLE CARD -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xs text-slate-800">Daftar Detail SPK</span>
+            <span id="badgeRowCount" class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10px]">0 Data</span>
+          </div>
+
+          <!-- Quick Search -->
+          <div class="relative w-full sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2 text-slate-400 text-xs"></i>
+            <input type="text" id="quickSearchInput" oninput="applyQuickSearch()" placeholder="Cari Nopol, SPK, Cust..."
+              class="w-full pl-8 pr-3 py-1 border border-slate-300 rounded-lg text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[560px]">
+          <table class="w-full text-[11px] text-left border-collapse" id="spkTable">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+              <tr>
+                <th class="py-2 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Site / Area</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Tgl Masuk</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Close SPK</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Nopol</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Cabin</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Cust Code</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Kategori</th>
+                <th class="py-2 px-2.5 whitespace-nowrap font-semibold">No. SPK</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap">Servis</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap">Part</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap">Ban</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap font-black">Total</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Catatan</th>
+              </tr>
+            </thead>
+            <tbody id="spkTableBody" class="divide-y divide-slate-200/70 text-[11px] font-normal">
+              <tr>
+                <td colspan="14" class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+                  Memuat data SPK...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let rawSpkData = [];
+
+    // Format tanggal lokal YYYY-MM-DD
+    function getTodayDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // Format angka murni tanpa "Rp "
+    function formatNumber(num) {
+      if (!num || isNaN(num)) return '0';
+      return Math.round(num).toLocaleString('id-ID');
+    }
+
+    function formatDate(dtStr) {
+      if (!dtStr) return '-';
+      const d = new Date(dtStr);
+      if (isNaN(d.getTime())) return dtStr;
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Inisialisasi Filter dengan Session Storage
+    async function initFilters() {
+      // 1. Periode Tanggal (Cek Session, Default: Hari Ini)
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : { tglAwal: getTodayDate(), tglAkhir: getTodayDate() };
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+
+      // 2. Area (Default: ALL)
+      if (!sessionStorage.getItem('csv_spk_area')) {
+        sessionStorage.setItem('csv_spk_area', 'ALL');
+      }
+
+      // 3. Customer (Default: ALL)
+      if (!sessionStorage.getItem('csv_spk_cust')) {
+        sessionStorage.setItem('csv_spk_cust', 'ALL');
+      }
+
+      // 4. Purpose (Default: ALL)
+      if (!sessionStorage.getItem('csv_spk_purpose')) {
+        sessionStorage.setItem('csv_spk_purpose', 'ALL');
+      }
+
+      // Load Dropdown Options dan restore nilai dari session
+      await loadFilterOptions();
+    }
+
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch('/api/v1/csv/reports/spk-filter-options');
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          // 1. Populate Area
+          const areaSelect = document.getElementById('filterArea');
+          const savedArea = sessionStorage.getItem('csv_spk_area') || 'ALL';
+          areaSelect.innerHTML = '<option value="ALL">ALL</option>';
+          (json.data.areas || []).forEach(area => {
+            const opt = document.createElement('option');
+            opt.value = area;
+            opt.textContent = area;
+            areaSelect.appendChild(opt);
+          });
+          areaSelect.value = Array.from(areaSelect.options).some(o => o.value === savedArea) ? savedArea : 'ALL';
+          sessionStorage.setItem('csv_spk_area', areaSelect.value);
+
+          // 2. Populate Customer
+          const custSelect = document.getElementById('filterCustomer');
+          const savedCust = sessionStorage.getItem('csv_spk_cust') || 'ALL';
+          custSelect.innerHTML = '<option value="ALL">ALL</option>';
+          (json.data.customers || []).forEach(cust => {
+            const opt = document.createElement('option');
+            opt.value = cust;
+            opt.textContent = cust;
+            custSelect.appendChild(opt);
+          });
+          custSelect.value = Array.from(custSelect.options).some(o => o.value === savedCust) ? savedCust : 'ALL';
+          sessionStorage.setItem('csv_spk_cust', custSelect.value);
+
+          // 3. Populate Purpose
+          const purpSelect = document.getElementById('filterPurpose');
+          const savedPurpose = sessionStorage.getItem('csv_spk_purpose') || 'ALL';
+          purpSelect.innerHTML = '<option value="ALL">ALL</option>';
+          (json.data.purposes || []).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            purpSelect.appendChild(opt);
+          });
+          purpSelect.value = Array.from(purpSelect.options).some(o => o.value === savedPurpose) ? savedPurpose : 'ALL';
+          sessionStorage.setItem('csv_spk_purpose', purpSelect.value);
+
+          // 4. Set Last Update Text
+          const lastUpdateEl = document.getElementById('lastUpdateVal');
+          if (lastUpdateEl) {
+            lastUpdateEl.textContent = json.data.last_update || '-';
+          }
+        }
+      } catch (err) {
+        console.error('Gagal mengambil filter options:', err);
+      }
+    }
+
+    // Event Handler saat Periode diubah
+    function onPeriodChange() {
+      const valAwal = document.getElementById('filterTglAwal').value || getTodayDate();
+      const valAkhir = document.getElementById('filterTglAkhir').value || getTodayDate();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+        sessionStorage.setItem('csv_spk_tglawal', valAwal);
+        sessionStorage.setItem('csv_spk_tglakhir', valAkhir);
+      }
+    }
+
+    // Event Handler saat Area diubah
+    function onAreaChange(val) {
+      sessionStorage.setItem('csv_spk_area', val);
+    }
+
+    // Event Handler saat Customer diubah
+    function onCustomerChange(val) {
+      sessionStorage.setItem('csv_spk_cust', val);
+    }
+
+    // Event Handler saat Purpose diubah
+    function onPurposeChange(val) {
+      sessionStorage.setItem('csv_spk_purpose', val);
+    }
+
+    // Tombol Filter ditekan
+    function applyFilter() {
+      onPeriodChange();
+      onAreaChange(document.getElementById('filterArea').value);
+      onCustomerChange(document.getElementById('filterCustomer').value);
+      onPurposeChange(document.getElementById('filterPurpose').value);
+      fetchSpkData();
+    }
+
+    async function fetchSpkData() {
+      const area = sessionStorage.getItem('csv_spk_area') || document.getElementById('filterArea').value || 'ALL';
+      const cust = sessionStorage.getItem('csv_spk_cust') || document.getElementById('filterCustomer').value || 'ALL';
+      const purpose = sessionStorage.getItem('csv_spk_purpose') || document.getElementById('filterPurpose').value || 'ALL';
+      
+      // Ambil tglAwal dan tglAkhir DARI SESSION
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayDate(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayDate()
+      };
+
+      const tbody = document.getElementById('spkTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="12" class="py-8 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+            Mengambil data dari query imp_service_order...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const params = new URLSearchParams();
+        if (area && area !== 'ALL') params.append('area', area);
+        if (cust && cust !== 'ALL') params.append('cust', cust);
+        if (purpose && purpose !== 'ALL') params.append('purpose', purpose);
+        params.append('tglawal', tglAwal);
+        params.append('tglakhir', tglAkhir);
+
+        const res = await fetch(`/api/v1/csv/reports/spk-per-cust?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === 'success' && Array.isArray(json.data)) {
+          rawSpkData = json.data;
+          renderTable(rawSpkData);
+          updateSummaryMatrix(rawSpkData);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-rose-500">Gagal: ${json.message || 'Data tidak ditemukan'}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-rose-500">Error menghubungi server backend: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('spkTableBody');
+      document.getElementById('badgeRowCount').innerText = `${data.length} Data`;
+
+      if (data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="14" class="py-8 text-center text-slate-400">
+              <i class="fa-solid fa-inbox text-2xl text-slate-300 mb-2 block"></i>
+              Tidak ada data SPK yang sesuai filter ini.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const { tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayDate()
+      };
+
+      let html = '';
+      data.forEach((row, idx) => {
+        const isClosed = !!(row.close_spk && row.close_spk !== '-' && row.close_spk !== '');
+        const isHold = isClosed && !!(row.close_date && row.close_date > tglAkhir);
+        
+        // Background kuning terang jika Close SPK masih kosong/belum selesai, oranye jika HOLD
+        let rowBg = 'bg-white hover:bg-blue-50/80 text-slate-800';
+        if (isHold) {
+          rowBg = 'bg-amber-100/70 hover:bg-amber-200/80 text-slate-900';
+        } else if (!isClosed) {
+          rowBg = 'bg-yellow-100 hover:bg-yellow-200 text-slate-900';
+        }
+
+        const isAsuransiKat = (row.kategori && row.kategori.toLowerCase().includes('asuransi'));
+        const isAsuransiCat = (row.catatan && row.catatan.toLowerCase().includes('asuransi'));
+        const showShield = isAsuransiKat || isAsuransiCat;
+        const shieldIcon = showShield ? '<i class="fa-solid fa-shield-halved text-blue-600 ml-1.5 text-xs" title="Asuransi"></i>' : '';
+
+        const isLelang = (row.catatan && row.catatan.toUpperCase().includes('LELANG'));
+        const lelangIcon = isLelang ? '<i class="fa-solid fa-money-bill-wave text-emerald-600 ml-1.5 text-xs" title="Lelang"></i>' : '';
+
+        const catLower = ((row.catatan || row.notes || '') + '').toLowerCase();
+        const isBan = catLower.includes('ban');
+        const banIcon = isBan ? '<i class="fa-solid fa-dharmachakra text-purple-600 ml-1.5 text-xs" title="Ban"></i>' : '';
+
+        const isTungguSkb = catLower.includes('tunggu skb');
+        const nopolClass = isTungguSkb ? 'text-red-600 font-bold' : 'font-semibold text-slate-900';
+
+        html += `
+          <tr onclick="openSpkDetailPopup('${row.nopol}')" 
+              class="${rowBg} transition border-b border-slate-200/60 leading-tight cursor-pointer"
+              title="Klik baris ini untuk membuka pop-up crosscheck ${row.nopol}">
+            <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap">${idx + 1}</td>
+            <td class="py-1.5 px-2.5 font-medium text-slate-700 whitespace-nowrap">${row.site || '-'}</td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap font-mono text-[10.5px]">${row.tgl_masuk || '-'}</td>
+            <td class="py-1.5 px-2.5 whitespace-nowrap">
+              ${isHold
+                ? `<span class="text-amber-800 font-bold font-mono text-[10.5px]">${row.close_spk} <span class="bg-amber-200 text-amber-900 px-1 py-0.2 rounded text-[9.5px]">HOLD</span></span>`
+                : isClosed 
+                  ? `<span class="text-emerald-700 font-mono text-[10.5px]">${row.close_spk}</span>`
+                  : `<span class="text-yellow-800 font-bold text-[10.5px]">Belum Close</span>`
+              }
+            </td>
+            <td class="py-1.5 px-2.5 ${nopolClass} whitespace-nowrap">${row.nopol || '-'}${shieldIcon}${lelangIcon}${banIcon}</td>
+            <td class="py-1.5 px-2.5 text-slate-700 font-mono text-[11px] whitespace-nowrap">${row.cabin || '-'}</td>
+            <td class="py-1.5 px-2.5 text-slate-700 whitespace-nowrap">${row.cust_code || '-'}</td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">
+              ${isAsuransiKat 
+                ? `<span class="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"><i class="fa-solid fa-shield-halved text-blue-600 text-[10px]"></i>${row.kategori}</span>` 
+                : (row.kategori || '-')}
+            </td>
+            <td class="py-1.5 px-2.5 font-semibold text-blue-600 whitespace-nowrap font-mono">${row.spk || '-'}</td>
+            <td class="py-1.5 px-2.5 text-right text-blue-700 font-mono whitespace-nowrap">${formatNumber(row.servis)}</td>
+            <td class="py-1.5 px-2.5 text-right text-amber-700 font-mono whitespace-nowrap">${formatNumber(row.part)}</td>
+            <td class="py-1.5 px-2.5 text-right text-purple-700 font-mono whitespace-nowrap">${formatNumber(row.ban)}</td>
+            <td class="py-1.5 px-2.5 text-right font-bold font-mono whitespace-nowrap" onclick="event.stopPropagation()">
+              ${row.so_id 
+                ? `<a href="https://workshop.sampurna-group.com/workshop/service-orders/${row.so_id}/progress" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 group"
+                      title="Buka Service Order di Workshop App (${row.so_id})">
+                      <span>${formatNumber(row.total)}</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-blue-400 group-hover:text-blue-600"></i>
+                   </a>`
+                : `<span class="text-slate-900">${formatNumber(row.total)}</span>`
+              }
+            </td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap max-w-xs truncate text-[10.5px]" title="${row.catatan || ''}">${row.catatan || '-'}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function updateSummaryMatrix(data) {
+      const { tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayDate()
+      };
+
+      let totCount = data.length;
+      let totServ = 0, totPart = 0, totBan = 0, totGrand = 0;
+
+      let clsCount = 0, clsServ = 0, clsPart = 0, clsBan = 0, clsGrand = 0;
+      let hldCount = 0, hldServ = 0, hldPart = 0, hldBan = 0, hldGrand = 0;
+      let opnCount = 0, opnServ = 0, opnPart = 0, opnBan = 0, opnGrand = 0;
+
+      data.forEach(r => {
+        const s = r.servis || 0;
+        const p = r.part || 0;
+        const b = r.ban || 0;
+        const t = r.total || 0;
+
+        totServ += s;
+        totPart += p;
+        totBan += b;
+        totGrand += t;
+
+        const isClosed = !!(r.close_spk && r.close_spk !== '-' && r.close_spk !== '');
+        const isHold = isClosed && !!(r.close_date && r.close_date > tglAkhir);
+
+        if (isHold) {
+          hldCount++;
+          hldServ += s;
+          hldPart += p;
+          hldBan += b;
+          hldGrand += t;
+        } else if (isClosed) {
+          clsCount++;
+          clsServ += s;
+          clsPart += p;
+          clsBan += b;
+          clsGrand += t;
+        } else {
+          opnCount++;
+          opnServ += s;
+          opnPart += p;
+          opnBan += b;
+          opnGrand += t;
+        }
+      });
+
+      document.getElementById('summaryTotalCount').innerText = totCount;
+      document.getElementById('summaryTotalService').innerText = formatNumber(totServ);
+      document.getElementById('summaryTotalPart').innerText = formatNumber(totPart);
+      document.getElementById('summaryTotalBan').innerText = formatNumber(totBan);
+      document.getElementById('summaryTotalGrand').innerText = formatNumber(totGrand);
+
+      document.getElementById('summaryClosedCount').innerText = clsCount;
+      document.getElementById('summaryClosedService').innerText = formatNumber(clsServ);
+      document.getElementById('summaryClosedPart').innerText = formatNumber(clsPart);
+      document.getElementById('summaryClosedBan').innerText = formatNumber(clsBan);
+      document.getElementById('summaryClosedGrand').innerText = formatNumber(clsGrand);
+
+      if (document.getElementById('summaryHoldCount')) {
+        document.getElementById('summaryHoldCount').innerText = hldCount;
+        document.getElementById('summaryHoldService').innerText = formatNumber(hldServ);
+        document.getElementById('summaryHoldPart').innerText = formatNumber(hldPart);
+        document.getElementById('summaryHoldBan').innerText = formatNumber(hldBan);
+        document.getElementById('summaryHoldGrand').innerText = formatNumber(hldGrand);
+      }
+
+      document.getElementById('summaryOpenCount').innerText = opnCount;
+      document.getElementById('summaryOpenService').innerText = formatNumber(opnServ);
+      document.getElementById('summaryOpenPart').innerText = formatNumber(opnPart);
+      document.getElementById('summaryOpenBan').innerText = formatNumber(opnBan);
+      document.getElementById('summaryOpenGrand').innerText = formatNumber(opnGrand);
+    }
+
+    function applyQuickSearch() {
+      const q = document.getElementById('quickSearchInput').value.toLowerCase().trim();
+      if (!q) {
+        renderTable(rawSpkData);
+        return;
+      }
+      const filtered = rawSpkData.filter(item => {
+        return (item.nopol && item.nopol.toLowerCase().includes(q)) ||
+               (item.cabin && item.cabin.toLowerCase().includes(q)) ||
+               (item.spk && item.spk.toLowerCase().includes(q)) ||
+               (item.cust_code && item.cust_code.toLowerCase().includes(q)) ||
+               (item.site && item.site.toLowerCase().includes(q)) ||
+               (item.kategori && item.kategori.toLowerCase().includes(q)) ||
+               (item.catatan && item.catatan.toLowerCase().includes(q));
+      });
+      renderTable(filtered);
+    }
+
+    function openSpkDetailPopup(nopol) {
+      const tglAwal = sessionStorage.getItem('csv_spk_tglawal') || document.getElementById('filterTglAwal').value || '';
+      const tglAkhir = sessionStorage.getItem('csv_spk_tglakhir') || document.getElementById('filterTglAkhir').value || '';
+      const url = `/prj-csv/spk-detail?nopol=${encodeURIComponent(nopol)}&tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+      
+      const w = 1180;
+      const h = 760;
+      const left = Math.max(0, Math.floor((window.screen.width - w) / 2));
+      const top = Math.max(0, Math.floor((window.screen.height - h) / 2));
+      
+      window.open(url, 'SpkDetailPopup', `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`);
+    }
+
+    function exportToExcel() {
+      if (!rawSpkData || rawSpkData.length === 0) {
+        alert('Tidak ada data untuk diexport!');
+        return;
+      }
+      const exportRows = rawSpkData.map((r, i) => ({
+        'No': i + 1,
+        'Site / Area': r.site || '',
+        'Tgl Masuk': r.tgl_masuk || '',
+        'Close SPK': r.close_spk || 'Belum Close',
+        'Nopol': r.nopol || '',
+        'Cabin': r.cabin || '',
+        'Cust Code': r.cust_code || '',
+        'Kategori': r.kategori || '',
+        'No. SPK': r.spk || '',
+        'Servis': r.servis || 0,
+        'Part': r.part || 0,
+        'Ban': r.ban || 0,
+        'Total': r.total || 0,
+        'Catatan': r.catatan || '',
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "SPK_Per_Cust");
+      XLSX.writeFile(wb, `SPK_Per_Cust_CSV_${sessionStorage.getItem('csv_spk_area') || 'ALL'}.xlsx`);
+    }
+
+    // Make functions globally available for navbar sync
+    window.fetchSpkData = fetchSpkData;
+    window.loadFilterOptions = loadFilterOptions;
+    window.triggerCsvSync = () => {
+      if (typeof window.triggerNavCsvSync === 'function') {
+        window.triggerNavCsvSync();
+      }
+    };
+
+    window.onload = async () => {
+      await initFilters();
+      await fetchSpkData();
+    };
+  </script>
+</body>
+</html>

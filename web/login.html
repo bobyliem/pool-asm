@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Sampurna Workshop (ASM)</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4 selection:bg-blue-500 selection:text-white font-sans text-xs">
+
+  <!-- BACKGROUND DECORATION -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- LOGIN CARD -->
+  <div class="relative w-full max-w-sm bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 p-6 z-10">
+    
+    <!-- BRANDING & LOGO -->
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 shadow-inner mb-3 p-2">
+        <img src="/web/images/logo-sar.png" onerror="this.onerror=null;this.src='https://workshop.sampurna-group.com/images/logo-sar.png'" alt="SAR Logo" class="max-h-full max-w-full object-contain" />
+      </div>
+      <h1 class="text-lg font-black text-slate-800 tracking-tight">SAMPURNA WORKSHOP</h1>
+      <p class="text-slate-500 text-[11px] mt-0.5">Automated Workshop & Logistics Management</p>
+    </div>
+
+    <!-- ALERT ERROR / INFO -->
+    <div id="alertBox" class="hidden mb-4 p-3 rounded-xl text-[11px] flex items-start gap-2.5 transition-all">
+      <i id="alertIcon" class="fa-solid fa-circle-exclamation mt-0.5 shrink-0"></i>
+      <span id="alertMsg" class="leading-relaxed"></span>
+    </div>
+
+    <!-- FORM LOGIN -->
+    <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+      
+      <!-- Username -->
+      <div>
+        <label for="username" class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Username</label>
+        <div class="relative">
+          <i class="fa-regular fa-user absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+          <input type="text" id="username" name="username" required autocomplete="username"
+                 placeholder="Masukkan username" 
+                 class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label for="password" class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+        <div class="relative">
+          <i class="fa-solid fa-lock absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+          <input type="password" id="password" name="password" required autocomplete="current-password"
+                 placeholder="Masukkan password" 
+                 class="w-full pl-9 pr-10 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition" />
+          <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none">
+            <i id="togglePassIcon" class="fa-regular fa-eye text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Remember / Session Note -->
+      <div class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+        <span class="flex items-center gap-1.5">
+          <i class="fa-regular fa-clock text-blue-500"></i>
+          <span>Sesi aktif 30 menit</span>
+        </span>
+      </div>
+
+      <!-- SUBMIT BUTTON -->
+      <button type="submit" id="btnSubmit" 
+              class="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]">
+        <span id="btnText">Masuk Sekarang</span>
+        <i id="btnIcon" class="fa-solid fa-arrow-right text-xs"></i>
+      </button>
+
+    </form>
+
+    <!-- FOOTER -->
+    <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400">
+      &copy; 2026 PT Alam Sampurna Makmur. All rights reserved.
+    </div>
+
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    // Cek jika user sudah login, langsung lempar ke dashboard
+    (async function checkExistingSession() {
+      try {
+        const res = await fetch('/api/v1/auth/me');
+        if (res.ok) {
+          const result = await res.json();
+          if (result.status === 'success') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect') || '/prj-csv';
+            window.location.href = redirectUrl;
+          }
+        }
+      } catch (e) {
+        // Abaikan
+      }
+    })();
+
+    function togglePasswordVisibility() {
+      const passInput = document.getElementById('password');
+      const icon = document.getElementById('togglePassIcon');
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        passInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+
+    function showAlert(msg, isError = true) {
+      const alertBox = document.getElementById('alertBox');
+      const alertMsg = document.getElementById('alertMsg');
+      const alertIcon = document.getElementById('alertIcon');
+
+      alertMsg.textContent = msg;
+      alertBox.className = isError
+        ? "mb-4 p-3 rounded-xl text-[11px] flex items-start gap-2.5 bg-rose-50 border border-rose-200 text-rose-800"
+        : "mb-4 p-3 rounded-xl text-[11px] flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800";
+      alertIcon.className = isError
+        ? "fa-solid fa-circle-exclamation mt-0.5 shrink-0 text-rose-600"
+        : "fa-solid fa-circle-check mt-0.5 shrink-0 text-emerald-600";
+      alertBox.classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showAlert('Silakan isi username dan password');
+        return;
+      }
+
+      const btnSubmit = document.getElementById('btnSubmit');
+      const btnText = document.getElementById('btnText');
+      const btnIcon = document.getElementById('btnIcon');
+
+      btnSubmit.disabled = true;
+      btnText.textContent = "Memverifikasi...";
+      btnIcon.className = "fa-solid fa-spinner fa-spin text-xs";
+      document.getElementById('alertBox').classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.status === 'success') {
+          showAlert('Login berhasil! Mengalihkan...', false);
+          
+          // Simpan session data ke sessionStorage
+          if (result.data && result.data.user) {
+            sessionStorage.setItem('current_user', JSON.stringify(result.data.user));
+          }
+
+          setTimeout(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect') || '/prj-csv';
+            window.location.href = redirectUrl;
+          }, 600);
+        } else {
+          showAlert(result.message || 'Username atau password salah.');
+          btnSubmit.disabled = false;
+          btnText.textContent = "Masuk Sekarang";
+          btnIcon.className = "fa-solid fa-arrow-right text-xs";
+        }
+      } catch (err) {
+        showAlert('Gagal terhubung ke server. Silakan coba lagi nanti.');
+        btnSubmit.disabled = false;
+        btnText.textContent = "Masuk Sekarang";
+        btnIcon.className = "fa-solid fa-arrow-right text-xs";
+      }
+    }
+  </script>
+</body>
+</html>

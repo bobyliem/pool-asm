@@ -1,0 +1,487 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sampurna Workshop - Operation Dashboard (Compact 6 Columns)</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Modul Komponen Header & Sidebar -->
+    <script src="/web/components/header.js?v=8" defer></script>
+    <script src="/web/components/sidebar.js?v=8" defer></script>
+
+    <style>
+        /* Custom scrollbar tipis agar hemat space */
+        ::-webkit-scrollbar { width: 4px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-xs flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN DASHBOARD) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active: Operation Dashboard) -->
+    <app-sidebar active-menu="Operation Dashboard"></app-sidebar>
+
+    <!-- MAIN OPERATIONAL CONTENT -->
+    <main class="flex-1 p-4 overflow-y-auto bg-slate-100">
+
+      <!-- TOP AREA: COMPACT & SPACE-SAVING -->
+      <div class="w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3 mb-4">
+          
+          <!-- 1. SERVICE ORDER (Kelengkapan & Overdue dalam 1 Card Lebar) -->
+          <div class="lg:col-span-8 bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between">
+              <div class="font-bold text-slate-800 text-xs mb-2 flex items-center justify-between border-b border-slate-200 pb-1">
+                  <span class="flex items-center gap-1.5"><i class="fa-solid fa-clipboard-list text-blue-600"></i> Service Order Summary</span>
+                  <button onclick="fetchOperationData()" class="text-blue-600 hover:text-blue-800 text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-rotate"></i> Refresh
+                  </button>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <!-- Kelengkapan -->
+                  <div class="bg-slate-50 border border-slate-200 rounded p-2">
+                      <div class="flex justify-between items-center mb-1 font-bold text-[11px] text-slate-700">
+                          <span>Kelengkapan</span>
+                          <span id="kelengkapanBadgeTotal" class="bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded text-[10px]">Total: 0</span>
+                      </div>
+                      <div class="grid grid-cols-5 gap-1 text-center text-[10px]">
+                          <div class="bg-white p-1 rounded border border-slate-200">
+                              <span class="text-slate-400 block text-[9px]">Perbaikan</span>
+                              <span id="kelengkapanPerbaikan" class="font-bold text-slate-800">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-slate-200">
+                              <span class="text-slate-400 block text-[9px]">Asuransi</span>
+                              <span id="kelengkapanAsuransi" class="font-bold text-slate-800">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-slate-200">
+                              <span class="text-slate-400 block text-[9px]">Storing</span>
+                              <span id="kelengkapanStoring" class="font-bold text-slate-800">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-slate-200">
+                              <span class="text-slate-400 block text-[9px]">Other</span>
+                              <span id="kelengkapanOther" class="font-bold text-slate-800">0</span>
+                          </div>
+                          <div class="bg-blue-50 p-1 rounded border border-blue-200 text-blue-700 font-bold flex flex-col justify-center">
+                              <span class="text-[9px]">Tot</span>
+                              <span id="kelengkapanTot">0</span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Overdue -->
+                  <div class="bg-rose-50/40 border border-rose-200 rounded p-2">
+                      <div class="flex justify-between items-center mb-1 font-bold text-[11px] text-rose-700">
+                          <span>Overdue</span>
+                          <span id="overdueBadgeTotal" class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px]">Total: 0</span>
+                      </div>
+                      <div class="grid grid-cols-5 gap-1 text-center text-[10px]">
+                          <div class="bg-white p-1 rounded border border-rose-200">
+                              <span class="text-slate-400 block text-[9px]">Perbaikan</span>
+                              <span id="overduePerbaikan" class="font-bold text-rose-600">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-rose-200">
+                              <span class="text-slate-400 block text-[9px]">Asuransi</span>
+                              <span id="overdueAsuransi" class="font-bold text-rose-600">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-rose-200">
+                              <span class="text-slate-400 block text-[9px]">Storing</span>
+                              <span id="overdueStoring" class="font-bold text-rose-600">0</span>
+                          </div>
+                          <div class="bg-white p-1 rounded border border-rose-200">
+                              <span class="text-slate-400 block text-[9px]">Other</span>
+                              <span id="overdueOther" class="font-bold text-rose-600">0</span>
+                          </div>
+                          <div class="bg-rose-100 p-1 rounded border border-rose-300 text-rose-800 font-bold flex flex-col justify-center">
+                              <span class="text-[9px]">Tot</span>
+                              <span id="overdueTot">0</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- 2. SERVICE & FILTER REMINDER & VISITOR (Compact Side Cards) -->
+          <div class="lg:col-span-4 grid grid-cols-2 gap-3">
+              
+              <!-- Service & Filter Reminder -->
+              <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between">
+                  <div class="font-bold text-slate-800 text-xs mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                      <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Reminder
+                  </div>
+                  <div class="space-y-1.5 text-[10px]">
+                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                          <span class="font-medium text-slate-600"><i class="fa-solid fa-oil-can mr-1"></i> Oil</span>
+                          <span><span class="text-rose-600 font-bold mr-2">O: 0</span><span class="text-blue-600 font-bold">I: 0</span></span>
+                      </div>
+                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                          <span class="font-medium text-slate-600"><i class="fa-solid fa-filter mr-1"></i> Filter</span>
+                          <span><span class="text-rose-600 font-bold mr-2">O: 0</span><span class="text-blue-600 font-bold">I: 0</span></span>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Visitor -->
+              <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between">
+                  <div class="font-bold text-slate-800 text-xs mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                      <i class="fa-solid fa-users text-indigo-600"></i> Visitor
+                  </div>
+                  <div class="space-y-1.5 text-[10px]">
+                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                          <span class="font-medium text-slate-600"><i class="fa-solid fa-right-to-bracket mr-1 text-emerald-600"></i> Outside</span>
+                          <span class="font-bold text-slate-800 text-xs">0</span>
+                      </div>
+                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                          <span class="font-medium text-slate-600"><i class="fa-solid fa-user-secret mr-1 text-rose-600"></i> Intruder</span>
+                          <span class="font-bold text-rose-600 text-xs">0</span>
+                      </div>
+                  </div>
+              </div>
+
+          </div>
+
+      </div>
+
+      <!-- CONTAINER UTAMA DENGAN HORIZONTAL SCROLL (Bisa di-drag/geser kesamping) -->
+      <div class="w-full overflow-x-auto pb-4">
+          <div class="flex gap-4 min-w-[1440px]"> <!-- Lebar minimum agar 6 kolom muat rapi -->
+
+              <!-- 1. PERBAIKAN -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <!-- Header Kategori -->
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Perbaikan</span>
+                          <span id="col_Perbaikan_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <!-- Statistik Hari Sebelumnya & Hari Ini -->
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Perbaikan_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Perbaikan_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Perbaikan_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Perbaikan_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Perbaikan_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Perbaikan_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- List Kartu Unit Perbaikan -->
+                  <div id="col_Perbaikan_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+
+              <!-- 2. ASURANSI -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Asuransi</span>
+                          <span id="col_Asuransi_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Asuransi_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Asuransi_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Asuransi_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Asuransi_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Asuransi_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Asuransi_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+                  <div id="col_Asuransi_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+
+              <!-- 3. STORING -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Storing</span>
+                          <span id="col_Storing_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Storing_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Storing_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Storing_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Storing_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Storing_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Storing_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+                  <div id="col_Storing_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+              
+              <!-- 4. STANDBY -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Standby</span>
+                          <span id="col_Standby_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Standby_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Standby_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Standby_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_Standby_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_Standby_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_Standby_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+                  <div id="col_Standby_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+
+              <!-- 5. BONGKAR MUAT -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Bongkar Muat</span>
+                          <span id="col_BongkarMuat_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_BongkarMuat_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_BongkarMuat_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_BongkarMuat_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_BongkarMuat_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_BongkarMuat_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_BongkarMuat_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+                  <div id="col_BongkarMuat_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+
+              <!-- 6. TUNGGU DO -->
+              <div class="w-[230px] bg-white border border-slate-300 rounded shadow-xs flex flex-col shrink-0">
+                  <div class="bg-slate-50 border-b border-slate-300 p-2">
+                      <div class="flex justify-between items-center font-bold text-slate-800 text-sm mb-1">
+                          <span>Tunggu DO</span>
+                          <span id="col_TungguDO_total" class="bg-slate-200 px-1.5 py-0.5 rounded text-xs">0</span>
+                      </div>
+                      <div class="text-[10px] text-slate-600 space-y-0.5">
+                          <div class="flex justify-between items-center">
+                              <span>Hari sebelumnya</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_TungguDO_last_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_TungguDO_last_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_TungguDO_last_saldo">0</span></span>
+                              </span>
+                          </div>
+                          <div class="flex justify-between items-center font-medium">
+                              <span>Hari ini</span>
+                              <span class="flex items-center gap-2">
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-down text-emerald-600"></i><span id="col_TungguDO_now_in">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-arrow-up text-rose-600"></i><span id="col_TungguDO_now_out">0</span></span>
+                                  <span class="inline-flex items-center gap-0.5 min-w-[24px]"><i class="fa-solid fa-clock text-slate-500"></i><span id="col_TungguDO_now_saldo">0</span></span>
+                              </span>
+                          </div>
+                      </div>
+                  </div>
+                  <div id="col_TungguDO_cards" class="p-2 flex flex-col gap-2">
+                  </div>
+              </div>
+
+          </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    async function fetchOperationData() {
+      try {
+        const response = await fetch('/api/v1/dashboard/operation');
+        const res = await response.json();
+        if (res.status === 'success') {
+          const data = res.data;
+          console.log("Operational Data fetched successfully:", data);
+          
+          if (data.kelengkapan) {
+            document.getElementById('kelengkapanBadgeTotal').innerText = `Total: ${data.kelengkapan.total}`;
+            document.getElementById('kelengkapanPerbaikan').innerText = data.kelengkapan.perbaikan;
+            document.getElementById('kelengkapanAsuransi').innerText = data.kelengkapan.asuransi;
+            document.getElementById('kelengkapanStoring').innerText = data.kelengkapan.storing;
+            document.getElementById('kelengkapanOther').innerText = data.kelengkapan.other;
+            document.getElementById('kelengkapanTot').innerText = data.kelengkapan.total;
+          }
+
+          if (data.overdue) {
+            document.getElementById('overdueBadgeTotal').innerText = `Total: ${data.overdue.total}`;
+            document.getElementById('overduePerbaikan').innerText = data.overdue.perbaikan;
+            document.getElementById('overdueAsuransi').innerText = data.overdue.asuransi;
+            document.getElementById('overdueStoring').innerText = data.overdue.storing;
+            document.getElementById('overdueOther').innerText = data.overdue.other;
+            document.getElementById('overdueTot').innerText = data.overdue.total;
+          }
+
+          if (data.column_stats) {
+            const getStat = (catName) => {
+              const keys = Object.keys(data.column_stats);
+              const foundKey = keys.find(k => k.trim().toLowerCase() === catName.trim().toLowerCase());
+              return foundKey ? data.column_stats[foundKey] : null;
+            };
+
+            const categories = [
+              { name: 'Perbaikan', id: 'Perbaikan' },
+              { name: 'Asuransi', id: 'Asuransi' },
+              { name: 'Storing', id: 'Storing' },
+              { name: 'Standby', id: 'Standby' },
+              { name: 'Bongkar Muat', id: 'BongkarMuat' },
+              { name: 'Tunggu DO', id: 'TungguDO' }
+            ];
+
+            categories.forEach(cat => {
+              const stat = getStat(cat.name) || {
+                total: 0, last_in: 0, last_out: 0, last_saldo: 0,
+                now_in: 0, now_out: 0, now_saldo: 0
+              };
+
+              const elTotal = document.getElementById(`col_${cat.id}_total`);
+              const elLastIn = document.getElementById(`col_${cat.id}_last_in`);
+              const elLastOut = document.getElementById(`col_${cat.id}_last_out`);
+              const elLastSaldo = document.getElementById(`col_${cat.id}_last_saldo`);
+              const elNowIn = document.getElementById(`col_${cat.id}_now_in`);
+              const elNowOut = document.getElementById(`col_${cat.id}_now_out`);
+              const elNowSaldo = document.getElementById(`col_${cat.id}_now_saldo`);
+
+              if (elTotal) elTotal.innerText = stat.total;
+              if (elLastIn) elLastIn.innerText = stat.last_in;
+              if (elLastOut) elLastOut.innerText = stat.last_out;
+              if (elLastSaldo) elLastSaldo.innerText = stat.last_saldo;
+              if (elNowIn) elNowIn.innerText = stat.now_in;
+              if (elNowOut) elNowOut.innerText = stat.now_out;
+              if (elNowSaldo) elNowSaldo.innerText = stat.now_saldo;
+            });
+          }
+
+          if (data.unit_cards) {
+            const categories = [
+              { name: 'Perbaikan', id: 'Perbaikan' },
+              { name: 'Asuransi', id: 'Asuransi' },
+              { name: 'Storing', id: 'Storing' },
+              { name: 'Standby', id: 'Standby' },
+              { name: 'Bongkar Muat', id: 'BongkarMuat' },
+              { name: 'Tunggu DO', id: 'TungguDO' }
+            ];
+
+            const getTheme = (statue) => {
+              const st = (statue || '').trim().toLowerCase();
+              if (st === 'antrian') return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
+              if (st === 'pengerjaan') return { bg: 'bg-emerald-500 text-white', label: 'text-emerald-600' };
+              if (st === 'closing') return { bg: 'bg-blue-600 text-white', label: 'text-blue-600' };
+              if (st === 'cancel') return { bg: 'bg-rose-600 text-white', label: 'text-rose-600' };
+              if (st === 'tunggusurvey') return { bg: 'bg-slate-900 text-white', label: 'text-slate-900' };
+              return { bg: 'bg-slate-600 text-white', label: 'text-slate-600' };
+            };
+
+            const getCardsForCat = (catName) => {
+              const keys = Object.keys(data.unit_cards);
+              const foundKey = keys.find(k => k.trim().toLowerCase() === catName.trim().toLowerCase());
+              return foundKey ? data.unit_cards[foundKey] : [];
+            };
+
+            categories.forEach(cat => {
+              const container = document.getElementById(`col_${cat.id}_cards`);
+              if (!container) return;
+
+              const cards = getCardsForCat(cat.name);
+              if (cards.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-3 text-[10px]">Tidak ada unit</div>`;
+                return;
+              }
+
+              container.innerHTML = cards.map((item, idx) => {
+                const theme = getTheme(item.statue);
+                const truckIconColor = item.is_overdue === 1 ? 'text-rose-600' : 'text-slate-700';
+                return `
+                  <div class="border border-slate-300 rounded bg-white text-[11px] overflow-hidden shadow-2xs shrink-0">
+                      <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex justify-between items-center">
+                          <span>${idx + 1}. ${item.statue || '-'}</span>
+                          <span class="font-normal text-[9px]">${item.entry_date || '-'}</span>
+                      </div>
+                      <div class="px-2 pt-1.5 pb-3 flex gap-2 items-center">
+                          <i class="fa-solid fa-truck ${truckIconColor} text-lg shrink-0"></i>
+                          <div class="leading-tight w-full min-w-0">
+                              <div class="font-bold text-slate-900 truncate text-[11px]">${item.driver || '-'}</div>
+                              <div class="flex justify-between text-[10px] text-slate-600 mt-0.5">
+                                  <span class="font-semibold truncate">${item.nopol || '-'}</span>
+                                  <span class="font-bold text-slate-600 shrink-0 ml-1">${item.cust_code || '-'}</span>
+                              </div>
+                              <div class="text-[9px] ${theme.label} font-medium mt-1 pt-1 border-t border-slate-200 flex justify-between items-center">
+                                  <span class="shrink-0">Estimasi Selesai</span>
+                                  <span class="font-semibold text-slate-800">${item.estimasi || '-'}</span>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                `;
+              }).join('');
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching operation data:', err);
+      }
+    }
+
+    window.onload = fetchOperationData;
+  </script>
+</body>
+</html>

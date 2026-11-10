@@ -1,0 +1,7 @@
+# Abaikan semua file database SQL
+*.sql
+MyWork/
+
+# File sistem atau sampah OS
+.DS_Store
+Thumbs.db

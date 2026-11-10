@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detail SPK Unit - Crosscheck</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans p-4 sm:p-5 space-y-4 min-h-screen">
+
+  <!-- TOP BAR KHUSUS POPUP (HEADER STANDALONE DENGAN TOMBOL TUTUP) -->
+  <div class="bg-white border border-slate-300 rounded-xl px-5 py-3 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sticky top-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-base">
+        <i class="fa-solid fa-truck-front"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-lg font-black text-slate-900 tracking-tight" id="titleNopol">Memuat Nopol...</h1>
+          <span class="text-[11px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md font-mono" id="periodBadge">-</span>
+          <span class="text-[11px] bg-blue-50 text-blue-800 border border-blue-200 font-bold px-2 py-0.5 rounded-md font-mono" id="tglMasukBadge">Tgl Masuk: -</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Crosscheck Rincian Service & Sparepart</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 self-end sm:self-auto">
+      <button onclick="exportDetailToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-file-excel"></i> Export Excel
+      </button>
+      <button onclick="fetchDetailData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer" title="Refresh data">
+        <i class="fa-solid fa-rotate text-blue-600"></i>
+      </button>
+      <!-- Tombol Tutup Window Pop-up -->
+      <button onclick="window.close()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer" title="Tutup Jendela (Esc)">
+        <i class="fa-solid fa-xmark text-sm"></i> Tutup (Esc)
+      </button>
+    </div>
+  </div>
+
+  <!-- 1. SUMMARY CARD (Total SPK, Total Service, Total Sparepart, Total Keseluruhan) -->
+  <div class="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-xs">
+    <div class="flex items-center justify-between pb-2.5 mb-3.5 border-b border-slate-200">
+      <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+        <i class="fa-solid fa-chart-pie text-blue-600"></i>
+        <span>Ringkasan Nilai Transaksi Unit</span>
+      </div>
+      <span class="text-[11px] text-slate-400 italic">Akumulasi seluruh transaksi unit yang ditemukan</span>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <!-- Total SPK -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+            <span>Total SPK</span>
+            <i class="fa-solid fa-file-invoice text-blue-500"></i>
+          </div>
+          <div class="text-2xl font-black text-slate-800" id="cardTotalSpk">0</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Jumlah SPK Terkait</div>
+        </div>
+        <div class="mt-2.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10.5px] font-semibold">
+          <span class="text-emerald-700" title="SPK Selesai dalam periode"><span id="subCloseSpk">0</span> Close</span>
+          <span id="subHoldSpkWrap" class="text-amber-700 hidden" title="SPK Selesai lewat periode"><span id="subHoldSpk">0</span> Hold</span>
+          <span class="text-rose-600" title="SPK Belum Selesai"><span id="subOpenSpk">0</span> Open</span>
+        </div>
+      </div>
+
+      <!-- Total Service -->
+      <div class="bg-blue-50/40 border border-blue-200 rounded-xl p-3 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs text-blue-700 font-semibold mb-1">
+            <span>Total Service</span>
+            <i class="fa-solid fa-wrench text-blue-600"></i>
+          </div>
+          <div class="text-2xl font-black text-blue-700 font-mono" id="cardTotalService">0</div>
+          <div class="text-[10px] text-blue-500 mt-0.5">Biaya Jasa Pengerjaan</div>
+        </div>
+        <div class="mt-2.5 pt-1.5 border-t border-blue-200/60 flex items-center justify-between text-[10.5px] font-mono">
+          <span class="text-emerald-700 font-bold" title="Jasa SPK Selesai (Close)">Close: <span id="subCloseService">0</span></span>
+          <span class="text-rose-600 font-bold" title="Jasa SPK Belum Selesai (Open)">Open: <span id="subOpenService">0</span></span>
+        </div>
+      </div>
+
+      <!-- Total Sparepart -->
+      <div class="bg-amber-50/40 border border-amber-200 rounded-xl p-3 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs text-amber-700 font-semibold mb-1">
+            <span>Total Sparepart</span>
+            <i class="fa-solid fa-gears text-amber-600"></i>
+          </div>
+          <div class="text-2xl font-black text-amber-700 font-mono" id="cardTotalSparepart">0</div>
+          <div class="text-[10px] text-amber-600 mt-0.5">Part & Material Gudang</div>
+        </div>
+        <div class="mt-2.5 pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10.5px] font-mono">
+          <span class="text-emerald-700 font-bold" title="Part SPK Selesai (Close)">Close: <span id="subCloseSparepart">0</span></span>
+          <span class="text-rose-600 font-bold" title="Part SPK Belum Selesai (Open)">Open: <span id="subOpenSparepart">0</span></span>
+        </div>
+      </div>
+
+      <!-- Total Keseluruhan -->
+      <div class="bg-emerald-50/50 border border-emerald-300 rounded-xl p-3 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs text-emerald-800 font-bold mb-1">
+            <span>Total Keseluruhan</span>
+            <i class="fa-solid fa-sack-dollar text-emerald-600"></i>
+          </div>
+          <div class="text-2xl font-black text-emerald-800 font-mono" id="cardTotalKeseluruhan">0</div>
+          <div class="text-[10px] text-emerald-600 mt-0.5">Grand Total Biaya</div>
+        </div>
+        <div class="mt-2.5 pt-1.5 border-t border-emerald-200 flex items-center justify-between text-[10.5px] font-mono">
+          <span class="text-emerald-800 font-extrabold" title="Grand Total SPK Close">Close: <span id="subCloseTotal">0</span></span>
+          <span class="text-rose-700 font-extrabold" title="Grand Total SPK Open">Open: <span id="subOpenTotal">0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. STATUS BREAKDOWN BANNER CARD (BERDASARKAN TGL AWAL - TGL AKHIR) -->
+    <div class="mt-4 pt-3.5 border-t border-slate-200">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+        <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+          <i class="fa-solid fa-calendar-check text-blue-600"></i>
+          <span>Rincian Nilai Berdasarkan Periode (<span id="statusPeriodeText" class="font-mono text-blue-700">-</span>):</span>
+        </div>
+        <span class="text-[10.5px] text-slate-500 italic">*) Nilai yang dihitung pada laporan Periode Summary & Resume adalah SPK yang <strong class="text-emerald-700">CLOSE</strong></span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- 1. SPK Close Card (Nilai yang Masuk Periode) -->
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100/60 border-2 border-emerald-400 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i> SPK Selesai (Close)
+            </span>
+            <span id="badgeCloseSpkCount" class="bg-emerald-600 text-white font-black px-2.5 py-0.5 rounded-full text-[10px] shadow-2xs">0 SPK</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-black text-emerald-800 font-mono tracking-tight" id="valCloseTotal">Rp 0</div>
+            <div class="text-[10px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1">
+              <i class="fa-solid fa-check text-[9px]"></i> Masuk perhitungan omset periode
+            </div>
+          </div>
+          <div class="text-[11px] text-emerald-800 flex justify-between font-mono pt-2 border-t border-emerald-300/80 font-medium">
+            <span>Jasa: <strong id="valCloseService" class="font-bold">0</strong></span>
+            <span>Part: <strong id="valClosePart" class="font-bold">0</strong></span>
+          </div>
+        </div>
+
+        <!-- 2. SPK Hold Card -->
+        <div id="cardHoldBox" class="bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-300 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-hand text-amber-600"></i> SPK Hold
+            </span>
+            <span id="badgeHoldSpkCount" class="bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full text-[10px] shadow-2xs">0 SPK</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-black text-amber-800 font-mono tracking-tight" id="valHoldTotal">Rp 0</div>
+            <div class="text-[10px] text-amber-700 font-semibold mt-0.5 flex items-center gap-1">
+              <i class="fa-regular fa-clock text-[9px]"></i> Selesai setelah batas tgl akhir
+            </div>
+          </div>
+          <div class="text-[11px] text-amber-800 flex justify-between font-mono pt-2 border-t border-amber-300/80 font-medium">
+            <span>Jasa: <strong id="valHoldService" class="font-bold">0</strong></span>
+            <span>Part: <strong id="valHoldPart" class="font-bold">0</strong></span>
+          </div>
+        </div>
+
+        <!-- 3. SPK Open Card -->
+        <div class="bg-gradient-to-br from-rose-50 to-rose-100/60 border border-rose-300 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-rose-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-clock-rotate-left text-rose-600"></i> SPK Open (Berjalan)
+            </span>
+            <span id="badgeOpenSpkCount" class="bg-rose-500 text-white font-black px-2.5 py-0.5 rounded-full text-[10px] shadow-2xs">0 SPK</span>
+          </div>
+          <div class="my-2">
+            <div class="text-2xl font-black text-rose-800 font-mono tracking-tight" id="valOpenTotal">Rp 0</div>
+            <div class="text-[10px] text-rose-700 font-semibold mt-0.5 flex items-center gap-1">
+              <i class="fa-solid fa-spinner text-[9px]"></i> Pengerjaan belum close / selesai
+            </div>
+          </div>
+          <div class="text-[11px] text-rose-800 flex justify-between font-mono pt-2 border-t border-rose-300/80 font-medium">
+            <span>Jasa: <strong id="valOpenService" class="font-bold">0</strong></span>
+            <span>Part: <strong id="valOpenPart" class="font-bold">0</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bagian Catatan / Notes per SPK -->
+    <div id="notesContainer" class="hidden mt-3.5 pt-3 border-t border-slate-200 text-xs">
+      <div class="font-bold text-slate-700 flex items-center gap-1.5 mb-1.5">
+        <i class="fa-regular fa-note-sticky text-amber-500"></i>
+        <span>*) Notes:</span>
+      </div>
+      <div id="notesList" class="space-y-1 text-slate-700 pl-3 text-[11.5px] leading-relaxed">
+        <!-- Disuntikkan via JS: - SPK-xxx : Catatan -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. TABLE SERVICE (JASA) -->
+  <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+    <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-wrench text-blue-600 text-xs"></i>
+        <span class="font-bold text-xs text-slate-800 uppercase tracking-tight">Rincian Service</span>
+        <span id="badgeServiceCount" class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10px]">0 Item</span>
+      </div>
+      <div class="text-xs font-semibold text-blue-700">
+        Subtotal Service: <span id="subtotalServiceText" class="font-mono font-black">0</span>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto max-h-[280px]">
+      <table class="w-full text-[11px] text-left border-collapse">
+        <thead class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+          <tr>
+            <th class="py-1.5 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">SKU</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">Product / Deskripsi</th>
+            <th class="py-1.5 px-2.5 text-center whitespace-nowrap w-16">Qty</th>
+            <th class="py-1.5 px-2.5 text-right whitespace-nowrap">Harga Satuan</th>
+            <th class="py-1.5 px-2.5 text-right whitespace-nowrap font-bold">Total Harga</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap font-semibold">No. SPK</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">Kategori</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap text-blue-700">Tgl Masuk</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap text-emerald-700">Tgl Selesai</th>
+          </tr>
+        </thead>
+        <tbody id="serviceTableBody" class="divide-y divide-slate-200/60 text-[11px]">
+          <tr>
+            <td colspan="10" class="py-6 text-center text-slate-400">
+              <i class="fa-solid fa-spinner fa-spin text-base text-blue-600 mb-1 block"></i>
+              Memuat data service...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. TABLE SPAREPART -->
+  <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+    <div class="px-4 py-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-gears text-amber-600 text-xs"></i>
+        <span class="font-bold text-xs text-slate-800 uppercase tracking-tight">Rincian Sparepart</span>
+        <span id="badgeSparepartCount" class="bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full text-[10px]">0 Item</span>
+      </div>
+      <div class="text-xs font-semibold text-amber-700">
+        Subtotal Sparepart: <span id="subtotalSparepartText" class="font-mono font-black">0</span>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto max-h-[350px]">
+      <table class="w-full text-[11px] text-left border-collapse">
+        <thead class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+          <tr>
+            <th class="py-1.5 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">SKU</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">Product / Deskripsi</th>
+            <th class="py-1.5 px-2.5 text-center whitespace-nowrap w-16">Qty</th>
+            <th class="py-1.5 px-2.5 text-right whitespace-nowrap">Harga Satuan</th>
+            <th class="py-1.5 px-2.5 text-right whitespace-nowrap font-bold">Total Harga</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap font-semibold">No. SPK</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap">Kategori</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap text-blue-700">Tgl Masuk</th>
+            <th class="py-1.5 px-2.5 whitespace-nowrap text-emerald-700">Tgl Selesai</th>
+          </tr>
+        </thead>
+        <tbody id="sparepartTableBody" class="divide-y divide-slate-200/60 text-[11px]">
+          <tr>
+            <td colspan="10" class="py-6 text-center text-slate-400">
+              <i class="fa-solid fa-spinner fa-spin text-base text-amber-600 mb-1 block"></i>
+              Memuat data sparepart...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let detailData = null;
+
+    function formatNumber(num) {
+      if (!num || isNaN(num)) return '0';
+      return Math.round(num).toLocaleString('id-ID');
+    }
+
+    // Shortcut: tekan tombol 'Escape' (Esc) untuk langsung menutup jendela pop-up
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.close();
+      }
+    });
+
+    function getParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const nopol = urlParams.get('nopol') || '';
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || new Date().toISOString().slice(0, 10),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || new Date().toISOString().slice(0, 10)
+      };
+      const tglAwal = urlParams.get('tglawal') || range.tglAwal;
+      const tglAkhir = urlParams.get('tglakhir') || range.tglAkhir;
+      return { nopol, tglAwal, tglAkhir };
+    }
+
+    async function fetchDetailData() {
+      const { nopol, tglAwal, tglAkhir } = getParams();
+
+      if (!nopol) {
+        document.getElementById('titleNopol').innerText = 'NOPOL Tidak Ditemukan';
+        document.getElementById('serviceTableBody').innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-500">Parameter nopol kosong. Silakan buka dari halaman SPK Per Cust.</td></tr>';
+        document.getElementById('sparepartTableBody').innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-500">Parameter nopol kosong. Silakan buka dari halaman SPK Per Cust.</td></tr>';
+        return;
+      }
+
+      document.getElementById('titleNopol').innerText = nopol;
+      document.getElementById('periodBadge').innerText = `${tglAwal} s/d ${tglAkhir}`;
+
+      try {
+        const res = await fetch(`/api/v1/csv/reports/spk-detail?nopol=${encodeURIComponent(nopol)}&tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          detailData = json.data;
+          renderSummaryCard(detailData);
+          renderServiceTable(detailData.services || []);
+          renderSparepartTable(detailData.spareparts || []);
+        } else {
+          alert('Gagal memuat detail data: ' + (json.message || ''));
+        }
+      } catch (err) {
+        console.error('Error fetching detail:', err);
+      }
+    }
+
+    function renderSummaryCard(data) {
+      document.getElementById('cardTotalSpk').innerText = data.total_spk || 0;
+      document.getElementById('cardTotalService').innerText = formatNumber(data.total_service);
+      document.getElementById('cardTotalSparepart').innerText = formatNumber(data.total_sparepart);
+      document.getElementById('cardTotalKeseluruhan').innerText = formatNumber(data.total_keseluruhan);
+
+      document.getElementById('subtotalServiceText').innerText = formatNumber(data.total_service);
+      document.getElementById('subtotalSparepartText').innerText = formatNumber(data.total_sparepart);
+
+      const closed = data.closed || {};
+      const hold = data.hold || {};
+      const open = data.open || {};
+
+      // Sub-metrics di dalam 4 card utama
+      document.getElementById('subCloseSpk').innerText = closed.spk_count || 0;
+      document.getElementById('subOpenSpk').innerText = open.spk_count || 0;
+      if (hold.spk_count > 0) {
+        document.getElementById('subHoldSpk').innerText = hold.spk_count;
+        document.getElementById('subHoldSpkWrap').classList.remove('hidden');
+      } else {
+        document.getElementById('subHoldSpkWrap').classList.add('hidden');
+      }
+
+      document.getElementById('subCloseService').innerText = formatNumber(closed.service);
+      document.getElementById('subOpenService').innerText = formatNumber(open.service);
+
+      document.getElementById('subCloseSparepart').innerText = formatNumber(closed.part);
+      document.getElementById('subOpenSparepart').innerText = formatNumber(open.part);
+
+      document.getElementById('subCloseTotal').innerText = formatNumber(closed.total);
+      document.getElementById('subOpenTotal').innerText = formatNumber(open.total);
+
+      // Section Banner Breakdown Status Periode
+      document.getElementById('statusPeriodeText').innerText = `${data.tgl_awal} s/d ${data.tgl_akhir}`;
+
+      document.getElementById('badgeCloseSpkCount').innerText = `${closed.spk_count || 0} SPK`;
+      document.getElementById('valCloseTotal').innerText = 'Rp ' + formatNumber(closed.total);
+      document.getElementById('valCloseService').innerText = formatNumber(closed.service);
+      document.getElementById('valClosePart').innerText = formatNumber(closed.part);
+
+      document.getElementById('badgeHoldSpkCount').innerText = `${hold.spk_count || 0} SPK`;
+      document.getElementById('valHoldTotal').innerText = 'Rp ' + formatNumber(hold.total);
+      document.getElementById('valHoldService').innerText = formatNumber(hold.service);
+      document.getElementById('valHoldPart').innerText = formatNumber(hold.part);
+      const holdBox = document.getElementById('cardHoldBox');
+      if (holdBox) {
+        if (hold.spk_count > 0) {
+          holdBox.classList.remove('opacity-60');
+          holdBox.classList.add('border-2', 'border-amber-400');
+        } else {
+          holdBox.classList.add('opacity-60');
+          holdBox.classList.remove('border-2', 'border-amber-400');
+        }
+      }
+
+      document.getElementById('badgeOpenSpkCount').innerText = `${open.spk_count || 0} SPK`;
+      document.getElementById('valOpenTotal').innerText = 'Rp ' + formatNumber(open.total);
+      document.getElementById('valOpenService').innerText = formatNumber(open.service);
+      document.getElementById('valOpenPart').innerText = formatNumber(open.part);
+
+      const isAsuransi = (data.services || []).some(s => (s.category || '').toLowerCase().includes('asuransi')) ||
+                         (data.spareparts || []).some(s => (s.category || '').toLowerCase().includes('asuransi'));
+      const titleNopol = document.getElementById('titleNopol');
+      if (titleNopol) {
+        titleNopol.innerHTML = `<span>${data.nopol || '-'}</span>${isAsuransi ? '<i class="fa-solid fa-shield-halved text-blue-600 ml-1.5 text-base" title="Kategori Asuransi"></i>' : ''}`;
+      }
+
+      const badgeMasuk = document.getElementById('tglMasukBadge');
+      if (badgeMasuk) {
+        badgeMasuk.innerText = `Tgl Masuk: ${data.tgl_masuk && data.tgl_masuk !== '-' ? data.tgl_masuk : '-'}`;
+      }
+
+      // Render Notes per SPK jika ada isinya
+      const notesContainer = document.getElementById('notesContainer');
+      const notesList = document.getElementById('notesList');
+      if (data.notes && data.notes.length > 0) {
+        let notesHtml = '';
+        data.notes.forEach(n => {
+          notesHtml += `<div>- <strong class="font-mono text-slate-800">${n.spk}</strong> : <span class="text-slate-600 font-normal">${n.notes}</span></div>`;
+        });
+        notesList.innerHTML = notesHtml;
+        notesContainer.classList.remove('hidden');
+      } else {
+        notesContainer.classList.add('hidden');
+      }
+    }
+
+    function renderServiceTable(items) {
+      const tbody = document.getElementById('serviceTableBody');
+      document.getElementById('badgeServiceCount').innerText = `${items.length} Item`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-400">Tidak ada rincian service pada periode ini.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      items.forEach((row, i) => {
+        const isCanceled = (row.statue || '').toLowerCase() === 'canceled';
+        const isAsuransiRow = (row.category || '').toLowerCase().includes('asuransi');
+        let categoryHtml = isAsuransiRow 
+          ? `<span class="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"><i class="fa-solid fa-shield-halved text-blue-600 text-[10px]"></i>${row.category}</span>`
+          : (row.category || '-');
+
+        if (isCanceled) {
+          categoryHtml += ` <span class="text-[9.5px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded border border-rose-200 no-underline inline-block uppercase">Canceled</span>`;
+        }
+
+        let trClass = "hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight";
+        if (isCanceled) {
+          trClass = "line-through text-slate-400 bg-slate-50/70 hover:bg-slate-100/70 transition border-b border-slate-200/60 leading-tight italic";
+        } else if (row.spk_status === 'OPEN') {
+          trClass = "bg-rose-50/25 hover:bg-rose-50/60 transition border-b border-slate-200/60 leading-tight";
+        } else if (row.spk_status === 'HOLD') {
+          trClass = "bg-amber-50/25 hover:bg-amber-50/60 transition border-b border-slate-200/60 leading-tight";
+        }
+
+        let spkStatusBadge = '';
+        if (row.spk_status === 'CLOSE') {
+          spkStatusBadge = `<span class="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai dalam periode">CLOSE</span>`;
+        } else if (row.spk_status === 'HOLD') {
+          spkStatusBadge = `<span class="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai lewat tgl akhir">HOLD</span>`;
+        } else if (row.spk_status === 'OPEN') {
+          spkStatusBadge = `<span class="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Belum selesai / berjalan">OPEN</span>`;
+        }
+
+        const skuColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const prodColor = isCanceled ? 'text-slate-400' : 'text-slate-800 font-medium';
+        const unitColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const totalColor = isCanceled ? 'text-slate-400 font-bold' : 'text-blue-700 font-bold';
+        const spkColor = isCanceled ? 'text-slate-400' : 'text-blue-600 font-semibold';
+        const masukColor = isCanceled ? 'text-slate-400' : 'text-blue-800';
+        const selesaiColor = isCanceled ? 'text-slate-400' : (row.spk_status === 'CLOSE' ? 'text-emerald-700 font-bold' : 'text-slate-700');
+
+        html += `
+          <tr class="${trClass}">
+            <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap">${i + 1}</td>
+            <td class="py-1.5 px-2.5 font-mono text-[10.5px] ${skuColor} whitespace-nowrap">${row.sku || '-'}</td>
+            <td class="py-1.5 px-2.5 ${prodColor} whitespace-nowrap">${row.product || '-'}</td>
+            <td class="py-1.5 px-2.5 text-center font-mono whitespace-nowrap">${row.qty || 0}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${unitColor} whitespace-nowrap">${formatNumber(row.unit_price)}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${totalColor} whitespace-nowrap">${formatNumber(row.total_price)}</td>
+            <td class="py-1.5 px-2.5 ${spkColor} font-mono whitespace-nowrap">${row.spk || '-'}${spkStatusBadge}</td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">${categoryHtml}</td>
+            <td class="py-1.5 px-2.5 ${masukColor} font-mono text-[10.5px] whitespace-nowrap">${row.tgl_masuk || '-'}</td>
+            <td class="py-1.5 px-2.5 ${selesaiColor} font-mono text-[10.5px] whitespace-nowrap">${row.selesai || '-'}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function renderSparepartTable(items) {
+      const tbody = document.getElementById('sparepartTableBody');
+      document.getElementById('badgeSparepartCount').innerText = `${items.length} Item`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-400">Tidak ada rincian sparepart pada periode ini.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      items.forEach((row, i) => {
+        const isCanceled = (row.statue || '').toLowerCase() === 'canceled';
+        const isAsuransiRow = (row.category || '').toLowerCase().includes('asuransi');
+        let categoryHtml = isAsuransiRow 
+          ? `<span class="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"><i class="fa-solid fa-shield-halved text-blue-600 text-[10px]"></i>${row.category}</span>`
+          : (row.category || '-');
+
+        if (isCanceled) {
+          categoryHtml += ` <span class="text-[9.5px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded border border-rose-200 no-underline inline-block uppercase">Canceled</span>`;
+        }
+
+        let trClass = "hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight";
+        if (isCanceled) {
+          trClass = "line-through text-slate-400 bg-slate-50/70 hover:bg-slate-100/70 transition border-b border-slate-200/60 leading-tight italic";
+        } else if (row.spk_status === 'OPEN') {
+          trClass = "bg-rose-50/25 hover:bg-rose-50/60 transition border-b border-slate-200/60 leading-tight";
+        } else if (row.spk_status === 'HOLD') {
+          trClass = "bg-amber-50/25 hover:bg-amber-50/60 transition border-b border-slate-200/60 leading-tight";
+        }
+
+        let spkStatusBadge = '';
+        if (row.spk_status === 'CLOSE') {
+          spkStatusBadge = `<span class="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai dalam periode">CLOSE</span>`;
+        } else if (row.spk_status === 'HOLD') {
+          spkStatusBadge = `<span class="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai lewat tgl akhir">HOLD</span>`;
+        } else if (row.spk_status === 'OPEN') {
+          spkStatusBadge = `<span class="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Belum selesai / berjalan">OPEN</span>`;
+        }
+
+        const skuColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const prodColor = isCanceled ? 'text-slate-400' : 'text-slate-800 font-medium';
+        const unitColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const totalColor = isCanceled ? 'text-slate-400 font-bold' : 'text-amber-700 font-bold';
+        const spkColor = isCanceled ? 'text-slate-400' : 'text-blue-600 font-semibold';
+        const masukColor = isCanceled ? 'text-slate-400' : 'text-blue-800';
+        const selesaiColor = isCanceled ? 'text-slate-400' : (row.spk_status === 'CLOSE' ? 'text-emerald-700 font-bold' : 'text-slate-700');
+
+        html += `
+          <tr class="${trClass}">
+            <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap">${i + 1}</td>
+            <td class="py-1.5 px-2.5 font-mono text-[10.5px] ${skuColor} whitespace-nowrap">${row.sku || '-'}</td>
+            <td class="py-1.5 px-2.5 ${prodColor} whitespace-nowrap">${row.product || '-'}</td>
+            <td class="py-1.5 px-2.5 text-center font-mono whitespace-nowrap">${row.qty || 0}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${unitColor} whitespace-nowrap">${formatNumber(row.unit_price)}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${totalColor} whitespace-nowrap">${formatNumber(row.total_price)}</td>
+            <td class="py-1.5 px-2.5 ${spkColor} font-mono whitespace-nowrap">${row.spk || '-'}${spkStatusBadge}</td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">${categoryHtml}</td>
+            <td class="py-1.5 px-2.5 ${masukColor} font-mono text-[10.5px] whitespace-nowrap">${row.tgl_masuk || '-'}</td>
+            <td class="py-1.5 px-2.5 ${selesaiColor} font-mono text-[10.5px] whitespace-nowrap">${row.selesai || '-'}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function renderSparepartTable(items) {
+      const tbody = document.getElementById('sparepartTableBody');
+      document.getElementById('badgeSparepartCount').innerText = `${items.length} Item`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-400">Tidak ada rincian sparepart pada periode ini.</td></tr>';
+        return;
+      }
+
+      let html = '';
+      items.forEach((row, i) => {
+        const isCanceled = (row.statue || '').toLowerCase() === 'canceled';
+        const isAsuransiRow = (row.category || '').toLowerCase().includes('asuransi');
+        let categoryHtml = isAsuransiRow 
+          ? `<span class="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"><i class="fa-solid fa-shield-halved text-blue-600 text-[10px]"></i>${row.category}</span>`
+          : (row.category || '-');
+
+        if (isCanceled) {
+          categoryHtml += ` <span class="text-[9.5px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded border border-rose-200 no-underline inline-block uppercase">Canceled</span>`;
+        }
+
+        let trClass = "hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight";
+        if (isCanceled) {
+          trClass = "line-through text-slate-400 bg-slate-50/70 hover:bg-slate-100/70 transition border-b border-slate-200/60 leading-tight italic";
+        } else if (row.spk_status === 'OPEN') {
+          trClass = "bg-rose-50/25 hover:bg-rose-50/60 transition border-b border-slate-200/60 leading-tight";
+        } else if (row.spk_status === 'HOLD') {
+          trClass = "bg-amber-50/25 hover:bg-amber-50/60 transition border-b border-slate-200/60 leading-tight";
+        }
+
+        let spkStatusBadge = '';
+        if (row.spk_status === 'CLOSE') {
+          spkStatusBadge = `<span class="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai dalam periode">CLOSE</span>`;
+        } else if (row.spk_status === 'HOLD') {
+          spkStatusBadge = `<span class="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Selesai lewat tgl akhir">HOLD</span>`;
+        } else if (row.spk_status === 'OPEN') {
+          spkStatusBadge = `<span class="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 font-bold px-1 py-0.2 rounded ml-1 tracking-tight" title="SPK Belum selesai / berjalan">OPEN</span>`;
+        }
+
+        const skuColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const prodColor = isCanceled ? 'text-slate-400' : 'text-slate-800 font-medium';
+        const unitColor = isCanceled ? 'text-slate-400' : 'text-slate-600';
+        const totalColor = isCanceled ? 'text-slate-400 font-bold' : 'text-amber-700 font-bold';
+        const spkColor = isCanceled ? 'text-slate-400' : 'text-blue-600 font-semibold';
+        const masukColor = isCanceled ? 'text-slate-400' : 'text-blue-800';
+        const selesaiColor = isCanceled ? 'text-slate-400' : (row.spk_status === 'CLOSE' ? 'text-emerald-700 font-bold' : 'text-slate-700');
+
+        html += `
+          <tr class="${trClass}">
+            <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap">${i + 1}</td>
+            <td class="py-1.5 px-2.5 font-mono text-[10.5px] ${skuColor} whitespace-nowrap">${row.sku || '-'}</td>
+            <td class="py-1.5 px-2.5 ${prodColor} whitespace-nowrap">${row.product || '-'}</td>
+            <td class="py-1.5 px-2.5 text-center font-mono whitespace-nowrap">${row.qty || 0}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${unitColor} whitespace-nowrap">${formatNumber(row.unit_price)}</td>
+            <td class="py-1.5 px-2.5 text-right font-mono ${totalColor} whitespace-nowrap">${formatNumber(row.total_price)}</td>
+            <td class="py-1.5 px-2.5 ${spkColor} font-mono whitespace-nowrap">${row.spk || '-'}${spkStatusBadge}</td>
+            <td class="py-1.5 px-2.5 text-slate-600 whitespace-nowrap">${categoryHtml}</td>
+            <td class="py-1.5 px-2.5 ${masukColor} font-mono text-[10.5px] whitespace-nowrap">${row.tgl_masuk || '-'}</td>
+            <td class="py-1.5 px-2.5 ${selesaiColor} font-mono text-[10.5px] whitespace-nowrap">${row.selesai || '-'}</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function exportDetailToExcel() {
+      if (!detailData) {
+        alert('Data belum siap untuk diexport!');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      const svcRows = (detailData.services || []).map((r, idx) => ({
+        'No': idx + 1,
+        'SKU': r.sku || '',
+        'Product': r.product || '',
+        'Qty': r.qty || 0,
+        'Harga Satuan': r.unit_price || 0,
+        'Total Harga': r.total_price || 0,
+        'No. SPK': r.spk || '',
+        'Status SPK': r.spk_status || '',
+        'Kategori': r.category || '',
+        'Status Pengerjaan': r.statue || '',
+        'Tgl Masuk': r.tgl_masuk || '',
+        'Tgl Selesai': r.selesai || ''
+      }));
+      const wsSvc = XLSX.utils.json_to_sheet(svcRows);
+      XLSX.utils.book_append_sheet(wb, wsSvc, "Service");
+
+      const partRows = (detailData.spareparts || []).map((r, idx) => ({
+        'No': idx + 1,
+        'SKU': r.sku || '',
+        'Product': r.product || '',
+        'Qty': r.qty || 0,
+        'Harga Satuan': r.unit_price || 0,
+        'Total Harga': r.total_price || 0,
+        'No. SPK': r.spk || '',
+        'Status SPK': r.spk_status || '',
+        'Kategori': r.category || '',
+        'Status Pengerjaan': r.statue || '',
+        'Tgl Masuk': r.tgl_masuk || '',
+        'Tgl Selesai': r.selesai || ''
+      }));
+      const wsPart = XLSX.utils.json_to_sheet(partRows);
+      XLSX.utils.book_append_sheet(wb, wsPart, "Sparepart");
+
+      XLSX.writeFile(wb, `Detail_SPK_${detailData.nopol}_${detailData.tgl_awal}_${detailData.tgl_akhir}.xlsx`);
+    }
+
+    window.onload = fetchDetailData;
+  </script>
+</body>
+</html>

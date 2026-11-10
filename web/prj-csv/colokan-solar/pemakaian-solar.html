@@ -1,0 +1,792 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pemakaian Solar - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom Scrollbar for dense tables */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Pemakaian Solar"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header & KPI Summary Cards (Compact) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        
+        <!-- Left: Title & Module Badge -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-gas-pump text-amber-500 text-sm"></i>
+            <h2 class="text-sm font-bold text-slate-800">Pemakaian Solar</h2>
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Colokan Solar</span>
+          </div>
+
+          <!-- Divider -->
+          <span class="text-slate-300">|</span>
+
+          <!-- Mini KPI Badges -->
+          <div class="flex flex-wrap items-center gap-2 text-[11px]">
+            <div class="bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-amber-900 shadow-2xs" title="Total Pemakaian Solar">
+              <i class="fa-solid fa-fire-flame-simple text-[10px] text-amber-500"></i>
+              <span class="text-slate-600 font-medium">Total Pakai:</span>
+              <span id="kpiPakaiLiter" class="font-bold text-amber-700">0 Ltr</span>
+            </div>
+            <div class="bg-blue-50 border border-blue-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-blue-900 shadow-2xs" title="Total Pengisian Solar">
+              <i class="fa-solid fa-oil-can text-[10px] text-blue-500"></i>
+              <span class="text-slate-600 font-medium">Total Isi:</span>
+              <span id="kpiIsiLiter" class="font-bold text-blue-700">0 Ltr</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-emerald-900 shadow-2xs" title="Total Jam Kerja Alat (HM)">
+              <i class="fa-solid fa-clock text-[10px] text-emerald-500"></i>
+              <span class="text-slate-600 font-medium">Total Jam HM:</span>
+              <span id="kpiTotalJam" class="font-bold text-emerald-700">0 Jam</span>
+            </div>
+            <div class="bg-purple-50 border border-purple-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-purple-900 shadow-2xs" title="Rata-rata Konsumsi Solar per Jam">
+              <i class="fa-solid fa-gauge text-[10px] text-purple-500"></i>
+              <span class="text-slate-600 font-medium">Rasio Avg:</span>
+              <span id="kpiRasioAvg" class="font-bold text-purple-700">0 Ltr/HM</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="fetchSolarData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+            <span>Refresh</span>
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Excel">
+            <i class="fa-solid fa-file-excel text-[11px]"></i>
+            <span>Export</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PARAMETER INPUT & FILTER BAR (DENGAN TOMBOL SYNC SOLAR DI DEKATNYA) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-2 mb-2 shadow-2xs">
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+          
+          <!-- Parameters Input Form -->
+          <div class="flex flex-wrap items-center gap-2 flex-1">
+            
+            <!-- Tgl Awal -->
+            <div class="flex items-center gap-1.5">
+              <label for="filterTglAwal" class="font-semibold text-slate-600 text-[11px] whitespace-nowrap">Tgl Awal:</label>
+              <input type="date" id="filterTglAwal" class="px-2 py-1 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            </div>
+
+            <!-- Tgl Akhir -->
+            <div class="flex items-center gap-1.5">
+              <label for="filterTglAkhir" class="font-semibold text-slate-600 text-[11px] whitespace-nowrap">Tgl Akhir:</label>
+              <input type="date" id="filterTglAkhir" class="px-2 py-1 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            </div>
+
+            <!-- Unit / Alat -->
+            <div class="flex items-center gap-1.5">
+              <label for="filterUnit" class="font-semibold text-slate-600 text-[11px] whitespace-nowrap">Unit:</label>
+              <select id="filterUnit" class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]">
+                <option value="all">Semua Unit</option>
+                <option value="SK330-8" selected>SK330-8</option>
+              </select>
+            </div>
+
+            <!-- Shift -->
+            <div class="flex items-center gap-1.5">
+              <label for="filterShift" class="font-semibold text-slate-600 text-[11px] whitespace-nowrap">Shift:</label>
+              <select id="filterShift" class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="all">Semua Shift</option>
+                <option value="Pagi">Shift Pagi</option>
+                <option value="Malam">Shift Malam</option>
+              </select>
+            </div>
+
+            <!-- Tombol Terapkan Filter -->
+            <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
+              <i class="fa-solid fa-filter text-[10px]"></i>
+              <span>Filter</span>
+            </button>
+
+            <!-- Tombol Reset Filter -->
+            <button onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i>
+              <span>Reset</span>
+            </button>
+          </div>
+
+          <!-- SEBELAH KANAN: TOMBOL SYNC SOLAR (DEKAT PARAMETER INPUT) -->
+          <div class="flex items-center gap-2 border-l border-slate-200 pl-3">
+            <button id="btnSyncSolar" onclick="openSyncModal()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition cursor-pointer" title="Sinkronisasi Data Pemakaian Solar dari Google Spreadsheet">
+              <i id="btnSyncIcon" class="fa-solid fa-cloud-arrow-down text-xs"></i>
+              <span id="btnSyncText">Sync Solar</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Inline Sync Status Notification Banner -->
+        <div id="syncStatusBanner" class="hidden mt-2 p-2 rounded border text-[11px] flex items-center justify-between transition-all duration-300">
+          <div class="flex items-center gap-2">
+            <i id="syncBannerIcon" class="fa-solid fa-circle-notch fa-spin text-sm"></i>
+            <div>
+              <span id="syncBannerTitle" class="font-bold">Sync Solar:</span>
+              <span id="syncBannerMsg" class="ml-1 text-slate-700">Sedang memproses...</span>
+            </div>
+          </div>
+          <button onclick="hideSyncBanner()" class="text-slate-400 hover:text-slate-600 px-1.5">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- DATA TABLE CONTAINER (EXPANDS TO FILL REMAINING SPACE) -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        
+        <div class="flex-1 overflow-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse whitespace-nowrap">
+            <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-300 text-[11px] font-bold text-slate-700">
+              <tr>
+                <th class="py-2 px-2 text-center border-r border-slate-200 w-10">No</th>
+                <th class="py-2 px-2.5 border-r border-slate-200">Tanggal</th>
+                <th class="py-2 px-2.5 border-r border-slate-200">Unit</th>
+                <th class="py-2 px-2 text-center border-r border-slate-200">Shift</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 bg-amber-50/50">HM Awal</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 bg-amber-50/50">HM Akhir</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 bg-amber-50/70 font-semibold text-amber-900">Total HM</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200">Colokan Awal (cm)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200">Total Pakai (cm)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 font-bold text-red-600 bg-red-50/50">Pakai (Ltr)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200">Colokan Akhir (cm)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200">Total Isi (cm)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 font-bold text-blue-600 bg-blue-50/50">Isi (Ltr)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200">Akhir Stlh Isi (cm)</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200 font-semibold text-slate-700">Sisa Tangki (Ltr)</th>
+                <th class="py-2 px-2.5 text-right font-bold text-purple-700 bg-purple-50/50">Rasio (Ltr/HM)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-200 text-[11px] text-slate-800">
+              <tr>
+                <td colspan="16" class="py-12 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-blue-500"></i>
+                  <div>Memuat data pemakaian solar...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- FOOTER & PAGINATION -->
+        <div class="bg-slate-50 border-t border-slate-300 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div class="flex items-center gap-2 text-slate-600">
+            <span>Menampilkan <b id="pageStart" class="text-slate-800">0</b> - <b id="pageEnd" class="text-slate-800">0</b> dari <b id="pageTotal" class="text-slate-800">0</b> data</span>
+            <span class="text-slate-300">|</span>
+            <div class="flex items-center gap-1">
+              <span>Limit:</span>
+              <select id="limitSelect" onchange="changeLimit(this.value)" class="border border-slate-300 rounded px-1.5 py-0.5 bg-white text-xs">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="500">500</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Pagination Buttons -->
+          <div class="flex items-center gap-1">
+            <button id="btnPrevPage" onclick="prevPage()" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-chevron-left text-[10px]"></i> Prev
+            </button>
+            <span id="pageIndicator" class="px-2 font-medium text-slate-700">Hal 1 dari 1</span>
+            <button id="btnNextPage" onclick="nextPage()" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL SYNC SOLAR -->
+  <div id="syncModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-300 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-800 text-white px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-gas-pump text-amber-400 text-base"></i>
+          <div>
+            <h3 class="font-bold text-sm leading-tight">Modul Sync Solar</h3>
+            <p class="text-[10px] text-slate-300">Tarik data pemakaian solar dari Google Spreadsheet</p>
+          </div>
+        </div>
+        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-3 overflow-y-auto custom-scrollbar">
+        
+        <!-- Target Info -->
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-900 space-y-1">
+          <div class="font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-amber-600"></i>
+            <span>Sumber Data Google Spreadsheet (13 Unit Terdaftar):</span>
+          </div>
+          <p class="text-slate-600 text-[10px]">
+            Tersedia 13 unit: <b>SK330-8, SK330-8 02 s/d 06, SK200-10 05, CAT 966G, CAT 950G, CAT 950G 02, KOB 03, PC200-8, KOB 04</b>.
+          </p>
+          <ul class="list-disc list-inside text-[10px] text-slate-600 space-y-0.5 pt-1">
+            <li>Mulai dari baris ke-12</li>
+            <li>Shift Pagi: Kolom A s/d L</li>
+            <li>Shift Malam: Kolom M s/d W (Tanggal dari Kolom A)</li>
+            <li>Value Unit: Kolom Z (fallback otomatis jika kosong)</li>
+          </ul>
+        </div>
+
+        <!-- Pilihan Unit untuk Sync -->
+        <div class="space-y-1">
+          <label class="font-semibold text-slate-700 text-xs">Pilih Unit untuk di-Sync:</label>
+          <select id="syncUnitSelect" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+            <option value="all" selected>ðŸŒŸ Semua Unit (13 Unit)</option>
+            <option value="SK330-8">SK330-8</option>
+          </select>
+        </div>
+
+        <!-- Sync Progress / Status Box -->
+        <div id="modalSyncStatusBox" class="border rounded-lg p-3 bg-slate-50 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-slate-700">Status Sinkronisasi:</span>
+            <span id="modalSyncBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">Idle</span>
+          </div>
+          <p id="modalSyncMessage" class="text-slate-600 text-[11px]">Siap menjalankan sinkronisasi data pemakaian solar.</p>
+          
+          <!-- Sync Progress Bar -->
+          <div id="modalProgressBarContainer" class="hidden w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+            <div id="modalProgressBar" class="bg-amber-500 h-1.5 rounded-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <!-- Counter Stats -->
+          <div id="modalSyncStats" class="hidden grid grid-cols-3 gap-2 pt-1 text-center text-[10px]">
+            <div class="bg-white border rounded p-1">
+              <div class="text-slate-500">Data Baru</div>
+              <div id="modalStatInserted" class="font-bold text-emerald-600 text-xs">0</div>
+            </div>
+            <div class="bg-white border rounded p-1">
+              <div class="text-slate-500">Diperbarui</div>
+              <div id="modalStatUpdated" class="font-bold text-blue-600 text-xs">0</div>
+            </div>
+            <div class="bg-white border rounded p-1">
+              <div class="text-slate-500">Total Diproses</div>
+              <div id="modalStatTotal" class="font-bold text-slate-800 text-xs">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Log Area -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label class="font-semibold text-slate-700 text-[11px]">Log Eksekusi:</label>
+            <button onclick="clearModalLogs()" class="text-[10px] text-slate-400 hover:text-slate-600">Bersihkan</button>
+          </div>
+          <div id="modalLogsArea" class="bg-slate-900 text-emerald-400 font-mono text-[10px] p-2.5 rounded-lg h-32 overflow-y-auto custom-scrollbar whitespace-pre-wrap leading-relaxed">
+Belum ada log. Tekan tombol "Jalankan Sync Solar" di bawah untuk memulai.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-100 px-4 py-2.5 flex items-center justify-between border-t border-slate-200">
+        <button onclick="closeSyncModal()" class="px-3 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-200 text-slate-700 text-xs transition cursor-pointer">
+          Tutup
+        </button>
+        <button id="btnStartSyncModal" onclick="startSolarSync()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-1.5 rounded text-xs shadow-sm flex items-center gap-1.5 transition cursor-pointer">
+          <i id="btnStartSyncIcon" class="fa-solid fa-play text-[10px]"></i>
+          <span id="btnStartSyncText">Jalankan Sync Solar</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State Variables
+    let solarData = [];
+    let currentPage = 1;
+    let currentLimit = 50;
+    let totalRows = 0;
+    let syncPollingTimer = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initFilterOptions();
+    });
+
+    // Inisialisasi Filter & Periode Tanggal
+    async function initFilterOptions() {
+      try {
+        const resp = await fetch('/api/v1/solar/filter-options');
+        const json = await resp.json();
+
+        if (json.status === 'success' && json.data) {
+          const { units, min_tgl, max_tgl } = json.data;
+
+          // Populate Unit Dropdown
+          const unitSelect = document.getElementById('filterUnit');
+          const syncSelect = document.getElementById('syncUnitSelect');
+          
+          if (units && units.length > 0) {
+            unitSelect.innerHTML = '<option value="all" selected>Semua Unit</option>';
+            syncSelect.innerHTML = '<option value="all" selected>ðŸŒŸ Semua Unit (13 Unit)</option>';
+
+            units.forEach(u => {
+              const opt = document.createElement('option');
+              opt.value = u;
+              opt.textContent = u;
+              unitSelect.appendChild(opt);
+
+              const optSync = document.createElement('option');
+              optSync.value = u;
+              optSync.textContent = u;
+              syncSelect.appendChild(optSync);
+            });
+          }
+
+          // Inisialisasi Tanggal
+          const today = new Date().toISOString().split('T')[0];
+          document.getElementById('filterTglAwal').value = min_tgl || '2026-09-01';
+          document.getElementById('filterTglAkhir').value = max_tgl || today;
+        }
+      } catch (err) {
+        console.warn('Gagal memuat filter options:', err);
+      }
+
+      // Ambil data awal
+      fetchSolarData();
+      checkActiveSyncStatus();
+    }
+
+    // Fetch Data Pemakaian Solar
+    async function fetchSolarData(page = 1) {
+      currentPage = page;
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="16" class="py-12 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-blue-500"></i>
+            <div>Memuat data pemakaian solar...</div>
+          </td>
+        </tr>
+      `;
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      const unit = document.getElementById('filterUnit').value;
+      const shift = document.getElementById('filterShift').value;
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: currentLimit,
+        tglAwal: tglAwal || '',
+        tglAkhir: tglAkhir || '',
+        unit: unit || 'all',
+        shift: shift || 'all'
+      });
+
+      try {
+        const resp = await fetch(`/api/v1/solar/pemakaian?${params.toString()}`);
+        const json = await resp.json();
+
+        if (json.status === 'success') {
+          solarData = json.data || [];
+          totalRows = (json.meta && json.meta.total_rows) || 0;
+          renderTable(solarData);
+          renderSummary(json.summary);
+          renderPagination();
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="16" class="py-8 text-center text-red-500 font-medium">
+                Gagal memuat data: ${json.message || 'Terjadi kesalahan sistem'}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="16" class="py-8 text-center text-red-500 font-medium">
+              Gagal menghubungi server: ${err.message}
+            </td>
+          </tr>
+        `;
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+      }
+    }
+
+    // Render Data Table
+    function renderTable(data) {
+      const tbody = document.getElementById('tableBody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="16" class="py-12 text-center text-slate-400">
+              <i class="fa-solid fa-gas-pump text-3xl mb-2 text-slate-300"></i>
+              <div class="text-slate-600 font-medium">Belum ada data pemakaian solar pada filter ini.</div>
+              <p class="text-[11px] text-slate-400 mt-1">Silakan klik tombol <b>Sync Solar</b> di atas untuk mengambil data dari Google Spreadsheet.</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const startIdx = (currentPage - 1) * currentLimit;
+      let html = '';
+
+      data.forEach((row, idx) => {
+        const no = startIdx + idx + 1;
+        const tglStr = formatDate(row.tanggal);
+        const shiftBadge = row.shift === 'Pagi' 
+          ? '<span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold">Pagi</span>'
+          : '<span class="bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded text-[10px] font-bold">Malam</span>';
+
+        const rasioVal = row.rasio_liter_per_hm ? row.rasio_liter_per_hm.toFixed(2) : '0.00';
+        const pakaiLiter = row.pakai_liter ? row.pakai_liter.toLocaleString('id-ID') : '0';
+        const isiLiter = row.isi_liter ? row.isi_liter.toLocaleString('id-ID') : '0';
+
+        html += `
+          <tr class="hover:bg-blue-50/40 transition">
+            <td class="py-1.5 px-2 text-center text-slate-400 border-r border-slate-200">${no}</td>
+            <td class="py-1.5 px-2.5 font-medium text-slate-800 border-r border-slate-200">${tglStr}</td>
+            <td class="py-1.5 px-2.5 font-bold text-slate-700 border-r border-slate-200">
+              <span class="bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded font-mono text-[10px]">${row.unit || '-'}</span>
+            </td>
+            <td class="py-1.5 px-2 text-center border-r border-slate-200">${shiftBadge}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.awal_hm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.akhir_hm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200 font-semibold text-amber-800 bg-amber-50/30">${formatNum(row.total_jam_hm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.colokan_awal_cm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.total_pakai_cm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200 font-bold text-red-600 bg-red-50/20">${pakaiLiter}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.colokan_akhir_cm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.total_isi_cm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200 font-bold text-blue-600 bg-blue-50/20">${isiLiter}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200">${formatNum(row.akhir_setelah_isi_cm)}</td>
+            <td class="py-1.5 px-2 text-right border-r border-slate-200 font-medium text-slate-700">${formatNum(row.sisa_tangki_liter)}</td>
+            <td class="py-1.5 px-2.5 text-right font-bold text-purple-700 bg-purple-50/30">${rasioVal}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Render Summary Badges
+    function renderSummary(summary) {
+      if (!summary) return;
+      document.getElementById('kpiPakaiLiter').textContent = (summary.total_pakai_liter || 0).toLocaleString('id-ID') + ' Ltr';
+      document.getElementById('kpiIsiLiter').textContent = (summary.total_isi_liter || 0).toLocaleString('id-ID') + ' Ltr';
+      document.getElementById('kpiTotalJam').textContent = (summary.total_jam_hm || 0).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Jam';
+      document.getElementById('kpiRasioAvg').textContent = (summary.avg_liter_per_hm || 0).toFixed(2) + ' Ltr/HM';
+    }
+
+    // Render Pagination Controls
+    function renderPagination() {
+      const pageStart = totalRows === 0 ? 0 : (currentPage - 1) * currentLimit + 1;
+      const pageEnd = Math.min(currentPage * currentLimit, totalRows);
+      const totalPages = Math.ceil(totalRows / currentLimit) || 1;
+
+      document.getElementById('pageStart').textContent = pageStart;
+      document.getElementById('pageEnd').textContent = pageEnd;
+      document.getElementById('pageTotal').textContent = totalRows.toLocaleString('id-ID');
+      document.getElementById('pageIndicator').textContent = `Hal ${currentPage} dari ${totalPages}`;
+
+      document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+      document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        fetchSolarData(currentPage - 1);
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(totalRows / currentLimit) || 1;
+      if (currentPage < totalPages) {
+        fetchSolarData(currentPage + 1);
+      }
+    }
+
+    function changeLimit(newLimit) {
+      currentLimit = parseInt(newLimit, 10) || 50;
+      fetchSolarData(1);
+    }
+
+    function applyFilter() {
+      fetchSolarData(1);
+    }
+
+    function resetFilter() {
+      document.getElementById('filterShift').value = 'all';
+      document.getElementById('filterUnit').value = 'all';
+      initFilterOptions();
+    }
+
+    // ==========================================
+    // SYNC SOLAR FUNCTIONALITY (MODAL & REALTIME)
+    // ==========================================
+    function openSyncModal() {
+      document.getElementById('syncModal').classList.remove('hidden');
+      checkModalSyncStatus();
+    }
+
+    function closeSyncModal() {
+      document.getElementById('syncModal').classList.add('hidden');
+    }
+
+    async function startSolarSync() {
+      const unit = document.getElementById('syncUnitSelect').value;
+      const btn = document.getElementById('btnStartSyncModal');
+      const icon = document.getElementById('btnStartSyncIcon');
+      const text = document.getElementById('btnStartSyncText');
+
+      btn.disabled = true;
+      icon.className = 'fa-solid fa-spinner fa-spin text-[10px]';
+      text.textContent = 'Memulai Sync...';
+
+      try {
+        const resp = await fetch('/api/v1/solar/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ unit: unit })
+        });
+        const json = await resp.json();
+
+        if (resp.ok && json.status === 'success') {
+          showSyncBanner('running', 'Sinkronisasi dimulai di background...');
+          pollSyncStatus();
+        } else {
+          alert(json.message || 'Gagal memulai sinkronisasi.');
+        }
+      } catch (err) {
+        alert('Gagal menghubungi server: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        icon.className = 'fa-solid fa-play text-[10px]';
+        text.textContent = 'Jalankan Sync Solar';
+      }
+    }
+
+    function pollSyncStatus() {
+      if (syncPollingTimer) clearInterval(syncPollingTimer);
+      checkModalSyncStatus();
+      syncPollingTimer = setInterval(checkModalSyncStatus, 2000);
+    }
+
+    async function checkModalSyncStatus() {
+      try {
+        const resp = await fetch('/api/v1/solar/sync/status');
+        const json = await resp.json();
+        if (json.status === 'success' && json.data) {
+          const s = json.data;
+          updateSyncModalUI(s);
+
+          if (!s.is_running) {
+            if (syncPollingTimer) {
+              clearInterval(syncPollingTimer);
+              syncPollingTimer = null;
+            }
+            if (s.status === 'success') {
+              showSyncBanner('success', s.message);
+              fetchSolarData(currentPage);
+            } else if (s.status === 'error') {
+              showSyncBanner('error', s.message);
+            }
+          } else {
+            showSyncBanner('running', s.message);
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal cek status sync:', err);
+      }
+    }
+
+    async function checkActiveSyncStatus() {
+      try {
+        const resp = await fetch('/api/v1/solar/sync/status');
+        const json = await resp.json();
+        if (json.status === 'success' && json.data && json.data.is_running) {
+          pollSyncStatus();
+        }
+      } catch (e) {}
+    }
+
+    function updateSyncModalUI(s) {
+      const badge = document.getElementById('modalSyncBadge');
+      const msg = document.getElementById('modalSyncMessage');
+      const statsBox = document.getElementById('modalSyncStats');
+      const progressBox = document.getElementById('modalProgressBarContainer');
+      const logsArea = document.getElementById('modalLogsArea');
+
+      msg.textContent = s.message || '-';
+
+      if (s.is_running) {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800';
+        badge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Running';
+        progressBox.classList.remove('hidden');
+      } else if (s.status === 'success') {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800';
+        badge.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Success';
+        progressBox.classList.add('hidden');
+      } else if (s.status === 'error') {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800';
+        badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Error';
+        progressBox.classList.add('hidden');
+      } else {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700';
+        badge.textContent = 'Idle';
+        progressBox.classList.add('hidden');
+      }
+
+      statsBox.classList.remove('hidden');
+      document.getElementById('modalStatInserted').textContent = s.inserted || 0;
+      document.getElementById('modalStatUpdated').textContent = s.updated || 0;
+      document.getElementById('modalStatTotal').textContent = s.total || 0;
+
+      if (s.logs && s.logs.length > 0) {
+        logsArea.textContent = s.logs.join('\n');
+        logsArea.scrollTop = logsArea.scrollHeight;
+      }
+    }
+
+    function clearModalLogs() {
+      document.getElementById('modalLogsArea').textContent = 'Log dibersihkan.';
+    }
+
+    function showSyncBanner(type, message) {
+      const banner = document.getElementById('syncStatusBanner');
+      const icon = document.getElementById('syncBannerIcon');
+      const title = document.getElementById('syncBannerTitle');
+      const msg = document.getElementById('syncBannerMsg');
+
+      banner.classList.remove('hidden', 'bg-blue-50', 'border-blue-300', 'text-blue-900', 'bg-emerald-50', 'border-emerald-300', 'text-emerald-900', 'bg-red-50', 'border-red-300', 'text-red-900');
+
+      if (type === 'running') {
+        banner.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-900');
+        icon.className = 'fa-solid fa-circle-notch fa-spin text-blue-600 text-sm';
+        title.textContent = 'Sync Solar Berjalan:';
+      } else if (type === 'success') {
+        banner.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
+        icon.className = 'fa-solid fa-circle-check text-emerald-600 text-sm';
+        title.textContent = 'Sync Solar Berhasil:';
+      } else {
+        banner.classList.add('bg-red-50', 'border-red-300', 'text-red-900');
+        icon.className = 'fa-solid fa-triangle-exclamation text-red-600 text-sm';
+        title.textContent = 'Sync Solar Gagal:';
+      }
+
+      msg.textContent = message || '';
+    }
+
+    function hideSyncBanner() {
+      document.getElementById('syncStatusBanner').classList.add('hidden');
+    }
+
+    // Export to Excel using SheetJS
+    function exportToExcel() {
+      if (!solarData || solarData.length === 0) {
+        alert('Tidak ada data untuk diexport.');
+        return;
+      }
+
+      const rows = solarData.map((d, i) => ({
+        "No": i + 1,
+        "Tanggal": formatDate(d.tanggal),
+        "Unit": d.unit,
+        "Shift": d.shift,
+        "HM Awal": d.awal_hm,
+        "HM Akhir": d.akhir_hm,
+        "Total Jam HM": d.total_jam_hm,
+        "Colokan Awal (CM)": d.colokan_awal_cm,
+        "Total Pakai (CM)": d.total_pakai_cm,
+        "Pakai (Liter)": d.pakai_liter,
+        "Colokan Akhir (CM)": d.colokan_akhir_cm,
+        "Total Isi (CM)": d.total_isi_cm,
+        "Isi (Liter)": d.isi_liter,
+        "Akhir Setelah Isi (CM)": d.akhir_setelah_isi_cm,
+        "Sisa Tangki (Liter)": d.sisa_tangki_liter,
+        "Rasio (Liter/HM)": d.rasio_liter_per_hm
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pemakaian Solar");
+      
+      const filename = `Pemakaian_Solar_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    }
+
+    // Helper Formatters
+    function formatDate(raw) {
+      if (!raw) return '-';
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return raw;
+      return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatNum(val) {
+      if (val === null || val === undefined || val === '') return '0';
+      const num = Number(val);
+      if (isNaN(num)) return '0';
+      return num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+  </script>
+
+</body>
+</html>

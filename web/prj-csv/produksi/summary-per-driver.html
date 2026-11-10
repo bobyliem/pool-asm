@@ -1,0 +1,546 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Summary Per Driver</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar tipis */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: Summary Per Driver) -->
+    <app-sidebar active-menu="Summary Per Driver"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+      
+      <!-- TITLE & BREADCRUMB -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>Produksi</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Summary Per Driver (CSV)</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-user-tie text-blue-600"></i>
+            Laporan Produksi: Summary Per Driver
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full font-mono">ss_pok</span>
+          </h2>
+          <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-id-card-clip text-slate-400"></i>
+              <span>Monitoring ritase, hari kerja, tonase muat/setor, dan susut (waste) per pengemudi</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-slate-200/60 px-2 py-0.5 rounded text-slate-600">
+              <i class="fa-solid fa-clock text-slate-400"></i>
+              <span>Last Update: <span id="lastUpdateVal" class="text-slate-700 font-semibold">Memuat...</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchDriverData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer" title="Refresh data">
+            <i class="fa-solid fa-rotate text-blue-600"></i> Refresh
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FORM INPUT) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center gap-2 font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <i class="fa-solid fa-filter text-blue-600"></i>
+          <span>Filter Periode Produksi</span>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUMMARY CARDS (RINGKASAN SEBELUM TABEL) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-xs">
+        <div class="flex items-center justify-between pb-2.5 mb-3.5 border-b border-slate-200">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-chart-pie text-blue-600"></i>
+            <span>Ringkasan Produksi Pengemudi</span>
+          </div>
+          <span class="text-[11px] text-slate-400 italic" id="summaryPeriodLabel">Memuat akumulasi...</span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <!-- 1. Total Driver & Ritase -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+              <span>Total Ritase</span>
+              <i class="fa-solid fa-users text-blue-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-slate-800 font-mono" id="cardTotalRit">0</div>
+              <div class="text-[10.5px] text-slate-500 mt-1 flex items-center gap-1">
+                <span class="font-bold text-slate-700" id="cardTotalDriver">0</span> Driver Aktif
+                <span class="text-slate-300">|</span>
+                <span class="font-semibold text-blue-600 font-mono" id="cardAvgRitPerDriver">0</span> Rit/Driver
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Total Muat (Qty Awal) -->
+          <div class="bg-indigo-50/40 border border-indigo-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-indigo-700 font-semibold mb-1">
+              <span>Total Muat (Awal)</span>
+              <i class="fa-solid fa-boxes-stacked text-indigo-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-indigo-700 font-mono" id="cardTotalMuat">0.00</div>
+              <div class="text-[10px] text-indigo-500 mt-1 font-medium">Tonase / Qty Muat Awal</div>
+            </div>
+          </div>
+
+          <!-- 3. Total Setor (Qty Akhir) -->
+          <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-emerald-700 font-semibold mb-1">
+              <span>Total Setor (Akhir)</span>
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-emerald-700 font-mono" id="cardTotalSetor">0.00</div>
+              <div class="text-[10px] text-emerald-600 mt-1 font-medium">Tonase / Qty Diterima</div>
+            </div>
+          </div>
+
+          <!-- 4. Total Waste (Susut) -->
+          <div class="bg-amber-50/40 border border-amber-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-amber-800 font-semibold mb-1">
+              <span>Total Waste (Susut)</span>
+              <i class="fa-solid fa-scale-unbalanced text-amber-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black font-mono" id="cardTotalWaste">0.00</div>
+              <div class="text-[10.5px] text-amber-700 mt-1 flex items-center gap-1 font-medium">
+                <span>Susut:</span>
+                <span class="font-bold font-mono" id="cardWastePercent">0.00%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Rata-rata / Rit -->
+          <div class="bg-purple-50/40 border border-purple-200 rounded-xl p-3 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-purple-700 font-semibold mb-1">
+              <span>Rata-rata / Rit</span>
+              <i class="fa-solid fa-chart-line text-purple-600"></i>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-purple-700 font-mono" id="cardRataPerRit">0.00</div>
+              <div class="text-[10.5px] text-purple-600 mt-1 flex items-center gap-1">
+                <span>Waste:</span>
+                <span class="font-bold font-mono" id="cardWastePerRit">0.00</span> /Rit
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN DATA TABLE -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        
+        <!-- Table Topbar -->
+        <div class="p-3.5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 bg-slate-50">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xs text-slate-800">Tabel Rincian Summary Driver</span>
+            <span id="badgeRowCount" class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10.5px]">0 Driver</span>
+          </div>
+
+          <div class="relative w-full sm:w-64">
+            <input type="text" id="quickSearchInput" oninput="applyQuickSearch()" placeholder="Cari nama sopir / driver..."
+              class="w-full pl-8 pr-3 py-1 border border-slate-300 rounded-lg text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2 text-[11px]"></i>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto max-h-[580px]">
+          <table class="w-full text-[11px] text-left border-collapse" id="driverTable">
+            <thead class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+              <tr>
+                <th class="py-2 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+                <th class="py-2 px-3 whitespace-nowrap">Nama Sopir</th>
+                <th class="py-2 px-2.5 text-center whitespace-nowrap">Jml Rit</th>
+                <th class="py-2 px-2.5 text-center whitespace-nowrap">Jml Hari</th>
+                <th class="py-2 px-2.5 text-right whitespace-nowrap">Rit / Hari</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-indigo-700">Total Muat</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-emerald-700">Total Setor</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-amber-700">Total Waste</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-purple-700">Rata / Rit</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap">Waste / Rit</th>
+              </tr>
+            </thead>
+            <tbody id="driverTableBody" class="divide-y divide-slate-200/70 text-[11px] font-normal">
+              <tr>
+                <td colspan="10" class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+                  Memuat data produksi summary driver...
+                </td>
+              </tr>
+            </tbody>
+            <!-- Table Footer Akumulasi -->
+            <tfoot id="driverTableFoot" class="bg-slate-100 border-t-2 border-slate-300 text-slate-800 font-bold text-[11px]">
+              <!-- Akan dirender dinamis via Javascript -->
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let rawDriverData = null;
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatInt(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID');
+    }
+
+    function getTodayString() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function initDates() {
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      document.getElementById('filterTglAwal').value = range.tglAwal;
+      document.getElementById('filterTglAkhir').value = range.tglAkhir;
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(today, today);
+      }
+      document.getElementById('filterTglAwal').value = today;
+      document.getElementById('filterTglAkhir').value = today;
+      fetchDriverData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+
+      const tglAwal = `${yyyy}-${mm}-01`;
+      const tglAkhir = `${yyyy}-${mm}-${dd}`;
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      }
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+      fetchDriverData();
+    }
+
+    function applyFilter() {
+      const valAwal = document.getElementById('filterTglAwal').value;
+      const valAkhir = document.getElementById('filterTglAkhir').value;
+
+      if (!valAwal || !valAkhir) {
+        alert('Silakan pilih Tgl Awal dan Tgl Akhir.');
+        return;
+      }
+
+      // 1. Simpan ke session
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+      }
+
+      // 2. Query data dengan parameter session
+      fetchDriverData();
+    }
+
+    async function fetchDriverData() {
+      // Ambil tglAwal & tglAkhir DARI SESSION
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      const tbody = document.getElementById('driverTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" class="py-8 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+            Mengambil data summary per driver...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const url = `/api/v1/csv/produksi/summary-per-driver?tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          rawDriverData = json.data;
+          const lastUpdateEl = document.getElementById('lastUpdateVal');
+          if (lastUpdateEl) {
+            lastUpdateEl.innerText = rawDriverData.last_update || '-';
+          }
+          renderSummary(rawDriverData.summary, tglAwal, tglAkhir);
+          renderTable(rawDriverData.items || []);
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="10" class="py-8 text-center text-rose-500 font-semibold">
+                Gagal memuat data: ${json.message || 'Terjadi kesalahan sistem'}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        console.error('Error fetching driver data:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" class="py-8 text-center text-rose-500 font-semibold">
+              Terjadi kesalahan jaringan atau server tidak merespon.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderSummary(summary, tglAwal, tglAkhir) {
+      if (!summary) return;
+
+      document.getElementById('summaryPeriodLabel').innerText = `${tglAwal} s/d ${tglAkhir}`;
+
+      document.getElementById('cardTotalRit').innerText = formatInt(summary.total_rit);
+      document.getElementById('cardTotalDriver').innerText = formatInt(summary.total_sopir);
+      document.getElementById('cardAvgRitPerDriver').innerText = formatNumber(summary.avg_rit_per_driver, 2);
+
+      document.getElementById('cardTotalMuat').innerText = formatNumber(summary.total_muat, 2);
+      document.getElementById('cardTotalSetor').innerText = formatNumber(summary.total_setor, 2);
+
+      const wasteEl = document.getElementById('cardTotalWaste');
+      wasteEl.innerText = formatNumber(summary.total_waste, 2);
+      if (summary.total_waste > 0) {
+        wasteEl.className = 'text-2xl font-black font-mono text-amber-700';
+      } else if (summary.total_waste < 0) {
+        wasteEl.className = 'text-2xl font-black font-mono text-emerald-700';
+      } else {
+        wasteEl.className = 'text-2xl font-black font-mono text-slate-800';
+      }
+
+      document.getElementById('cardWastePercent').innerText = `${formatNumber(summary.waste_percentage, 2)}%`;
+      document.getElementById('cardRataPerRit').innerText = formatNumber(summary.avg_setor_per_rit, 2);
+      document.getElementById('cardWastePerRit').innerText = formatNumber(summary.avg_waste_per_rit, 2);
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('driverTableBody');
+      const tfoot = document.getElementById('driverTableFoot');
+      document.getElementById('badgeRowCount').innerText = `${items.length} Driver`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" class="py-8 text-center text-slate-400">
+              <i class="fa-solid fa-inbox text-2xl text-slate-300 mb-2 block"></i>
+              Tidak ada data produksi driver pada periode tanggal ini.
+            </td>
+          </tr>
+        `;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      items.forEach((row, idx) => {
+        const wasteColor = row.total_waste > 0 ? 'text-amber-700' : (row.total_waste < 0 ? 'text-emerald-700' : 'text-slate-600');
+        const wasteRitColor = row.waste_per_rit > 0 ? 'text-amber-700' : (row.waste_per_rit < 0 ? 'text-emerald-700' : 'text-slate-600');
+
+        html += `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight">
+            <td class="py-2 px-2.5 text-center text-slate-400 whitespace-nowrap">${idx + 1}</td>
+            <td class="py-2 px-3 font-bold text-slate-900 whitespace-nowrap flex items-center gap-1.5">
+              <i class="fa-regular fa-circle-user text-slate-400 text-xs"></i>
+              <span>${row.sopir || '-'}</span>
+            </td>
+            <td class="py-2 px-2.5 text-center font-bold font-mono text-slate-800 whitespace-nowrap">${formatInt(row.jml_rit)}</td>
+            <td class="py-2 px-2.5 text-center font-semibold font-mono text-blue-700 whitespace-nowrap">${formatInt(row.jml_hari)}</td>
+            <td class="py-2 px-2.5 text-right font-mono text-slate-700 whitespace-nowrap">${formatNumber(row.rit_per_hari, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-indigo-700 font-semibold whitespace-nowrap">${formatNumber(row.ttl_muat, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-emerald-700 font-bold whitespace-nowrap">${formatNumber(row.ttl_setor, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono font-semibold ${wasteColor} whitespace-nowrap">${formatNumber(row.total_waste, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono text-purple-700 font-semibold whitespace-nowrap">${formatNumber(row.rata_per_rit, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono ${wasteRitColor} whitespace-nowrap">${formatNumber(row.waste_per_rit, 2)}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+
+      // Render tfoot jika ada summary
+      if (rawDriverData && rawDriverData.summary) {
+        const s = rawDriverData.summary;
+        const wasteColor = s.total_waste > 0 ? 'text-amber-800' : 'text-emerald-800';
+        tfoot.innerHTML = `
+          <tr class="leading-tight">
+            <td colspan="2" class="py-2.5 px-3 uppercase text-slate-700 font-bold tracking-wider">
+              TOTAL & RATA-RATA
+            </td>
+            <td class="py-2.5 px-2.5 text-center font-mono text-slate-900 font-black">${formatInt(s.total_rit)}</td>
+            <td class="py-2.5 px-2.5 text-center font-mono text-blue-800 font-black">-</td>
+            <td class="py-2.5 px-2.5 text-right font-mono text-slate-800">-</td>
+            <td class="py-2.5 px-3 text-right font-mono text-indigo-800 font-black">${formatNumber(s.total_muat, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-emerald-800 font-black">${formatNumber(s.total_setor, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-black ${wasteColor}">${formatNumber(s.total_waste, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono text-purple-800 font-black">${formatNumber(s.avg_setor_per_rit, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-mono">${formatNumber(s.avg_waste_per_rit, 2)}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function applyQuickSearch() {
+      const q = document.getElementById('quickSearchInput').value.toLowerCase().trim();
+      if (!rawDriverData || !rawDriverData.items) return;
+
+      if (!q) {
+        renderTable(rawDriverData.items);
+        return;
+      }
+
+      const filtered = rawDriverData.items.filter(item => {
+        return (item.sopir && item.sopir.toLowerCase().includes(q)) ||
+               (item.jml_rit && String(item.jml_rit).includes(q)) ||
+               (item.jml_hari && String(item.jml_hari).includes(q));
+      });
+
+      renderTable(filtered);
+    }
+
+    function exportToExcel() {
+      if (!rawDriverData || !rawDriverData.items || rawDriverData.items.length === 0) {
+        alert('Tidak ada data driver untuk diexport!');
+        return;
+      }
+
+      const exportRows = rawDriverData.items.map((r, i) => ({
+        'No': i + 1,
+        'Nama Sopir': r.sopir || '',
+        'Jml Rit': r.jml_rit || 0,
+        'Jml Hari': r.jml_hari || 0,
+        'Rit / Hari': r.rit_per_hari || 0,
+        'Total Muat': r.ttl_muat || 0,
+        'Total Setor': r.ttl_setor || 0,
+        'Total Waste': r.total_waste || 0,
+        'Rata / Rit': r.rata_per_rit || 0,
+        'Waste / Rit': r.waste_per_rit || 0,
+      }));
+
+      // Tambahkan baris total
+      if (rawDriverData.summary) {
+        const s = rawDriverData.summary;
+        exportRows.push({
+          'No': '',
+          'Nama Sopir': 'TOTAL / RATA-RATA',
+          'Jml Rit': s.total_rit,
+          'Jml Hari': '',
+          'Rit / Hari': '',
+          'Total Muat': s.total_muat,
+          'Total Setor': s.total_setor,
+          'Total Waste': s.total_waste,
+          'Rata / Rit': s.avg_setor_per_rit,
+          'Waste / Rit': s.avg_waste_per_rit,
+        });
+      }
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Summary_Driver");
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      XLSX.writeFile(wb, `Summary_Driver_${tglAwal}_sd_${tglAkhir}.xlsx`);
+    }
+
+    window.onload = () => {
+      initDates();
+      fetchDriverData();
+    };
+  </script>
+</body>
+</html>

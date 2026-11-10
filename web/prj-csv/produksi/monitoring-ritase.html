@@ -1,0 +1,690 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Monitoring Ritase</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Sticky columns shadow divider */
+    .sticky-col-divider {
+      box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.12);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: Monitoring Ritase) -->
+    <app-sidebar active-menu="Monitoring Ritase"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-3 overflow-y-auto bg-slate-100 space-y-2.5">
+      
+      <!-- COMPACT TOOLBAR (TITLE + FILTER + ACTIONS) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-2.5 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+        
+        <!-- Left: Title & Last Update -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 text-xs">
+            <i class="fa-solid fa-table-columns"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5 leading-tight">
+              <h2 class="text-xs font-bold text-slate-800">Monitoring Ritase</h2>
+              <span class="text-[9px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.2 rounded font-mono">ss_pok</span>
+            </div>
+            <div class="text-[9.5px] text-slate-500 flex items-center gap-1 mt-0.5">
+              <span>Last Update: <strong id="lastUpdateVal" class="text-slate-700 font-semibold">Memuat...</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: Inline Date Filter & Quick Buttons -->
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-center gap-1.5 text-xs">
+          <div class="flex items-center gap-1">
+            <input type="date" id="filterTglAwal" class="px-2 py-1 border border-slate-300 rounded-lg text-[11px] text-slate-800 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer w-[125px]">
+            <span class="text-slate-400 font-bold text-[10px]">s/d</span>
+            <input type="date" id="filterTglAkhir" class="px-2 py-1 border border-slate-300 rounded-lg text-[11px] text-slate-800 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer w-[125px]">
+          </div>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] px-3 py-1 rounded-lg shadow-xs flex items-center gap-1 transition cursor-pointer">
+            <i class="fa-solid fa-magnifying-glass text-[9.5px]"></i> Tampilkan
+          </button>
+          <div class="flex items-center gap-1 text-[10px]">
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-300 transition cursor-pointer">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickLast3Days()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-300 transition cursor-pointer font-medium">
+              3 Hari
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+          </div>
+        </form>
+
+        <!-- Right: Refresh & Export Excel -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="fetchMonitoringData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-[10.5px] px-2 py-1 rounded-lg shadow-xs flex items-center gap-1 transition cursor-pointer" title="Refresh">
+            <i class="fa-solid fa-rotate text-blue-600 text-[10px]"></i>
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] px-2.5 py-1 rounded-lg shadow-xs flex items-center gap-1 transition cursor-pointer font-medium">
+            <i class="fa-solid fa-file-excel text-[10px]"></i> Export Excel
+          </button>
+        </div>
+
+      </div>
+
+      <!-- COMPACT SUMMARY STRIP (1 BARIS MINI STATS) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1 shadow-xs flex flex-wrap items-center justify-between text-[10px] text-slate-600 gap-y-1">
+        <div class="flex items-center gap-1">
+          <i class="fa-solid fa-truck text-slate-400"></i>
+          <span>Armada:</span>
+          <strong id="statTotalUnit" class="text-slate-800 font-mono">0 Unit</strong>
+          <span class="text-blue-600 font-semibold">(<span id="statActiveUnit">0</span> Aktif)</span>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
+          <span>Ambil DO:</span>
+          <strong id="statAmbilDo" class="text-amber-900 font-mono font-bold">0 Rit</strong>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block"></span>
+          <span>Void:</span>
+          <strong id="statVoid" class="text-yellow-800 font-mono font-bold">0 Rit</strong>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+          <span>SJ Realisasi:</span>
+          <strong id="statSjRit" class="text-emerald-800 font-mono font-bold">0 Rit</strong>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="flex items-center gap-1">
+          <span>Total Setor:</span>
+          <strong id="statVolAkhir" class="text-indigo-800 font-mono font-bold">0.00 Ton</strong>
+          <span class="text-[9px] text-slate-400" id="statVolAsal">(Awal: 0.00 Ton)</span>
+        </div>
+        <span class="text-slate-300">|</span>
+        <div class="flex items-center gap-1">
+          <span>Selisih:</span>
+          <strong id="statSelisih" class="font-mono font-bold text-slate-800">0.00 Ton</strong>
+        </div>
+        <div class="text-[9.5px] text-slate-400 italic">
+          <span id="badgeColCount" class="bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-bold font-mono">0 Tanggal</span>
+        </div>
+      </div>
+
+      <!-- MATRIX DATA TABLE WITH STICKY/FREEZE PANES -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        
+        <!-- Scrollable Matrix Container -->
+        <div class="overflow-x-auto max-h-[640px] relative border-b border-slate-200">
+          <table class="w-max text-[9.5px] text-left border-separate border-spacing-0" id="matrixTable">
+            
+            <!-- Table Header Dinamis (3 Baris Header) -->
+            <thead class="sticky top-0 z-30 font-bold uppercase tracking-tight select-none" id="matrixHeader">
+              <!-- Baris 1: Kolom Tetap (No, Nopol, Supir) + Tanggal-Tanggal -->
+              <tr id="headerRow1" class="bg-slate-100 text-slate-700 border-b border-slate-300 text-[10px]">
+                <th rowspan="3" class="sticky left-0 z-40 bg-slate-200/90 py-1 px-1.5 text-center border-b-2 border-r border-slate-300 shadow-xs whitespace-nowrap sticky-col-1">No</th>
+                <th rowspan="3" class="sticky left-[28px] z-40 bg-slate-200/90 py-1 px-2 border-b-2 border-r border-slate-300 whitespace-nowrap sticky-col-2 text-center">No Polisi</th>
+                <th rowspan="3" class="sticky left-[105px] z-40 bg-slate-200/90 py-1 px-2 border-b-2 border-r-2 border-slate-400 sticky-col-divider whitespace-nowrap sticky-col-3">Nama Supir</th>
+                <!-- Kolom tanggal dinamis akan disuntikkan di sini -->
+              </tr>
+              <!-- Baris 2: Kategori (Ambil DO, Void, SJ Pending) per tanggal -->
+              <tr id="headerRow2" class="text-center border-b border-slate-300 text-[9px]">
+                <!-- Disuntikkan via JS -->
+              </tr>
+              <!-- Baris 3: Sub Kolom (Rit, Vol Asal, Vol Akhir, Selisih) -->
+              <tr id="headerRow3" class="text-center border-b-2 border-slate-400 text-[8.5px]">
+                <!-- Disuntikkan via JS -->
+              </tr>
+            </thead>
+
+            <!-- Table Body: 13 Unit Nopol -->
+            <tbody id="matrixBody" class="divide-y divide-slate-200/70 text-[9.5px] font-normal">
+              <tr>
+                <td colspan="15" class="py-10 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-1.5 block"></i>
+                  Memuat data matriks monitoring ritase...
+                </td>
+              </tr>
+            </tbody>
+
+            <!-- Table Footer: Akumulasi Total per Tanggal -->
+            <tfoot id="matrixFoot" class="sticky bottom-0 z-30 bg-slate-100 font-bold text-[9.5px] border-t-2 border-slate-400">
+              <!-- Disuntikkan via JS -->
+            </tfoot>
+
+          </table>
+        </div>
+
+        <!-- Legend / Keterangan Warna Minimalis -->
+        <div class="px-3 py-1.5 bg-slate-50 text-[9.5px] text-slate-600 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="font-bold text-slate-700">Legenda:</span>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 bg-amber-200 border border-amber-300 rounded inline-block"></span>
+              <span>Ambil DO</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 bg-yellow-200 border border-yellow-300 rounded inline-block"></span>
+              <span>Void</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 bg-emerald-200 border border-emerald-300 rounded inline-block"></span>
+              <span>SJ Realisasi</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 bg-rose-600 rounded inline-block text-[7px] text-white font-bold flex items-center justify-center">S</span>
+              <span>Selisih</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="w-2.5 h-2.5 bg-rose-50 border border-rose-200 rounded inline-block"></span>
+              <span>Standby (0 Rit)</span>
+            </div>
+          </div>
+          <div class="text-slate-400 italic">
+            * Kolom No, No Polisi, dan Nama Supir terkunci (Freeze Panes)
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let rawMonitoringData = null;
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatInt(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID');
+    }
+
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        const cleanDate = dateStr.slice(0, 10);
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) {
+          const d = new Date(parts[0], parts[1] - 1, parts[2]);
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          return `${parts[2]}-${months[d.getMonth()]}-${parts[0]}`;
+        }
+      } catch (e) {}
+      return dateStr;
+    }
+
+    function getTodayString() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    }
+
+    function initDates() {
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      document.getElementById('filterTglAwal').value = range.tglAwal;
+      document.getElementById('filterTglAkhir').value = range.tglAkhir;
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(today, today);
+      }
+      document.getElementById('filterTglAwal').value = today;
+      document.getElementById('filterTglAkhir').value = today;
+      fetchMonitoringData();
+    }
+
+    function setQuickLast3Days(trigger = true) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const endStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      
+      const past = new Date();
+      past.setDate(past.getDate() - 2);
+      const startStr = `${past.getFullYear()}-${pad(past.getMonth() + 1)}-${pad(past.getDate())}`;
+
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(startStr, endStr);
+      }
+      document.getElementById('filterTglAwal').value = startStr;
+      document.getElementById('filterTglAkhir').value = endStr;
+      if (trigger) fetchMonitoringData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+
+      const tglAwal = `${yyyy}-${mm}-01`;
+      const tglAkhir = `${yyyy}-${mm}-${dd}`;
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      }
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+      fetchMonitoringData();
+    }
+
+    function applyFilter() {
+      const valAwal = document.getElementById('filterTglAwal').value;
+      const valAkhir = document.getElementById('filterTglAkhir').value;
+
+      if (!valAwal || !valAkhir) {
+        alert('Silakan pilih Tgl Awal dan Tgl Akhir.');
+        return;
+      }
+
+      // 1. Simpan ke session
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+      }
+
+      // 2. Query data dengan parameter session
+      fetchMonitoringData();
+    }
+
+    async function fetchMonitoringData() {
+      // Ambil tglAwal & tglAkhir DARI SESSION
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+
+      const statusEl = document.getElementById('filterStatusLabel');
+      if (statusEl) {
+        statusEl.innerText = `Periode: ${tglAwal} s/d ${tglAkhir}`;
+      }
+
+      const tbody = document.getElementById('matrixBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="20" class="py-12 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-xl text-blue-600 mb-2 block"></i>
+            Mengambil data matriks monitoring ritase (${tglAwal} s/d ${tglAkhir})...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const url = `/api/v1/csv/produksi/monitoring-ritase?tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          rawMonitoringData = json.data;
+          
+          const lastUpdateEl = document.getElementById('lastUpdateVal');
+          if (lastUpdateEl) {
+            lastUpdateEl.innerText = rawMonitoringData.last_update || '-';
+          }
+
+          renderMiniStats(rawMonitoringData);
+          renderMatrixTable(rawMonitoringData);
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="20" class="py-10 text-center text-rose-500 font-semibold">
+                Gagal memuat data: ${json.message || 'Terjadi kesalahan sistem'}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        console.error('Error fetching monitoring data:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="20" class="py-10 text-center text-rose-500 font-semibold">
+              Terjadi kesalahan jaringan atau server tidak merespon.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderMiniStats(data) {
+      const g = data.grand_total || {};
+      const rows = data.rows || [];
+      const totalArmada = rows.length;
+      
+      let activeCount = 0;
+      rows.forEach(r => {
+        let hasRit = false;
+        if (r.data) {
+          for (let k in r.data) {
+            if (r.data[k].ambil_do > 0 || r.data[k].sj_rit > 0) {
+              hasRit = true;
+              break;
+            }
+          }
+        }
+        if (hasRit) activeCount++;
+      });
+
+      document.getElementById('statTotalUnit').innerText = `${totalArmada} Unit`;
+      document.getElementById('statActiveUnit').innerText = `${activeCount} Unit Aktif`;
+
+      document.getElementById('statAmbilDo').innerText = `${formatInt(g.ambil_do)} Rit`;
+      document.getElementById('statVoid').innerText = `${formatInt(g.void_rit)} Rit`;
+      document.getElementById('statSjRit').innerText = `${formatInt(g.sj_rit)} Rit`;
+
+      document.getElementById('statVolAkhir').innerText = `${formatNumber(g.vol_akhir, 2)} Ton`;
+      document.getElementById('statVolAsal').innerText = `Awal: ${formatNumber(g.vol_asal, 2)} Ton`;
+
+      const selEl = document.getElementById('statSelisih');
+      selEl.innerText = `${formatNumber(g.selisih, 2)} Ton`;
+      if (g.selisih < 0) {
+        selEl.className = 'text-lg font-black font-mono mt-0.5 text-rose-600';
+      } else if (g.selisih > 0) {
+        selEl.className = 'text-lg font-black font-mono mt-0.5 text-emerald-600';
+      } else {
+        selEl.className = 'text-lg font-black font-mono mt-0.5 text-slate-800';
+      }
+    }
+
+    function renderMatrixTable(data) {
+      const dates = data.dates || [];
+      const rows = data.rows || [];
+      const totals = data.totals || {};
+
+      document.getElementById('badgeColCount').innerText = `${dates.length} Tanggal`;
+
+      // 1. RENDER HEADER BARIS 1, 2, 3
+      const hRow1 = document.getElementById('headerRow1');
+      const hRow2 = document.getElementById('headerRow2');
+      const hRow3 = document.getElementById('headerRow3');
+
+      // Reset kolom dinamis di Header Baris 1 (tetap pertahankan 3 kolom awal: No, Nopol, Supir)
+      hRow1.innerHTML = `
+        <th rowspan="3" class="sticky left-0 z-40 bg-slate-200/90 py-1 px-1.5 text-center border-b-2 border-r border-slate-300 shadow-xs whitespace-nowrap sticky-col-1 font-bold">No</th>
+        <th rowspan="3" class="sticky left-[28px] z-40 bg-slate-200/90 py-1 px-2 border-b-2 border-r border-slate-300 whitespace-nowrap sticky-col-2 font-bold text-center">No Polisi</th>
+        <th rowspan="3" class="sticky left-[105px] z-40 bg-slate-200/90 py-1 px-2 border-b-2 border-r-2 border-slate-400 sticky-col-divider whitespace-nowrap sticky-col-3 font-bold">Nama Supir</th>
+      `;
+      hRow2.innerHTML = '';
+      hRow3.innerHTML = '';
+
+      dates.forEach(d => {
+        const dFmt = formatDisplayDate(d);
+        // Baris 1: Tanggal (Colspan 6)
+        hRow1.innerHTML += `
+          <th colspan="6" class="py-1 px-1 text-center bg-slate-100 text-slate-800 font-bold border-b border-r-2 border-slate-400 text-[10px] tracking-tight whitespace-nowrap">
+            ${dFmt}
+          </th>
+        `;
+
+        // Baris 2: Ambil DO (1), Void (1), SJ Pending (4)
+        hRow2.innerHTML += `
+          <th class="py-0.5 px-1 bg-amber-200/90 text-amber-950 font-bold border-b border-r border-amber-300 text-[9px] whitespace-nowrap">Ambil DO</th>
+          <th class="py-0.5 px-1 bg-yellow-200/90 text-yellow-950 font-bold border-b border-r border-yellow-300 text-[9px] whitespace-nowrap">Void</th>
+          <th colspan="4" class="py-0.5 px-1 bg-emerald-200/90 text-emerald-950 font-bold border-b border-r-2 border-slate-400 text-[9px] whitespace-nowrap">SJ Pending</th>
+        `;
+
+        // Baris 3: Rit, Rit, Rit, Vol Asal, Vol Akhir, Selisih
+        hRow3.innerHTML += `
+          <th class="py-0.5 px-0.5 bg-amber-100/90 text-amber-900 border-b-2 border-r border-amber-200 w-[30px] min-w-[30px] text-center text-[8.5px]">Rit</th>
+          <th class="py-0.5 px-0.5 bg-yellow-100/90 text-yellow-900 border-b-2 border-r border-yellow-200 w-[28px] min-w-[28px] text-center text-[8.5px]">Rit</th>
+          <th class="py-0.5 px-0.5 bg-emerald-100/90 text-emerald-900 border-b-2 border-r border-emerald-200 w-[28px] min-w-[28px] text-center text-[8.5px]">Rit</th>
+          <th class="py-0.5 px-1 bg-emerald-100/90 text-emerald-900 border-b-2 border-r border-emerald-200 w-[48px] min-w-[48px] text-right text-[8.5px]">Vol Asal</th>
+          <th class="py-0.5 px-1 bg-emerald-100/90 text-emerald-900 border-b-2 border-r border-emerald-200 w-[48px] min-w-[48px] text-right text-[8.5px]">Vol Akhir</th>
+          <th class="py-0.5 px-1 bg-rose-600 text-white font-bold border-b-2 border-r-2 border-slate-400 w-[44px] min-w-[44px] text-right text-[8.5px]">Selisih</th>
+        `;
+      });
+
+      // 2. RENDER BODY (ROWS)
+      const tbody = document.getElementById('matrixBody');
+      if (rows.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${3 + dates.length * 6}" class="py-10 text-center text-slate-400">
+              Tidak ada data armada.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let bodyHtml = '';
+      rows.forEach((r, idx) => {
+        bodyHtml += `<tr class="hover:bg-slate-50 transition border-b border-slate-200/60 leading-tight">`;
+        
+        // Sticky Kolom No, Nopol, Supir (Auto-resize sesuai panjang karakter)
+        bodyHtml += `
+          <td class="sticky left-0 z-20 bg-white group-hover:bg-slate-50 py-1 px-1.5 text-center text-slate-400 border-r border-slate-200 font-mono text-[9px] whitespace-nowrap sticky-col-1">${idx + 1}</td>
+          <td class="sticky left-[28px] z-20 bg-white group-hover:bg-slate-50 py-1 px-2 font-bold font-mono text-slate-800 border-r border-slate-200 whitespace-nowrap text-[9.5px] sticky-col-2">${r.nopol}</td>
+          <td class="sticky left-[105px] z-20 bg-white group-hover:bg-slate-50 py-1 px-2 font-semibold text-slate-700 border-r-2 border-slate-400 sticky-col-divider whitespace-nowrap text-[9.5px] sticky-col-3" title="${r.sopir || ''}">${r.sopir || '-'}</td>
+        `;
+
+        // Render Kolom Tanggal
+        dates.forEach(d => {
+          const c = (r.data && r.data[d]) ? r.data[d] : { ambil_do: 0, void_rit: 0, sj_rit: 0, vol_asal: 0, vol_akhir: 0, selisih: 0 };
+          const isZero = (c.ambil_do === 0 && c.void_rit === 0 && c.sj_rit === 0);
+
+          if (isZero) {
+            // Style merah muda lembut untuk armada yang tidak beroperasi di hari itu (seperti screenshot)
+            bodyHtml += `
+              <td class="py-1 px-0.5 text-center bg-rose-50/70 text-slate-400 font-mono border-r border-slate-200 text-[9.5px]">0</td>
+              <td class="py-1 px-0.5 text-center bg-rose-50/70 text-slate-400 font-mono border-r border-slate-200 text-[9.5px]">0</td>
+              <td class="py-1 px-0.5 text-center bg-rose-50/70 text-slate-400 font-mono border-r border-slate-200 text-[9.5px]">0</td>
+              <td class="py-1 px-1 text-right bg-rose-50/70 text-slate-400 font-mono border-r border-slate-200 text-[9.5px]">0</td>
+              <td class="py-1 px-1 text-right bg-rose-50/70 text-slate-400 font-mono border-r border-slate-200 text-[9.5px]">0</td>
+              <td class="py-1 px-1 text-right bg-rose-50/70 text-slate-400 font-mono border-r-2 border-slate-400 text-[9.5px]">0</td>
+            `;
+          } else {
+            // Unit beroperasi
+            let selisihColor = 'text-slate-700';
+            let selisihSign = '';
+            if (c.selisih < 0) {
+              selisihColor = 'text-rose-600 font-bold';
+            } else if (c.selisih > 0) {
+              selisihColor = 'text-emerald-600 font-bold';
+              selisihSign = '+';
+            }
+
+            bodyHtml += `
+              <td class="py-1 px-0.5 text-center font-bold font-mono text-slate-800 border-r border-slate-200 bg-amber-50/20 text-[9.5px]">${c.ambil_do}</td>
+              <td class="py-1 px-0.5 text-center font-bold font-mono text-yellow-700 border-r border-slate-200 bg-yellow-50/20 text-[9.5px]">${c.void_rit}</td>
+              <td class="py-1 px-0.5 text-center font-bold font-mono text-emerald-700 border-r border-slate-200 bg-emerald-50/20 text-[9.5px]">${c.sj_rit}</td>
+              <td class="py-1 px-1 text-right font-mono text-slate-700 border-r border-slate-200 text-[9.5px]">${formatNumber(c.vol_asal, 2)}</td>
+              <td class="py-1 px-1 text-right font-mono text-slate-800 font-medium border-r border-slate-200 text-[9.5px]">${formatNumber(c.vol_akhir, 2)}</td>
+              <td class="py-1 px-1 text-right font-mono border-r-2 border-slate-400 ${selisihColor} text-[9.5px]">${selisihSign}${formatNumber(c.selisih, 2)}</td>
+            `;
+          }
+        });
+
+        bodyHtml += `</tr>`;
+      });
+      tbody.innerHTML = bodyHtml;
+
+      // 3. RENDER FOOTER (TOTALS)
+      const tfoot = document.getElementById('matrixFoot');
+      let footHtml = `
+        <tr class="leading-tight">
+          <td colspan="3" class="sticky left-0 z-40 bg-slate-200 py-1.5 px-2 uppercase text-slate-800 font-black tracking-wider border-r-2 border-slate-400 sticky-col-divider text-[9.5px] whitespace-nowrap">
+            TOTAL HARIAN
+          </td>
+      `;
+
+      dates.forEach(d => {
+        const tot = totals[d] || { ambil_do: 0, void_rit: 0, sj_rit: 0, vol_asal: 0, vol_akhir: 0, selisih: 0 };
+        let selColor = tot.selisih < 0 ? 'text-rose-600' : (tot.selisih > 0 ? 'text-emerald-600' : 'text-slate-800');
+        let selSign = tot.selisih > 0 ? '+' : '';
+
+        footHtml += `
+          <td class="py-1.5 px-0.5 text-center font-mono font-black text-slate-900 border-r border-slate-300 bg-amber-100/60 text-[9.5px]">${formatInt(tot.ambil_do)}</td>
+          <td class="py-1.5 px-0.5 text-center font-mono font-black text-yellow-800 border-r border-slate-300 bg-yellow-100/60 text-[9.5px]">${formatInt(tot.void_rit)}</td>
+          <td class="py-1.5 px-0.5 text-center font-mono font-black text-emerald-800 border-r border-slate-300 bg-emerald-100/60 text-[9.5px]">${formatInt(tot.sj_rit)}</td>
+          <td class="py-1.5 px-1 text-right font-mono font-black text-slate-800 border-r border-slate-300 text-[9.5px]">${formatNumber(tot.vol_asal, 2)}</td>
+          <td class="py-1.5 px-1 text-right font-mono font-black text-slate-900 border-r border-slate-300 text-[9.5px]">${formatNumber(tot.vol_akhir, 2)}</td>
+          <td class="py-1.5 px-1 text-right font-mono font-black border-r-2 border-slate-400 ${selColor} text-[9.5px]">${selSign}${formatNumber(tot.selisih, 2)}</td>
+        `;
+      });
+
+      footHtml += `</tr>`;
+      tfoot.innerHTML = footHtml;
+
+      // Auto-adjust posisi sticky left untuk kolom 2 dan 3 sesuai lebar asli kolom
+      updateStickyPositions();
+    }
+
+    // Hitung posisi left sticky secara dinamis berdasarkan lebar konten kolom 1 dan 2
+    function updateStickyPositions() {
+      requestAnimationFrame(() => {
+        const th1 = document.querySelector('#headerRow1 th.sticky-col-1');
+        const th2 = document.querySelector('#headerRow1 th.sticky-col-2');
+        if (!th1 || !th2) return;
+
+        const w1 = th1.getBoundingClientRect().width;
+        const w2 = th2.getBoundingClientRect().width;
+
+        const left2 = `${Math.round(w1)}px`;
+        const left3 = `${Math.round(w1 + w2)}px`;
+
+        document.querySelectorAll('.sticky-col-2').forEach(el => {
+          el.style.left = left2;
+        });
+        document.querySelectorAll('.sticky-col-3').forEach(el => {
+          el.style.left = left3;
+        });
+      });
+    }
+
+    window.addEventListener('resize', updateStickyPositions);
+
+    function exportToExcel() {
+      if (!rawMonitoringData || !rawMonitoringData.rows || rawMonitoringData.rows.length === 0) {
+        alert('Tidak ada data monitoring ritase untuk diexport!');
+        return;
+      }
+
+      const dates = rawMonitoringData.dates || [];
+      const rows = rawMonitoringData.rows || [];
+      const totals = rawMonitoringData.totals || {};
+
+      // Susun Header 3 Baris untuk SheetJS
+      // Baris 1: No, No Polisi, Nama Supir, [Tanggal ... 6 cell per tgl]
+      const r1 = ['', '', ''];
+      const r2 = ['No', 'No Polisi', 'Nama Supir'];
+      const r3 = ['', '', ''];
+
+      dates.forEach(d => {
+        const dFmt = formatDisplayDate(d);
+        r1.push(dFmt, '', '', '', '', '');
+        r2.push('Ambil DO', 'Void', 'SJ Pending', '', '', '');
+        r3.push('Rit', 'Rit', 'Rit', 'Volume Asal', 'Volume Akhir', 'Selisih');
+      });
+
+      const excelData = [r1, r2, r3];
+
+      // Susun Baris Data
+      rows.forEach((r, idx) => {
+        const rowArr = [idx + 1, r.nopol, r.sopir || ''];
+        dates.forEach(d => {
+          const c = (r.data && r.data[d]) ? r.data[d] : { ambil_do: 0, void_rit: 0, sj_rit: 0, vol_asal: 0, vol_akhir: 0, selisih: 0 };
+          rowArr.push(c.ambil_do, c.void_rit, c.sj_rit, c.vol_asal, c.vol_akhir, c.selisih);
+        });
+        excelData.push(rowArr);
+      });
+
+      // Susun Baris Total
+      const totArr = ['', 'TOTAL', ''];
+      dates.forEach(d => {
+        const t = totals[d] || { ambil_do: 0, void_rit: 0, sj_rit: 0, vol_asal: 0, vol_akhir: 0, selisih: 0 };
+        totArr.push(t.ambil_do, t.void_rit, t.sj_rit, t.vol_asal, t.vol_akhir, t.selisih);
+      });
+      excelData.push(totArr);
+
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+      // Konfigurasi Merge Cells untuk Header Bertingkat
+      const merges = [
+        // Merge No: Baris 0 s/d 2, Kolom 0
+        { s: { r: 1, c: 0 }, e: { r: 2, c: 0 } },
+        // Merge Nopol: Baris 0 s/d 2, Kolom 1
+        { s: { r: 1, c: 1 }, e: { r: 2, c: 1 } },
+        // Merge Supir: Baris 0 s/d 2, Kolom 2
+        { s: { r: 1, c: 2 }, e: { r: 2, c: 2 } },
+      ];
+
+      dates.forEach((d, i) => {
+        const startCol = 3 + (i * 6);
+        // Merge Tanggal (6 kolom): Baris 0
+        merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 5 } });
+        // Merge SJ Pending (4 kolom): Baris 1, Col 2 s/d 5
+        merges.push({ s: { r: 1, c: startCol + 2 }, e: { r: 1, c: startCol + 5 } });
+      });
+
+      ws['!merges'] = merges;
+
+      // Konfigurasi FREEZE PANES Excel: Bekukan Kolom A, B, C dan Baris Header 1-3
+      ws['!freeze'] = { 
+        xSplit: "D", 
+        ySplit: "4", 
+        topLeftCell: "D5", 
+        activePane: "bottomRight", 
+        state: "frozen" 
+      };
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Monitoring_Ritase");
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      XLSX.writeFile(wb, `Monitoring_Ritase_${tglAwal}_sd_${tglAkhir}.xlsx`);
+    }
+
+    window.onload = () => {
+      initDates();
+      fetchMonitoringData();
+    };
+  </script>
+</body>
+</html>

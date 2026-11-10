@@ -1,0 +1,621 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop - Laporan SPK Per Cust</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    /* Custom scrollbar tipis */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR (Active Menu: SPK Per Cust) -->
+    <app-sidebar active-menu="SPK Per Cust"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+      
+      <!-- TITLE & BREADCRUMB -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>SPK Harian</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Laporan SPK Per Cust</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice text-blue-600"></i>
+            Laporan SPK Per Customer
+          </h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="fetchSpkData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-rotate text-blue-600"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FORM INPUT) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center gap-2 font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <i class="fa-solid fa-filter text-blue-600"></i>
+          <span>Filter Laporan</span>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <!-- 1. Periode Date Picker -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input type="date" id="filterTglAwal" onchange="onPeriodChange()"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <input type="date" id="filterTglAkhir" onchange="onPeriodChange()"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- 2. Area Dropdown -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Area</label>
+            <select id="filterArea" onchange="onAreaChange(this.value)"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
+          <!-- 3. Customer Dropdown -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Customer</label>
+            <select id="filterCustomer" onchange="onCustomerChange(this.value)"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
+          <!-- 4. Purpose Dropdown & Action Buttons -->
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-600">Purpose</label>
+            <div class="flex gap-2">
+              <select id="filterPurpose" onchange="onPurposeChange(this.value)"
+                class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                <option value="ALL">ALL</option>
+              </select>
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg flex items-center gap-1.5 transition shrink-0 shadow-xs cursor-pointer">
+                <i class="fa-solid fa-magnifying-glass"></i> Filter
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUMMARY MATRIX CARD (EXISTING vs OMSET vs PENDING) -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-chart-pie text-blue-600"></i>
+            <span>Ringkasan Nilai SPK (Existing, Omset & Pending)</span>
+          </div>
+          <span class="text-[11px] text-slate-500 italic">
+            *Omset dihitung dari SPK yang sudah Close, Pending = Existing - Omset
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead class="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+              <tr>
+                <th class="py-2.5 px-4 w-44">Tipe Data</th>
+                <th class="py-2.5 px-4 text-center w-28">Total SPK</th>
+                <th class="py-2.5 px-4 text-right">Total Jasa (Service)</th>
+                <th class="py-2.5 px-4 text-right">Total Part</th>
+                <th class="py-2.5 px-4 text-right">Total Ban</th>
+                <th class="py-2.5 px-4 text-right font-black">Grand Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 text-xs font-medium">
+              <!-- 1. Existing -->
+              <tr class="hover:bg-slate-50/80 transition">
+                <td class="py-2.5 px-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                    <i class="fa-solid fa-database text-slate-600"></i> Data Existing
+                  </span>
+                </td>
+                <td id="matrixExistingCount" class="py-2.5 px-4 text-center font-bold text-slate-800">0</td>
+                <td id="matrixExistingService" class="py-2.5 px-4 text-right text-blue-700 font-semibold">Rp 0</td>
+                <td id="matrixExistingPart" class="py-2.5 px-4 text-right text-amber-700 font-semibold">Rp 0</td>
+                <td id="matrixExistingBan" class="py-2.5 px-4 text-right text-purple-700 font-semibold">Rp 0</td>
+                <td id="matrixExistingGrand" class="py-2.5 px-4 text-right font-bold text-slate-900">Rp 0</td>
+              </tr>
+              <!-- 2. Omset -->
+              <tr class="hover:bg-emerald-50/40 bg-emerald-50/20 transition">
+                <td class="py-2.5 px-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Data Omset
+                  </span>
+                </td>
+                <td id="matrixOmsetCount" class="py-2.5 px-4 text-center font-bold text-emerald-800">0</td>
+                <td id="matrixOmsetService" class="py-2.5 px-4 text-right text-emerald-700 font-semibold">Rp 0</td>
+                <td id="matrixOmsetPart" class="py-2.5 px-4 text-right text-emerald-700 font-semibold">Rp 0</td>
+                <td id="matrixOmsetBan" class="py-2.5 px-4 text-right text-emerald-700 font-semibold">Rp 0</td>
+                <td id="matrixOmsetGrand" class="py-2.5 px-4 text-right font-black text-emerald-800">Rp 0</td>
+              </tr>
+              <!-- 3. Pending -->
+              <tr class="hover:bg-amber-50/40 bg-amber-50/20 transition">
+                <td class="py-2.5 px-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-600"></i> Data Pending
+                  </span>
+                </td>
+                <td id="matrixPendingCount" class="py-2.5 px-4 text-center font-bold text-amber-800">0</td>
+                <td id="matrixPendingService" class="py-2.5 px-4 text-right text-amber-700 font-semibold">Rp 0</td>
+                <td id="matrixPendingPart" class="py-2.5 px-4 text-right text-amber-700 font-semibold">Rp 0</td>
+                <td id="matrixPendingBan" class="py-2.5 px-4 text-right text-amber-700 font-semibold">Rp 0</td>
+                <td id="matrixPendingGrand" class="py-2.5 px-4 text-right font-black text-amber-800">Rp 0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REPORT TABLE CARD -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden flex flex-col">
+        
+        <!-- Table Toolbar -->
+        <div class="p-3 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-2">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xs text-slate-700">Daftar Data SPK</span>
+            <span id="badgeRowCount" class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+              0 Data
+            </span>
+          </div>
+          <div class="w-full sm:w-64 relative">
+            <input type="text" id="tableSearch" onkeyup="filterTableLive()" placeholder="Cari SPK, Nopol, Cust..."
+              class="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2.5 text-xs"></i>
+          </div>
+        </div>
+
+        <!-- Table Responsive Wrapper -->
+        <div class="overflow-x-auto min-h-[300px]">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-300 text-slate-600 font-bold sticky top-0">
+              <tr>
+                <th class="py-2 px-3 text-center w-12">No</th>
+                <th class="py-2 px-3">Site</th>
+                <th class="py-2 px-3">Tgl Masuk</th>
+                <th class="py-2 px-3">Close SPK</th>
+                <th class="py-2 px-3">Nopol</th>
+                <th class="py-2 px-3">Cust Code</th>
+                <th class="py-2 px-3">Kategori</th>
+                <th class="py-2 px-3">Purpose</th>
+                <th class="py-2 px-3">No. SPK</th>
+                <th class="py-2 px-3 text-right">Service (Rp)</th>
+                <th class="py-2 px-3 text-right">Part (Rp)</th>
+                <th class="py-2 px-3 text-right">Ban (Rp)</th>
+                <th class="py-2 px-3 text-right">Total (Rp)</th>
+                <th class="py-2 px-3">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="spkTableBody" class="divide-y divide-slate-200 text-[11px]">
+              <tr>
+                <td colspan="14" class="text-center py-8 text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data SPK...
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-300 text-[11px] text-slate-800">
+              <tr>
+                <td colspan="9" class="py-2.5 px-3 text-right uppercase tracking-wider">Total:</td>
+                <td id="footerService" class="py-2.5 px-3 text-right text-blue-700">0</td>
+                <td id="footerPart" class="py-2.5 px-3 text-right text-amber-700">0</td>
+                <td id="footerBan" class="py-2.5 px-3 text-right text-purple-700">0</td>
+                <td id="footerGrandTotal" class="py-2.5 px-3 text-right text-emerald-700 font-black">0</td>
+                <td class="py-2.5 px-3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let rawSpkData = [];
+
+    // Helper: Get Today's Date in YYYY-MM-DD format
+    function getTodayDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // Initialize Filter Sessions & Form Controls
+    async function initFilters() {
+      // 1. Periode (tglawal & tglakhir dari session)
+      const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayDate(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayDate()
+      };
+      sessionStorage.setItem('tglawal', tglAwal);
+      sessionStorage.setItem('tglakhir', tglAkhir);
+
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+
+      // 2. Area
+      if (!sessionStorage.getItem('area')) {
+        sessionStorage.setItem('area', 'ALL');
+      }
+
+      // 3. Customer
+      if (!sessionStorage.getItem('cust')) {
+        sessionStorage.setItem('cust', 'ALL');
+      }
+
+      // 4. Purpose
+      if (!sessionStorage.getItem('purpose')) {
+        sessionStorage.setItem('purpose', 'ALL');
+      }
+
+      // Load dropdown options based on current session period & area
+      const currentArea = sessionStorage.getItem('area') || 'ALL';
+      await loadFilterOptions(tglAwal, tglAkhir, currentArea, true);
+    }
+
+    // Load Dropdown Options from Backend
+    async function loadFilterOptions(tglAwal, tglAkhir, areaVal, refreshArea = true) {
+      try {
+        const areaParam = areaVal !== undefined ? areaVal : (sessionStorage.getItem('area') || 'ALL');
+        const res = await fetch(`/api/v1/reports/spk-filter-options?tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}&area=${encodeURIComponent(areaParam)}`);
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const { areas = [], customers = [], purposes = [] } = json.data;
+
+          // Populate Area Dropdown (only on initial load or date change)
+          if (refreshArea) {
+            const areaSelect = document.getElementById('filterArea');
+            const savedArea = sessionStorage.getItem('area') || 'ALL';
+            areaSelect.innerHTML = '<option value="ALL">ALL</option>';
+            areas.forEach(item => {
+              const opt = document.createElement('option');
+              opt.value = item.id;
+              opt.textContent = item.site;
+              areaSelect.appendChild(opt);
+            });
+            // Restore selected value if exists, else fallback to ALL
+            areaSelect.value = Array.from(areaSelect.options).some(o => o.value === savedArea) ? savedArea : 'ALL';
+            sessionStorage.setItem('area', areaSelect.value);
+          }
+
+          // Populate Customer Dropdown (filtered by selected area)
+          const custSelect = document.getElementById('filterCustomer');
+          const savedCust = sessionStorage.getItem('cust') || 'ALL';
+          custSelect.innerHTML = '<option value="ALL">ALL</option>';
+          customers.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.code;
+            custSelect.appendChild(opt);
+          });
+          custSelect.value = Array.from(custSelect.options).some(o => o.value === savedCust) ? savedCust : 'ALL';
+          sessionStorage.setItem('cust', custSelect.value);
+
+          // Populate Purpose Dropdown (only on initial load or date change)
+          if (refreshArea) {
+            const purposeSelect = document.getElementById('filterPurpose');
+            const savedPurpose = sessionStorage.getItem('purpose') || 'ALL';
+            purposeSelect.innerHTML = '<option value="ALL">ALL</option>';
+            purposes.forEach(item => {
+              const opt = document.createElement('option');
+              opt.value = item;
+              opt.textContent = item;
+              purposeSelect.appendChild(opt);
+            });
+            purposeSelect.value = Array.from(purposeSelect.options).some(o => o.value === savedPurpose) ? savedPurpose : 'ALL';
+            sessionStorage.setItem('purpose', purposeSelect.value);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading filter options:', err);
+      }
+    }
+
+    // Event Handler: When date period input changes
+    async function onPeriodChange() {
+      const valAwal = document.getElementById('filterTglAwal').value || getTodayDate();
+      const valAkhir = document.getElementById('filterTglAkhir').value || getTodayDate();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      }
+      sessionStorage.setItem('tglawal', valAwal);
+      sessionStorage.setItem('tglakhir', valAkhir);
+
+      const currentArea = sessionStorage.getItem('area') || 'ALL';
+      await loadFilterOptions(valAwal, valAkhir, currentArea, true);
+      fetchSpkData();
+    }
+
+    // Event Handler: When Area dropdown changes
+    async function onAreaChange(newArea) {
+      sessionStorage.setItem('area', newArea);
+      const tglAwal = document.getElementById('filterTglAwal').value || getTodayDate();
+      const tglAkhir = document.getElementById('filterTglAkhir').value || getTodayDate();
+
+      // Reload customer options for the newly selected area
+      await loadFilterOptions(tglAwal, tglAkhir, newArea, false);
+      fetchSpkData();
+    }
+
+    // Event Handler: When Customer dropdown changes
+    function onCustomerChange(newCust) {
+      sessionStorage.setItem('cust', newCust);
+      fetchSpkData();
+    }
+
+    // Event Handler: When Purpose dropdown changes
+    function onPurposeChange(newPurpose) {
+      sessionStorage.setItem('purpose', newPurpose);
+      fetchSpkData();
+    }
+
+    // Format Rupiah
+    function formatRupiah(num) {
+      if (isNaN(num) || num === null || num === undefined) return '0';
+      return new Intl.NumberFormat('id-ID').format(Math.floor(num));
+    }
+
+    // Format Tanggal & Jam (e.g., 07 Aug 2026 17:52)
+    function formatDateTime(dateStr) {
+      if (!dateStr || dateStr.startsWith('0001-01-01')) return '-';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return d.toLocaleDateString('id-ID', options);
+    }
+
+    // Fetch data from API
+    async function fetchSpkData() {
+      const tbody = document.getElementById('spkTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="14" class="text-center py-8 text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin mr-1"></i> Memuat data SPK...
+          </td>
+        </tr>
+      `;
+
+      try {
+        const { tglAwal, tglAkhir } = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+          tglAwal: sessionStorage.getItem('tglawal') || getTodayDate(),
+          tglAkhir: sessionStorage.getItem('tglakhir') || getTodayDate()
+        };
+        const area = sessionStorage.getItem('area') || document.getElementById('filterArea').value || 'ALL';
+        const cust = sessionStorage.getItem('cust') || document.getElementById('filterCustomer').value || 'ALL';
+        const purpose = sessionStorage.getItem('purpose') || document.getElementById('filterPurpose').value || 'ALL';
+
+        const params = new URLSearchParams({
+          tglawal: tglAwal,
+          tglakhir: tglAkhir,
+          area: area,
+          cust: cust,
+          purpose: purpose
+        });
+
+        const response = await fetch(`/api/v1/reports/spk-per-cust?${params.toString()}`);
+        const res = await response.json();
+
+        if (res.status === 'success') {
+          rawSpkData = res.data || [];
+          renderTable(rawSpkData);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="14" class="text-center py-6 text-rose-500 font-semibold">Gagal memuat data: ${res.message}</td></tr>`;
+        }
+      } catch (err) {
+        console.error('Error fetching SPK data:', err);
+        tbody.innerHTML = `<tr><td colspan="14" class="text-center py-6 text-rose-500 font-semibold">Terjadi kesalahan koneksi ke server.</td></tr>`;
+      }
+    }
+
+    // Render Table Data
+    function renderTable(data) {
+      const tbody = document.getElementById('spkTableBody');
+      const badgeCount = document.getElementById('badgeRowCount');
+      badgeCount.innerText = `${data.length} Data`;
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="14" class="text-center py-8 text-slate-400">Tidak ada data SPK yang ditemukan.</td></tr>`;
+        const zero = { count: 0, service: 0, part: 0, ban: 0, grand: 0 };
+        updateSummaryMatrix(zero, zero, zero);
+        return;
+      }
+
+      let existing = { count: 0, service: 0, part: 0, ban: 0, grand: 0 };
+      let omset = { count: 0, service: 0, part: 0, ban: 0, grand: 0 };
+      let pending = { count: 0, service: 0, part: 0, ban: 0, grand: 0 };
+
+      tbody.innerHTML = data.map((item, idx) => {
+        const service = item.service || 0;
+        const part = item.part || 0;
+        const ban = item.ban || 0;
+        const rowTotal = service + part + ban;
+
+        // 1. Data Existing (semua baris)
+        existing.count++;
+        existing.service += service;
+        existing.part += part;
+        existing.ban += ban;
+        existing.grand += rowTotal;
+
+        // 2. Data Omset (hanya yang Close SPK nya ada isinya)
+        const isClosed = item.close_spk && !item.close_spk.startsWith('0001-01-01');
+        if (isClosed) {
+          omset.count++;
+          omset.service += service;
+          omset.part += part;
+          omset.ban += ban;
+          omset.grand += rowTotal;
+        }
+
+        // Row background class: Kalo Close SPK kosong, beri background pink yang lebih solid
+        const rowBgClass = isClosed 
+          ? "hover:bg-slate-50 transition border-b border-slate-100" 
+          : "bg-pink-200/75 hover:bg-pink-200 transition border-b border-pink-300 font-normal";
+
+        // Nomor SPK warna merah jika openskb > 0
+        const isOpenSkb = (item.openskb || 0) > 0;
+        const spkTextClass = isOpenSkb ? 'text-red-600 font-bold font-mono' : 'text-slate-800 font-mono font-semibold';
+
+        // Nopol formatting & icons
+        const noteHo = (item.notes || '').toLowerCase();
+        const katHo = (item.kategori || '').toLowerCase();
+
+        // 1. Asuransi: Kalo data kategorinya "Asuransi" atau Notes nya mengandung kata "Asuransi"
+        const isAsuransi = katHo.includes('asuransi') || noteHo.includes('asuransi');
+        const shieldIcon = isAsuransi ? '<i class="fa-solid fa-shield-halved text-blue-600 ml-1.5 text-xs" title="Asuransi"></i>' : '';
+
+        // 2. Lelang: Kalo data Notes nya mengandung kata "lelang"
+        const isLelang = noteHo.includes('lelang');
+        const lelangIcon = isLelang ? '<i class="fa-solid fa-money-bill-wave text-emerald-600 ml-1.5 text-xs" title="Lelang"></i>' : '';
+
+        // 3. Ban: Kalo data Notes nya mengandung kata "ban"
+        const isBan = noteHo.includes('ban');
+        const banIcon = isBan ? '<i class="fa-solid fa-dharmachakra text-purple-600 ml-1.5 text-xs" title="Ban"></i>' : '';
+
+        // 4. Tunggu SKB: Kalo data Notes nya mengandung kata "tunggu skb", kasi warna merah di nopol nya
+        const isTungguSkb = noteHo.includes('tunggu skb');
+        const nopolClass = isTungguSkb ? 'text-red-600 font-bold' : 'font-bold text-slate-800';
+
+        // Badge styling for Kategori
+        const kat = (item.kategori || '').toLowerCase();
+        let katBadge = 'bg-slate-100 text-slate-700';
+        if (kat === 'perbaikan') katBadge = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        else if (kat === 'asuransi') katBadge = 'bg-blue-50 text-blue-700 border border-blue-200';
+        else if (kat === 'storing') katBadge = 'bg-amber-50 text-amber-700 border border-amber-200';
+
+        return `
+          <tr class="${rowBgClass}">
+            <td class="py-2 px-3 text-center font-semibold text-slate-500">${idx + 1}</td>
+            <td class="py-2 px-3 font-medium text-slate-800">${item.site || '-'}</td>
+            <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${formatDateTime(item.tgl_masuk)}</td>
+            <td class="py-2 px-3 whitespace-nowrap ${isClosed ? 'text-slate-700' : 'text-pink-800 font-bold italic'}">${formatDateTime(item.close_spk)}</td>
+            <td class="py-2 px-3 ${nopolClass} whitespace-nowrap">${item.nopol || '-'}${shieldIcon}${lelangIcon}${banIcon}</td>
+            <td class="py-2 px-3 font-semibold text-blue-600">${item.cust_code || '-'}</td>
+            <td class="py-2 px-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${katBadge}">
+                ${item.kategori || '-'}
+              </span>
+            </td>
+            <td class="py-2 px-3 text-slate-600">${item.purpose || '-'}</td>
+            <td class="py-2 px-3 ${spkTextClass} whitespace-nowrap">${item.spk || '-'}</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(service)}</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(part)}</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(ban)}</td>
+            <td class="py-2 px-3 text-right font-bold text-emerald-700">${formatRupiah(rowTotal)}</td>
+            <td class="py-2 px-3 text-slate-700 max-w-xs break-words">${item.notes || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // 3. Data Pending = Existing - Omset
+      pending.count = existing.count - omset.count;
+      pending.service = existing.service - omset.service;
+      pending.part = existing.part - omset.part;
+      pending.ban = existing.ban - omset.ban;
+      pending.grand = existing.grand - omset.grand;
+
+      updateSummaryMatrix(existing, omset, pending);
+    }
+
+    // Update Summary Matrix & Table Footer
+    function updateSummaryMatrix(existing, omset, pending) {
+      // 1. Data Existing
+      document.getElementById('matrixExistingCount').innerText = existing.count;
+      document.getElementById('matrixExistingService').innerText = `Rp ${formatRupiah(existing.service)}`;
+      document.getElementById('matrixExistingPart').innerText = `Rp ${formatRupiah(existing.part)}`;
+      document.getElementById('matrixExistingBan').innerText = `Rp ${formatRupiah(existing.ban)}`;
+      document.getElementById('matrixExistingGrand').innerText = `Rp ${formatRupiah(existing.grand)}`;
+
+      // 2. Data Omset
+      document.getElementById('matrixOmsetCount').innerText = omset.count;
+      document.getElementById('matrixOmsetService').innerText = `Rp ${formatRupiah(omset.service)}`;
+      document.getElementById('matrixOmsetPart').innerText = `Rp ${formatRupiah(omset.part)}`;
+      document.getElementById('matrixOmsetBan').innerText = `Rp ${formatRupiah(omset.ban)}`;
+      document.getElementById('matrixOmsetGrand').innerText = `Rp ${formatRupiah(omset.grand)}`;
+
+      // 3. Data Pending
+      document.getElementById('matrixPendingCount').innerText = pending.count;
+      document.getElementById('matrixPendingService').innerText = `Rp ${formatRupiah(pending.service)}`;
+      document.getElementById('matrixPendingPart').innerText = `Rp ${formatRupiah(pending.part)}`;
+      document.getElementById('matrixPendingBan').innerText = `Rp ${formatRupiah(pending.ban)}`;
+      document.getElementById('matrixPendingGrand').innerText = `Rp ${formatRupiah(pending.grand)}`;
+
+      // Table Footer Totals (Existing)
+      document.getElementById('footerService').innerText = formatRupiah(existing.service);
+      document.getElementById('footerPart').innerText = formatRupiah(existing.part);
+      document.getElementById('footerBan').innerText = formatRupiah(existing.ban);
+      document.getElementById('footerGrandTotal').innerText = formatRupiah(existing.grand);
+    }
+
+    // Quick Live Search in Table
+    function filterTableLive() {
+      const query = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+      if (!query) {
+        renderTable(rawSpkData);
+        return;
+      }
+      const filtered = rawSpkData.filter(item => {
+        return (item.spk || '').toLowerCase().includes(query) ||
+               (item.nopol || '').toLowerCase().includes(query) ||
+               (item.cust_code || '').toLowerCase().includes(query) ||
+               (item.site || '').toLowerCase().includes(query) ||
+               (item.kategori || '').toLowerCase().includes(query) ||
+               (item.purpose || '').toLowerCase().includes(query) ||
+               (item.notes || '').toLowerCase().includes(query);
+      });
+      renderTable(filtered);
+    }
+
+    // Apply Filter Button Action
+    function applyFilter() {
+      sessionStorage.setItem('tglawal', document.getElementById('filterTglAwal').value);
+      sessionStorage.setItem('tglakhir', document.getElementById('filterTglAkhir').value);
+      sessionStorage.setItem('area', document.getElementById('filterArea').value);
+      sessionStorage.setItem('cust', document.getElementById('filterCustomer').value);
+      sessionStorage.setItem('purpose', document.getElementById('filterPurpose').value);
+
+      // Refresh data
+      fetchSpkData();
+    }
+
+    window.onload = async () => {
+      await initFilters();
+      fetchSpkData();
+    };
+  </script>
+</body>
+</html>

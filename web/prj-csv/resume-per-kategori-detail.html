@@ -1,0 +1,556 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rincian SPK Per Nopol - Sampurna Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Modul Header & Session Helper -->
+  <script src="/web/components/header.js?v=8"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex flex-col p-4 sm:p-6 space-y-4">
+
+  <!-- TOP HEADER CARD -->
+  <div class="bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 text-lg shadow-sm">
+        <i class="fa-solid fa-car-side"></i>
+      </div>
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-lg font-bold text-white tracking-wide">Rincian SPK Per Nopol</h1>
+          <span id="badgeStatus" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/30 text-blue-200 border border-blue-400/40">Total SPK</span>
+          <span id="badgeCust" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/30 text-amber-200 border border-amber-400/40">Customer: -</span>
+          <span id="badgeArea" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-700 text-slate-300 border border-slate-600">Area: ALL</span>
+        </div>
+        <div class="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
+          <span>Periode: <strong id="periodeText" class="text-white">-</strong></span>
+          <span>â€¢</span>
+          <span class="text-amber-300 flex items-center gap-1 font-medium">
+            <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-amber-300 shadow-2xs">ESC</kbd>
+            <span>Tekan Esc untuk menutup window</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-file-excel"></i> Export Excel
+      </button>
+      <button onclick="closeCurrentWindow()" class="bg-slate-800 hover:bg-rose-600 border border-slate-700 text-slate-200 hover:text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm flex items-center gap-1.5 transition cursor-pointer" title="Tutup Window (Esc)">
+        <i class="fa-solid fa-xmark"></i> Tutup
+      </button>
+    </div>
+  </div>
+
+  <!-- FILTER & TOOLBAR CARD -->
+  <div class="bg-white border border-slate-300 rounded-xl p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Filter Status Switch -->
+      <div class="flex items-center gap-1.5">
+        <span class="text-slate-500 font-semibold">Status:</span>
+        <select id="filterStatus" onchange="refreshData()" class="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-700 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+          <option value="ALL">Total SPK (Semua)</option>
+          <option value="CLOSE">SPK Close (Selesai)</option>
+          <option value="HOLD">SPK Hold</option>
+          <option value="OPEN">SPK Open (Berjalan)</option>
+        </select>
+      </div>
+
+      <!-- Filter Kategori Switch -->
+      <div class="flex items-center gap-1.5">
+        <span class="text-slate-500 font-semibold">Kategori:</span>
+        <select id="filterCategory" onchange="filterLocalTable()" class="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-700 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+          <option value="ALL">Semua Kategori</option>
+        </select>
+      </div>
+
+      <!-- Search Nopol Input -->
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+        <input type="text" id="searchNopol" oninput="filterLocalTable()" placeholder="Cari Nopol..." class="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none w-44">
+      </div>
+    </div>
+
+    <!-- Stats Count -->
+    <div id="summaryStats" class="text-slate-500 font-semibold text-xs">
+      Memuat data...
+    </div>
+  </div>
+
+  <!-- LOADING INDICATOR -->
+  <div id="loadingIndicator" class="bg-white border border-slate-300 rounded-xl p-16 text-center text-slate-400 shadow-xs">
+    <i class="fa-solid fa-spinner fa-spin text-3xl text-blue-600 mb-3"></i>
+    <div class="text-xs font-semibold text-slate-600">Mengambil rincian data SPK dari server...</div>
+  </div>
+
+  <!-- EMPTY STATE -->
+  <div id="emptyState" class="bg-white border border-slate-300 rounded-xl p-16 text-center text-slate-400 shadow-xs hidden">
+    <i class="fa-solid fa-folder-open text-4xl text-amber-500 mb-3"></i>
+    <div class="text-sm font-bold text-slate-700">Tidak ada rincian data untuk kriteria ini.</div>
+    <div class="text-xs text-slate-400 mt-1">Silakan ubah filter status atau periksa rentang periode tanggal.</div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div id="tableContainer" class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden flex-1 hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs text-left border-collapse" id="mainTable">
+        <thead class="bg-slate-700 text-white font-bold border-b border-slate-300 uppercase tracking-wider text-[11px]">
+          <tr>
+            <th class="py-2.5 px-3 border border-slate-600 text-center w-12">No</th>
+            <th class="py-2.5 px-3 border border-slate-600">Nopol</th>
+            <th class="py-2.5 px-3 border border-slate-600">Kategori</th>
+            <th class="py-2.5 px-3 border border-slate-600 text-right w-20">Jml SPK</th>
+            <th class="py-2.5 px-3 border border-slate-600 text-right">Jasa / Servis</th>
+            <th class="py-2.5 px-3 border border-slate-600 text-right">Total Part</th>
+            <th class="py-2.5 px-3 border border-slate-600 text-right">Total Ban</th>
+            <th class="py-2.5 px-3 border border-slate-600 text-right bg-slate-800">Grand Total</th>
+            <th class="py-2.5 px-3 border border-slate-600 min-w-[200px]">Last Note / Keterangan</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody" class="divide-y divide-slate-200">
+          <!-- Dynamic via JS -->
+        </tbody>
+        <tfoot id="tableFoot" class="bg-slate-800 text-white font-black border-t-2 border-slate-900">
+          <!-- Dynamic via JS -->
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let rawDataItems = [];
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const getParam = (key, fallback = '') => urlParams.get(key) || fallback;
+
+    let currentArea = getParam('area', 'ALL');
+    let currentCust = getParam('cust', 'ALL');
+    let currentStatus = getParam('status', 'ALL').toUpperCase();
+    let initialCat = getParam('cat', 'ALL');
+
+    // Helper untuk mengambil tanggal dari SESSION
+    function getEffectiveDateRange() {
+      if (window.ASM_SESSION) {
+        const r = window.ASM_SESSION.getDateRange();
+        if (r && r.tglAwal && r.tglAkhir) return r;
+      }
+      const sAwal = sessionStorage.getItem('asm_tgl_awal') || sessionStorage.getItem('csv_spk_tglawal');
+      const sAkhir = sessionStorage.getItem('asm_tgl_akhir') || sessionStorage.getItem('csv_spk_tglakhir');
+      if (sAwal && sAkhir) {
+        return { tglAwal: sAwal, tglAkhir: sAkhir };
+      }
+      return {
+        tglAwal: getParam('tglawal', ''),
+        tglAkhir: getParam('tglakhir', '')
+      };
+    }
+
+    const initialDates = getEffectiveDateRange();
+    let tglAwal = initialDates.tglAwal;
+    let tglAkhir = initialDates.tglAkhir;
+
+    // Easy Close with ESC
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        closeCurrentWindow();
+      }
+    });
+
+    function closeCurrentWindow() {
+      window.close();
+      // Fallback jika window.close diblokir browser karena bukan popup direct
+      setTimeout(() => {
+        if (!window.closed) {
+          window.history.back();
+        }
+      }, 100);
+    }
+
+    // Navigasi ke SPK Detail saat baris nopol di-klik
+    function openSpkDetail(nopol) {
+      if (!nopol || nopol === '-') return;
+
+      // Ambil parameter tgl_awal dan tgl_akhir DARI SESSION
+      const dates = getEffectiveDateRange();
+      const start = dates.tglAwal || tglAwal;
+      const end = dates.tglAkhir || tglAkhir;
+
+      const url = `/prj-csv/spk-detail?nopol=${encodeURIComponent(nopol)}&tglawal=${encodeURIComponent(start)}&tglakhir=${encodeURIComponent(end)}`;
+
+      // Buka di window popup baru berukuran nyaman
+      const width = Math.min(1300, window.screen.availWidth - 80);
+      const height = Math.min(860, window.screen.availHeight - 80);
+      const left = Math.max(0, (window.screen.availWidth - width) / 2);
+      const top = Math.max(0, (window.screen.availHeight - height) / 2);
+
+      const win = window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,toolbar=no`);
+      if (win) {
+        win.focus();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inisialisasi tampilan header info
+      document.getElementById('badgeCust').textContent = `Customer: ${currentCust}`;
+      document.getElementById('badgeArea').textContent = `Area: ${currentArea}`;
+      document.getElementById('periodeText').textContent = `${tglAwal} s/d ${tglAkhir}`;
+      document.getElementById('filterStatus').value = currentStatus;
+
+      updateStatusBadge();
+      loadDetailData();
+    });
+
+    function updateStatusBadge() {
+      const badge = document.getElementById('badgeStatus');
+      let label = 'TOTAL SPK';
+      let cls = 'bg-blue-500/30 text-blue-200 border-blue-400/40';
+      if (currentStatus === 'CLOSE') {
+        label = 'SPK CLOSE';
+        cls = 'bg-emerald-500/30 text-emerald-200 border-emerald-400/40';
+      } else if (currentStatus === 'HOLD') {
+        label = 'SPK HOLD';
+        cls = 'bg-amber-500/30 text-amber-200 border-amber-400/40';
+      } else if (currentStatus === 'OPEN') {
+        label = 'SPK OPEN';
+        cls = 'bg-rose-500/30 text-rose-200 border-rose-400/40';
+      }
+      badge.textContent = label;
+      badge.className = `px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${cls}`;
+    }
+
+    async function refreshData() {
+      currentStatus = document.getElementById('filterStatus').value;
+      updateStatusBadge();
+      await loadDetailData();
+    }
+
+    async function loadDetailData() {
+      const loading = document.getElementById('loadingIndicator');
+      const empty = document.getElementById('emptyState');
+      const tableWrap = document.getElementById('tableContainer');
+      const stats = document.getElementById('summaryStats');
+
+      loading.classList.remove('hidden');
+      empty.classList.add('hidden');
+      tableWrap.classList.add('hidden');
+      stats.textContent = 'Memuat data...';
+
+      try {
+        const url = `/api/v1/csv/reports/resume-per-kategori/detail?area=${encodeURIComponent(currentArea)}&cust=${encodeURIComponent(currentCust)}&category=ALL&status=${encodeURIComponent(currentStatus)}&tglawal=${tglAwal}&tglakhir=${tglAkhir}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          rawDataItems = Array.isArray(json.data) ? json.data : (json.data.items || []);
+          populateCategoryDropdown();
+          loading.classList.add('hidden');
+          filterLocalTable();
+        } else {
+          loading.classList.add('hidden');
+          empty.classList.remove('hidden');
+          stats.textContent = '0 Data';
+        }
+      } catch (err) {
+        console.error('Error fetching detail data:', err);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        stats.textContent = 'Gagal memuat data';
+      }
+    }
+
+    function populateCategoryDropdown() {
+      const catSelect = document.getElementById('filterCategory');
+      const catSet = new Set();
+      rawDataItems.forEach(it => {
+        if (it.kategori) catSet.add(it.kategori);
+      });
+
+      const cats = Array.from(catSet).sort();
+      let html = '<option value="ALL">Semua Kategori</option>';
+      cats.forEach(c => {
+        html += `<option value="${c}">${c}</option>`;
+      });
+      catSelect.innerHTML = html;
+
+      if (initialCat && initialCat !== 'ALL' && cats.includes(initialCat)) {
+        catSelect.value = initialCat;
+        initialCat = 'ALL'; // reset setelah pertama kali dipakai
+      }
+    }
+
+    const formatCurrency = (val) => {
+      if (val === null || val === undefined || isNaN(val) || val === 0) return '-';
+      return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(val);
+    };
+
+    function filterLocalTable() {
+      const selectedCat = document.getElementById('filterCategory').value;
+      const querySearch = document.getElementById('searchNopol').value.trim().toUpperCase();
+
+      let filtered = rawDataItems || [];
+
+      if (selectedCat && selectedCat !== 'ALL') {
+        filtered = filtered.filter(it => (it.kategori || '').toUpperCase() === selectedCat.toUpperCase());
+      }
+
+      if (querySearch) {
+        filtered = filtered.filter(it => (it.nopol || '').toUpperCase().includes(querySearch));
+      }
+
+      renderTable(filtered);
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('tableBody');
+      const tfoot = document.getElementById('tableFoot');
+      const empty = document.getElementById('emptyState');
+      const tableWrap = document.getElementById('tableContainer');
+      const stats = document.getElementById('summaryStats');
+
+      if (!items || items.length === 0) {
+        tableWrap.classList.add('hidden');
+        empty.classList.remove('hidden');
+        stats.textContent = '0 Nopol';
+        return;
+      }
+
+      empty.classList.add('hidden');
+      tableWrap.classList.remove('hidden');
+
+      // Grouping data per Kategori
+      const groups = {};
+      items.forEach(it => {
+        const cat = it.kategori || 'Others';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(it);
+      });
+
+      const catKeys = Object.keys(groups);
+      let tbHTML = '';
+      let rowNum = 1;
+
+      let grandSpk = 0;
+      let grandService = 0;
+      let grandPart = 0;
+      let grandBan = 0;
+      let grandTotal = 0;
+
+      catKeys.forEach(catName => {
+        const catItems = groups[catName];
+
+        // 1. Header Group Kategori
+        tbHTML += `
+          <tr class="bg-slate-200/90 text-slate-800 font-extrabold text-[11px] uppercase tracking-wider border-y border-slate-300">
+            <td colspan="9" class="py-2 px-3">
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                  <i class="fa-solid fa-folder-open text-blue-600"></i>
+                  <span>Kategori: ${catName}</span>
+                </span>
+                <span class="text-[10px] bg-white px-2 py-0.5 rounded-full text-slate-700 font-bold border border-slate-300 shadow-2xs">
+                  ${catItems.length} Nopol
+                </span>
+              </div>
+            </td>
+          </tr>
+        `;
+
+        let subSpk = 0;
+        let subService = 0;
+        let subPart = 0;
+        let subBan = 0;
+        let subTotal = 0;
+
+        // 2. Baris Data Nopol
+        catItems.forEach((it, idx) => {
+          subSpk += it.spk || 0;
+          subService += it.service || 0;
+          subPart += it.part || 0;
+          subBan += it.ban || 0;
+          subTotal += it.total || 0;
+
+          const isZebra = idx % 2 === 1;
+          tbHTML += `
+            <tr class="${isZebra ? 'bg-slate-50/60' : 'bg-white'} hover:bg-amber-100/60 transition cursor-pointer group" onclick="openSpkDetail('${it.nopol || ''}')" title="Klik untuk membuka Detail SPK Unit ${it.nopol || ''}">
+              <td class="py-2 px-3 border border-slate-200 text-center text-slate-500 font-medium">${rowNum++}</td>
+              <td class="py-2 px-3 border border-slate-200 font-bold whitespace-nowrap">
+                <div class="flex items-center justify-between gap-1.5 text-blue-600 group-hover:text-blue-800 group-hover:underline">
+                  <span>${it.nopol || '-'}</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-blue-400 group-hover:text-blue-600"></i>
+                </div>
+              </td>
+              <td class="py-2 px-3 border border-slate-200 text-slate-700 font-medium">${it.kategori || '-'}</td>
+              <td class="py-2 px-3 border border-slate-200 text-right font-semibold text-slate-700 whitespace-nowrap">${it.spk ? it.spk + ' SPK' : '-'}</td>
+              <td class="py-2 px-3 border border-slate-200 text-right text-slate-700 whitespace-nowrap font-mono">${formatCurrency(it.service)}</td>
+              <td class="py-2 px-3 border border-slate-200 text-right text-slate-700 whitespace-nowrap font-mono">${formatCurrency(it.part)}</td>
+              <td class="py-2 px-3 border border-slate-200 text-right text-slate-700 whitespace-nowrap font-mono">${formatCurrency(it.ban)}</td>
+              <td class="py-2 px-3 border border-slate-200 text-right font-bold text-slate-900 bg-slate-50/80 whitespace-nowrap font-mono">${formatCurrency(it.total)}</td>
+              <td class="py-2 px-3 border border-slate-200 text-slate-600 text-[11px] truncate max-w-xs" title="${it.note || ''}">${it.note || '-'}</td>
+            </tr>
+          `;
+        });
+
+        grandSpk += subSpk;
+        grandService += subService;
+        grandPart += subPart;
+        grandBan += subBan;
+        grandTotal += subTotal;
+
+        // 3. BARIS SUBTOTAL SETIAP KATEGORI (REQUEST KHUSUS USER)
+        tbHTML += `
+          <tr class="bg-blue-50/90 font-black text-blue-900 border-y-2 border-blue-300">
+            <td colspan="3" class="py-2 px-3 border border-blue-200 text-right uppercase tracking-wider text-[11px]">
+              Subtotal ${catName} :
+            </td>
+            <td class="py-2 px-3 border border-blue-200 text-right whitespace-nowrap">${subSpk} SPK</td>
+            <td class="py-2 px-3 border border-blue-200 text-right whitespace-nowrap">${formatCurrency(subService)}</td>
+            <td class="py-2 px-3 border border-blue-200 text-right whitespace-nowrap">${formatCurrency(subPart)}</td>
+            <td class="py-2 px-3 border border-blue-200 text-right whitespace-nowrap">${formatCurrency(subBan)}</td>
+            <td class="py-2 px-3 border border-blue-200 text-right whitespace-nowrap bg-blue-100 text-blue-950">${formatCurrency(subTotal)}</td>
+            <td class="py-2 px-3 border border-blue-200"></td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = tbHTML;
+
+      // 4. FOOTER GRAND TOTAL
+      tfoot.innerHTML = `
+        <tr class="bg-slate-800 text-white font-black text-xs">
+          <td colspan="3" class="py-2.5 px-3 border border-slate-700 text-right uppercase tracking-wider">
+            GRAND TOTAL :
+          </td>
+          <td class="py-2.5 px-3 border border-slate-700 text-right whitespace-nowrap text-amber-300">${grandSpk} SPK</td>
+          <td class="py-2.5 px-3 border border-slate-700 text-right whitespace-nowrap">${formatCurrency(grandService)}</td>
+          <td class="py-2.5 px-3 border border-slate-700 text-right whitespace-nowrap">${formatCurrency(grandPart)}</td>
+          <td class="py-2.5 px-3 border border-slate-700 text-right whitespace-nowrap">${formatCurrency(grandBan)}</td>
+          <td class="py-2.5 px-3 border border-slate-700 text-right whitespace-nowrap bg-slate-900 text-amber-400 text-sm">${formatCurrency(grandTotal)}</td>
+          <td class="py-2.5 px-3 border border-slate-700"></td>
+        </tr>
+      `;
+
+      stats.textContent = `Menampilkan ${items.length} Nopol (${catKeys.length} Kategori)`;
+    }
+
+    function exportToExcel() {
+      if (!rawDataItems || rawDataItems.length === 0) {
+        alert('Tidak ada data untuk diekspor');
+        return;
+      }
+
+      const aoa = [];
+      aoa.push([`Rincian SPK Per Nopol - ${currentCust} (${currentStatus})`]);
+      aoa.push([`Periode: ${tglAwal} s/d ${tglAkhir}`]);
+      aoa.push([`Area: ${currentArea}`]);
+      aoa.push([]);
+
+      aoa.push(['No', 'Nopol', 'Kategori', 'Jml SPK', 'Jasa / Servis', 'Total Part', 'Total Ban', 'Grand Total', 'Last Note']);
+
+      const groups = {};
+      rawDataItems.forEach(it => {
+        const cat = it.kategori || 'Others';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(it);
+      });
+
+      let no = 1;
+      let grandSpk = 0, grandService = 0, grandPart = 0, grandBan = 0, grandTotal = 0;
+
+      Object.keys(groups).forEach(cat => {
+        let subSpk = 0, subService = 0, subPart = 0, subBan = 0, subTotal = 0;
+
+        groups[cat].forEach(it => {
+          subSpk += it.spk || 0;
+          subService += it.service || 0;
+          subPart += it.part || 0;
+          subBan += it.ban || 0;
+          subTotal += it.total || 0;
+
+          aoa.push([
+            no++,
+            it.nopol || '',
+            it.kategori || '',
+            it.spk || 0,
+            it.service || 0,
+            it.part || 0,
+            it.ban || 0,
+            it.total || 0,
+            it.note || ''
+          ]);
+        });
+
+        grandSpk += subSpk;
+        grandService += subService;
+        grandPart += subPart;
+        grandBan += subBan;
+        grandTotal += subTotal;
+
+        // Subtotal row
+        aoa.push([
+          '',
+          `SUBTOTAL ${cat}`,
+          '',
+          subSpk,
+          subService,
+          subPart,
+          subBan,
+          subTotal,
+          ''
+        ]);
+        aoa.push([]);
+      });
+
+      // Grand total row
+      aoa.push([
+        '',
+        'GRAND TOTAL',
+        '',
+        grandSpk,
+        grandService,
+        grandPart,
+        grandBan,
+        grandTotal,
+        ''
+      ]);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [
+        { wch: 6 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 10 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 30 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rincian SPK");
+      const filename = `Rincian_SPK_${currentCust}_${currentStatus}_${tglAwal}_sd_${tglAkhir}.xlsx`;
+      XLSX.writeFile(wb, filename);
+    }
+  </script>
+</body>
+</html>

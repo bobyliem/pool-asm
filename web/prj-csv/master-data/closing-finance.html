@@ -1,0 +1,792 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Closing Finance - Master Data - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Client-Side Excel Export / Preview -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Closing Finance"></app-sidebar>
+
+    <!-- MAIN CONTENT (SUPER COMPACT DENSE VIEW) -->
+    <main class="flex-1 px-3 py-2 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header, KPI Mini Pills, and Action Buttons (Single Row / Very Compact) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        
+        <!-- Left: Title & Mini KPI Badges -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-file-invoice-dollar text-emerald-600 text-sm"></i>
+            <h2 class="text-sm font-bold text-slate-800">Closing Finance</h2>
+            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded">ext_closing</span>
+          </div>
+
+          <!-- Divider -->
+          <span class="text-slate-300">|</span>
+
+          <!-- Mini KPI Pills (Hemat Ruang Vertikal) -->
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <div class="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded flex items-center gap-1 shadow-2xs" title="Total Baris Data">
+              <span class="text-slate-500 font-medium">Rows:</span>
+              <span id="statRows" class="font-bold text-slate-800">0</span>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex items-center gap-1 text-blue-800 shadow-2xs" title="Total SPK Unik">
+              <span class="font-medium">SPK:</span>
+              <span id="statSPK" class="font-bold">0</span>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded flex items-center gap-1 text-indigo-800 shadow-2xs" title="Total Unit/Nopol Unik">
+              <span class="font-medium">Unit:</span>
+              <span id="statUnit" class="font-bold">0</span>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 px-2 py-0.5 rounded flex items-center gap-1 text-purple-800 shadow-2xs" title="Total Customer Unik">
+              <span class="font-medium">Cust:</span>
+              <span id="statCust" class="font-bold">0</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1 text-emerald-900 shadow-2xs" title="Grand Total Nilai">
+              <span class="font-medium text-emerald-700">Total Nilai:</span>
+              <span id="statGrandTotal" class="font-bold text-emerald-800">Rp 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons Compact -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+            <span>Refresh</span>
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Data Tabel ke Excel">
+            <i class="fa-solid fa-file-excel text-[11px]"></i>
+            <span>Export</span>
+          </button>
+          <button onclick="openUploadModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1.5 transition cursor-pointer" title="Upload File Excel (Truncate & Replace)">
+            <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i>
+            <span>Upload XLSX</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER BAR COMPACT (Ramping & Efisien) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-1.5 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[300px]">
+          
+          <!-- Search Input -->
+          <div class="relative flex-1 min-w-[200px] max-w-xs">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
+            <input type="text" id="filterSearch" oninput="debounceFetch()" placeholder="Cari Nopol, SPK, Customer, Barang, Notes..." class="w-full pl-7 pr-2.5 py-1 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          </div>
+
+          <!-- Customer Dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-500">Customer:</span>
+            <select id="filterCustomer" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer max-w-[160px]">
+              <option value="ALL">Semua Customer</option>
+            </select>
+          </div>
+
+          <!-- Category Dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-500">Kategori:</span>
+            <select id="filterCategory" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer max-w-[130px]">
+              <option value="ALL">Semua Kategori</option>
+            </select>
+          </div>
+
+          <!-- Tipe Dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-slate-500">Tipe:</span>
+            <select id="filterType" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+              <option value="ALL">Semua Tipe</option>
+            </select>
+          </div>
+
+          <!-- Filter Tanggal Range -->
+          <div class="flex items-center gap-1 text-[11px]">
+            <span class="text-slate-500">Periode:</span>
+            <input type="date" id="filterTglAwal" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <span class="text-slate-400">-</span>
+            <input type="date" id="filterTglAkhir" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <button onclick="resetFilters()" class="text-slate-500 hover:text-red-600 px-1 py-0.5" title="Reset Filter">
+              <i class="fa-solid fa-xmark text-[11px]"></i>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Limit per Page -->
+        <div class="flex items-center gap-1.5 text-slate-600">
+          <span class="text-[11px]">Tampilkan:</span>
+          <select id="filterLimit" onchange="fetchData(1)" class="text-xs border border-slate-300 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <span class="text-[11px]">baris</span>
+        </div>
+      </div>
+
+      <!-- TABLE CONTAINER (EXPANDED TO OCCUPY REMAINING SPACE) -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        <div class="flex-1 overflow-auto" id="tableContainer">
+          <table class="w-full text-left border-collapse border-spacing-0" id="mainTable">
+            <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-300 shadow-2xs">
+              <tr class="text-[11px] font-semibold text-slate-700 divide-x divide-slate-200">
+                <th class="py-1 px-2 text-center w-10">No</th>
+                <th class="py-1 px-2.5 min-w-[130px]">Customer</th>
+                <th class="py-1 px-2.5 min-w-[100px]">Service Order</th>
+                <th class="py-1 px-2 min-w-[80px]">Category</th>
+                <th class="py-1 px-2 min-w-[90px]">Plate Number</th>
+                <th class="py-1 px-2 min-w-[90px]">Reference</th>
+                <th class="py-1 px-2.5 min-w-[120px]">Information</th>
+                <th class="py-1 px-2 text-center min-w-[105px]">Released At</th>
+                <th class="py-1 px-2 text-center min-w-[105px]">Completed At</th>
+                <th class="py-1 px-2 text-center min-w-[70px]">Tipe</th>
+                <th class="py-1 px-2 min-w-[85px]">SKU / Code</th>
+                <th class="py-1 px-2.5 min-w-[180px]">Product / Service Name</th>
+                <th class="py-1 px-2 text-right min-w-[55px]">Qty</th>
+                <th class="py-1 px-2 text-right min-w-[80px]">Avg Cost</th>
+                <th class="py-1 px-2 text-right min-w-[80px]">Unit Price</th>
+                <th class="py-1 px-2.5 text-right min-w-[95px] bg-emerald-50/50">Total</th>
+                <th class="py-1 px-2 text-center min-w-[75px]">Status</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 text-[11px]">
+              <tr>
+                <td colspan="17" class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg mb-1 text-blue-500"></i>
+                  <p>Memuat data closing finance...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- PAGINATION & FOOTER INFO (COMPACT) -->
+        <div class="px-3 py-1.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600 shrink-0">
+          <div id="paginationInfo">
+            Menampilkan <span class="font-bold text-slate-800" id="pageStart">0</span> - <span class="font-bold text-slate-800" id="pageEnd">0</span> dari <span class="font-bold text-slate-800" id="totalRecords">0</span> baris
+          </div>
+
+          <div class="flex items-center gap-1" id="paginationControls">
+            <button id="btnPrev" onclick="changePage(currentPage - 1)" class="px-2 py-0.5 border border-slate-300 rounded bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
+              <i class="fa-solid fa-chevron-left text-[9px]"></i> Prev
+            </button>
+            <div id="pageNumberButtons" class="flex items-center gap-1">
+              <!-- Dynamically populated page buttons -->
+            </div>
+            <button id="btnNext" onclick="changePage(currentPage + 1)" class="px-2 py-0.5 border border-slate-300 rounded bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition">
+              Next <i class="fa-solid fa-chevron-right text-[9px]"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL UPLOAD XLSX (TRUNCATE & REPLACE) -->
+  <div id="uploadModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald-400 text-sm"></i>
+          <h3 class="font-bold text-sm">Upload File Closing Finance (.xlsx)</h3>
+        </div>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-3">
+        <!-- Warning Alert -->
+        <div class="bg-amber-50 border border-amber-300 text-amber-900 p-2.5 rounded-lg text-[11px] flex gap-2.5 items-start">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm mt-0.5 shrink-0"></i>
+          <div>
+            <span class="font-bold">PERHATIAN: TRUNCATE & REPLACE!</span>
+            <p class="text-amber-800 mt-0.5 leading-relaxed">
+              Mengunggah file baru akan <b>menghapus bersih (TRUNCATE) seluruh data tabel ext_closing</b> yang ada, lalu mengisinya kembali dari file Excel yang diunggah.
+            </p>
+          </div>
+        </div>
+
+        <!-- Dropzone Area -->
+        <div id="dropZone" onclick="document.getElementById('fileInput').click()" 
+             class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-5 text-center cursor-pointer transition bg-slate-50 hover:bg-blue-50/30 flex flex-col items-center justify-center group">
+          <input type="file" id="fileInput" accept=".xlsx, .xls" class="hidden" onchange="handleFileSelect(event)" />
+          <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-slate-200 shadow-2xs group-hover:scale-105 transition mb-2">
+            <i class="fa-solid fa-file-excel text-emerald-600 text-2xl"></i>
+          </div>
+          <span class="text-xs font-semibold text-slate-700 mb-0.5">Klik untuk memilih file atau seret file ke sini</span>
+          <span class="text-[10px] text-slate-400">Mendukung format: Microsoft Excel (.xlsx, .xls)</span>
+          
+          <!-- Selected File Pill -->
+          <div id="fileInfo" class="mt-3 hidden bg-blue-100 text-blue-800 text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-2">
+            <i class="fa-solid fa-check text-emerald-600"></i>
+            <span id="fileName">Nama file</span>
+            <span id="fileSize" class="text-blue-600 font-normal text-[10px]">(0 KB)</span>
+          </div>
+        </div>
+
+        <!-- Upload Progress & Status -->
+        <div id="uploadProgressContainer" class="hidden space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span id="uploadStatusText" class="text-slate-600 font-medium">Sedang memproses upload...</span>
+            <span id="uploadPercentage" class="font-bold text-blue-600">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="uploadProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-200" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-4 py-2.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between">
+        <button onclick="closeUploadModal()" type="button" class="px-3 py-1.5 bg-white hover:bg-slate-200 text-slate-700 text-xs rounded border border-slate-300 font-medium cursor-pointer transition">
+          Batal
+        </button>
+        <button id="btnSubmitUpload" onclick="submitUpload()" disabled class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs rounded font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer transition">
+          <i class="fa-solid fa-upload"></i>
+          <span>Truncate & Import Sekarang</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let selectedFile = null;
+    let debounceTimer = null;
+    let filterOptionsLoaded = false;
+
+    // Formatting Helpers
+    function formatNumber(num) {
+      if (num === null || num === undefined || isNaN(num)) return "0";
+      return new Intl.NumberFormat("id-ID").format(num);
+    }
+
+    function formatCurrency(num) {
+      if (num === null || num === undefined || isNaN(num)) return "Rp 0";
+      return "Rp " + new Intl.NumberFormat("id-ID").format(Math.round(num));
+    }
+
+    function formatDateTime(str) {
+      if (!str || str.startsWith("0001-01-01")) return "-";
+      // Format 2026-10-02T12:20:48+07:00 -> 02-Oct-2026 12:20
+      try {
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return str;
+        const day = String(d.getDate()).padStart(2, "0");
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, "0");
+        const mins = String(d.getMinutes()).padStart(2, "0");
+        return `${day}-${month}-${year} ${hours}:${mins}`;
+      } catch (e) {
+        return str;
+      }
+    }
+
+    // Debounce Search
+    function debounceFetch() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchData(1);
+      }, 350);
+    }
+
+    // Reset All Filters
+    function resetFilters() {
+      document.getElementById("filterSearch").value = "";
+      document.getElementById("filterCustomer").value = "ALL";
+      document.getElementById("filterCategory").value = "ALL";
+      document.getElementById("filterType").value = "ALL";
+      document.getElementById("filterTglAwal").value = "";
+      document.getElementById("filterTglAkhir").value = "";
+      fetchData(1);
+    }
+
+    // Fetch Filter Options (Customer, Kategori, Tipe)
+    async function fetchFilterOptions() {
+      try {
+        const res = await fetch("/api/v1/csv/master/closing-finance/filters");
+        const result = await res.json();
+        if (result.status === "success" && result.data) {
+          const { customers, categories, types } = result.data;
+          
+          // Populate Customers
+          const custSelect = document.getElementById("filterCustomer");
+          const curCust = custSelect.value;
+          custSelect.innerHTML = `<option value="ALL">Semua Customer</option>`;
+          (customers || []).forEach(c => {
+            if (!c) return;
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = c;
+            custSelect.appendChild(opt);
+          });
+          custSelect.value = curCust;
+
+          // Populate Categories
+          const catSelect = document.getElementById("filterCategory");
+          const curCat = catSelect.value;
+          catSelect.innerHTML = `<option value="ALL">Semua Kategori</option>`;
+          (categories || []).forEach(cat => {
+            if (!cat) return;
+            const opt = document.createElement("option");
+            opt.value = cat;
+            opt.textContent = cat;
+            catSelect.appendChild(opt);
+          });
+          catSelect.value = curCat;
+
+          // Populate Types
+          const typeSelect = document.getElementById("filterType");
+          const curType = typeSelect.value;
+          typeSelect.innerHTML = `<option value="ALL">Semua Tipe</option>`;
+          (types || []).forEach(t => {
+            if (!t) return;
+            const opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            typeSelect.appendChild(opt);
+          });
+          typeSelect.value = curType;
+
+          filterOptionsLoaded = true;
+        }
+      } catch (err) {
+        console.error("Gagal memuat opsi filter:", err);
+      }
+    }
+
+    // Fetch Main Data Table
+    async function fetchData(page = 1) {
+      currentPage = page;
+      const refreshIcon = document.getElementById("refreshIcon");
+      refreshIcon.classList.add("fa-spin");
+
+      const tbody = document.getElementById("tableBody");
+      
+      const search = document.getElementById("filterSearch").value.trim();
+      const customer = document.getElementById("filterCustomer").value;
+      const category = document.getElementById("filterCategory").value;
+      const tipe = document.getElementById("filterType").value;
+      const tglawal = document.getElementById("filterTglAwal").value;
+      const tglakhir = document.getElementById("filterTglAkhir").value;
+      const limit = parseInt(document.getElementById("filterLimit").value, 10) || 50;
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: limit,
+        search: search,
+        customer: customer,
+        category: category,
+        tipe: tipe,
+        tglawal: tglawal,
+        tglakhir: tglakhir
+      });
+
+      try {
+        const res = await fetch(`/api/v1/csv/master/closing-finance?${params.toString()}`);
+        const result = await res.json();
+
+        if (result.status === "success") {
+          const items = result.data || [];
+          const total = result.total || 0;
+          totalPages = result.total_pages || 1;
+          const summary = result.summary || {};
+
+          // Update KPI Pills
+          document.getElementById("statRows").textContent = formatNumber(summary.total_rows || total);
+          document.getElementById("statSPK").textContent = formatNumber(summary.total_spk || 0);
+          document.getElementById("statUnit").textContent = formatNumber(summary.total_unit || 0);
+          document.getElementById("statCust").textContent = formatNumber(summary.total_customer || 0);
+          document.getElementById("statGrandTotal").textContent = formatCurrency(summary.grand_total || 0);
+
+          // Update Pagination Info
+          const start = total === 0 ? 0 : (currentPage - 1) * limit + 1;
+          const end = Math.min(currentPage * limit, total);
+          document.getElementById("pageStart").textContent = formatNumber(start);
+          document.getElementById("pageEnd").textContent = formatNumber(end);
+          document.getElementById("totalRecords").textContent = formatNumber(total);
+
+          renderPaginationControls();
+
+          // Render Table Rows
+          if (items.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="17" class="py-12 text-center text-slate-400">
+                  <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300 block"></i>
+                  <p class="font-medium">Tidak ada data closing finance yang ditemukan.</p>
+                  <p class="text-[10px] text-slate-400 mt-1">Silakan sesuaikan filter atau unggah file Excel baru.</p>
+                </td>
+              </tr>
+            `;
+          } else {
+            let html = "";
+            items.forEach((item, index) => {
+              const rowNo = start + index;
+              const isEven = index % 2 === 1;
+              const rowBg = isEven ? "bg-slate-50/60" : "bg-white";
+
+              // Badges
+              const custCodeBadge = item.cust_code 
+                ? `<span class="bg-blue-100 text-blue-800 font-bold px-1 py-0.2 rounded text-[9px] font-mono ml-1 shadow-2xs">${item.cust_code}</span>` 
+                : '';
+
+              const typeBadge = item.tipe === "Product" 
+                ? `<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-blue-200">Product</span>`
+                : `<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-amber-200">${item.tipe || 'Service'}</span>`;
+
+              const statusBadge = item.statue === "Completed"
+                ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-emerald-200">Completed</span>`
+                : `<span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200">${item.statue || 'Open'}</span>`;
+
+              html += `
+                <tr class="${rowBg} hover:bg-blue-50/50 transition-colors divide-x divide-slate-100">
+                  <td class="py-1 px-2 text-center text-slate-400 font-mono text-[10px]">${rowNo}</td>
+                  <td class="py-1 px-2.5 font-medium text-slate-800 truncate max-w-[160px]" title="${item.cust}">
+                    <span>${item.cust}</span>${custCodeBadge}
+                  </td>
+                  <td class="py-1 px-2.5 font-semibold text-blue-700 font-mono truncate max-w-[120px]" title="${item.service_order}">${item.service_order}</td>
+                  <td class="py-1 px-2 text-slate-700 font-medium">${item.category}</td>
+                  <td class="py-1 px-2 font-mono font-semibold text-slate-800 bg-slate-50/50">${item.nopol}</td>
+                  <td class="py-1 px-2 text-slate-500 font-mono text-[10px] truncate max-w-[100px]" title="${item.reff}">${item.reff || '-'}</td>
+                  <td class="py-1 px-2.5 text-slate-600 truncate max-w-[140px]" title="${item.information}">${item.information || '-'}</td>
+                  <td class="py-1 px-2 text-center font-mono text-[10px] text-slate-600">${formatDateTime(item.released)}</td>
+                  <td class="py-1 px-2 text-center font-mono text-[10px] text-slate-600">${formatDateTime(item.completed)}</td>
+                  <td class="py-1 px-2 text-center">${typeBadge}</td>
+                  <td class="py-1 px-2 font-mono text-[10px] text-slate-600">${item.sku || '-'}</td>
+                  <td class="py-1 px-2.5 text-slate-800 truncate max-w-[200px]" title="${item.prd}">${item.prd}</td>
+                  <td class="py-1 px-2 text-right font-mono font-medium">${formatNumber(item.qty)}</td>
+                  <td class="py-1 px-2 text-right font-mono text-slate-600">${formatNumber(item.average)}</td>
+                  <td class="py-1 px-2 text-right font-mono text-slate-700">${formatNumber(item.harga)}</td>
+                  <td class="py-1 px-2.5 text-right font-mono font-bold text-emerald-800 bg-emerald-50/30">${formatNumber(item.total)}</td>
+                  <td class="py-1 px-2 text-center">${statusBadge}</td>
+                </tr>
+              `;
+            });
+            tbody.innerHTML = html;
+          }
+
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="17" class="py-8 text-center text-red-500 font-medium">
+                Gagal memuat data: ${result.message || 'Terjadi kesalahan sistem'}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="17" class="py-8 text-center text-red-500 font-medium">
+              Gagal menghubungi server: ${err.message}
+            </td>
+          </tr>
+        `;
+      } finally {
+        refreshIcon.classList.remove("fa-spin");
+      }
+    }
+
+    // Render Pagination Buttons
+    function renderPaginationControls() {
+      const btnPrev = document.getElementById("btnPrev");
+      const btnNext = document.getElementById("btnNext");
+      btnPrev.disabled = currentPage <= 1;
+      btnNext.disabled = currentPage >= totalPages;
+
+      const container = document.getElementById("pageNumberButtons");
+      container.innerHTML = "";
+
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+
+      if (startPage > 1) {
+        const b = document.createElement("button");
+        b.className = "px-2 py-0.5 border border-slate-300 rounded bg-white hover:bg-slate-100 text-[10px]";
+        b.textContent = "1";
+        b.onclick = () => changePage(1);
+        container.appendChild(b);
+        if (startPage > 2) {
+          const dots = document.createElement("span");
+          dots.className = "text-slate-400 px-0.5";
+          dots.textContent = "...";
+          container.appendChild(dots);
+        }
+      }
+
+      for (let p = startPage; p <= endPage; p++) {
+        const b = document.createElement("button");
+        const isActive = p === currentPage;
+        b.className = `px-2 py-0.5 border rounded text-[10px] font-bold ${
+          isActive 
+            ? "bg-blue-600 text-white border-blue-600" 
+            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+        }`;
+        b.textContent = p;
+        b.onclick = () => changePage(p);
+        container.appendChild(b);
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          const dots = document.createElement("span");
+          dots.className = "text-slate-400 px-0.5";
+          dots.textContent = "...";
+          container.appendChild(dots);
+        }
+        const b = document.createElement("button");
+        b.className = "px-2 py-0.5 border border-slate-300 rounded bg-white hover:bg-slate-100 text-[10px]";
+        b.textContent = totalPages;
+        b.onclick = () => changePage(totalPages);
+        container.appendChild(b);
+      }
+    }
+
+    function changePage(p) {
+      if (p < 1 || p > totalPages || p === currentPage) return;
+      fetchData(p);
+    }
+
+    // Modal Upload Handling
+    function openUploadModal() {
+      selectedFile = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("fileInfo").classList.add("hidden");
+      document.getElementById("uploadProgressContainer").classList.add("hidden");
+      document.getElementById("btnSubmitUpload").disabled = true;
+      document.getElementById("uploadModal").classList.remove("hidden");
+    }
+
+    function closeUploadModal() {
+      document.getElementById("uploadModal").classList.add("hidden");
+    }
+
+    // Drag and Drop Events
+    const dropZone = document.getElementById("dropZone");
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add("border-blue-500", "bg-blue-50/50");
+      }, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("border-blue-500", "bg-blue-50/50");
+      }, false);
+    });
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        processSelectedFile(files[0]);
+      }
+    }, false);
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        processSelectedFile(e.target.files[0]);
+      }
+    }
+
+    function processSelectedFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext !== 'xlsx' && ext !== 'xls') {
+        alert("Hanya file Excel (.xlsx atau .xls) yang diperbolehkan!");
+        return;
+      }
+      selectedFile = file;
+      document.getElementById("fileName").textContent = file.name;
+      document.getElementById("fileSize").textContent = `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+      document.getElementById("fileInfo").classList.remove("hidden");
+      document.getElementById("btnSubmitUpload").disabled = false;
+    }
+
+    // Submit Upload via XHR for Real Progress Bar
+    function submitUpload() {
+      if (!selectedFile) return;
+
+      const confirmMsg = "Konfirmasi: Seluruh data ext_closing sebelumnya akan di-TRUNCATE (dihapus bersih) dan diganti dengan isi file ini. Lanjutkan?";
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+
+      const progressContainer = document.getElementById("uploadProgressContainer");
+      const progressBar = document.getElementById("uploadProgressBar");
+      const percentageText = document.getElementById("uploadPercentage");
+      const statusText = document.getElementById("uploadStatusText");
+      const btnSubmit = document.getElementById("btnSubmitUpload");
+
+      progressContainer.classList.remove("hidden");
+      btnSubmit.disabled = true;
+      statusText.textContent = "Mengunggah file ke server...";
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/v1/csv/master/closing-finance/upload", true);
+
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percentComplete + "%";
+          percentageText.textContent = percentComplete + "%";
+          if (percentComplete >= 100) {
+            statusText.textContent = "Memproses truncate database dan batch insert data...";
+          }
+        }
+      };
+
+      xhr.onload = function () {
+        btnSubmit.disabled = false;
+        if (xhr.status === 200) {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            progressBar.style.width = "100%";
+            percentageText.textContent = "100%";
+            statusText.textContent = "Selesai!";
+            alert(resp.message || "Upload berhasil!");
+            closeUploadModal();
+            fetchFilterOptions();
+            fetchData(1);
+          } catch (e) {
+            alert("Upload selesai, merefresh data...");
+            closeUploadModal();
+            fetchFilterOptions();
+            fetchData(1);
+          }
+        } else {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            alert("Gagal mengunggah: " + (resp.message || xhr.statusText));
+          } catch (e) {
+            alert("Gagal mengunggah: Server error (" + xhr.status + ")");
+          }
+          statusText.textContent = "Gagal memproses upload.";
+        }
+      };
+
+      xhr.onerror = function () {
+        btnSubmit.disabled = false;
+        alert("Terjadi kesalahan jaringan saat mengunggah file.");
+        statusText.textContent = "Kesalahan jaringan.";
+      };
+
+      xhr.send(formData);
+    }
+
+    // Export Table Data to Excel (Client-side via SheetJS)
+    async function exportToExcel() {
+      // Ambil seluruh data dengan filter saat ini (tanpa limit pagination)
+      const search = document.getElementById("filterSearch").value.trim();
+      const customer = document.getElementById("filterCustomer").value;
+      const category = document.getElementById("filterCategory").value;
+      const tipe = document.getElementById("filterType").value;
+      const tglawal = document.getElementById("filterTglAwal").value;
+      const tglakhir = document.getElementById("filterTglAkhir").value;
+
+      const params = new URLSearchParams({
+        page: 1,
+        limit: 10000,
+        search: search,
+        customer: customer,
+        category: category,
+        tipe: tipe,
+        tglawal: tglawal,
+        tglakhir: tglakhir
+      });
+
+      const btn = event.currentTarget;
+      const oldHtml = btn.innerHTML;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Mengekspor...</span>`;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/v1/csv/master/closing-finance?${params.toString()}`);
+        const result = await res.json();
+        const items = result.data || [];
+
+        if (items.length === 0) {
+          alert("Tidak ada data untuk diekspor!");
+          return;
+        }
+
+        const excelData = items.map((d, i) => ({
+          "No": i + 1,
+          "Customer": d.cust,
+          "Customer Code": d.cust_code || "-",
+          "Service Order": d.service_order,
+          "Category": d.category,
+          "Plate Number": d.nopol,
+          "Reference": d.reff,
+          "Information": d.information,
+          "Released at": formatDateTime(d.released),
+          "Completed at": formatDateTime(d.completed),
+          "Product/Service": d.tipe,
+          "Code": d.sku,
+          "Name": d.prd,
+          "Notes": d.notes,
+          "Qty": d.qty,
+          "Average Cost": d.average,
+          "Unit Price": d.harga,
+          "Total": d.total,
+          "Status": d.statue
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Closing Finance");
+
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        XLSX.writeFile(wb, `Closing_Finance_${today}.xlsx`);
+      } catch (err) {
+        alert("Gagal mengekspor data: " + err.message);
+      } finally {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+      }
+    }
+
+    // Initialize Page
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchFilterOptions();
+      fetchData(1);
+    });
+  </script>
+</body>
+</html>

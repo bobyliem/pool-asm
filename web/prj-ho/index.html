@@ -1,0 +1,260 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sampurna Workshop - ASM Dashboard</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN DASHBOARD) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Dashboard"></app-sidebar>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 p-6 overflow-y-auto bg-slate-50">
+      
+      <!-- Top Filters & Refresh -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <h2 class="text-xl font-bold text-gray-800">Visitors</h2>
+          <button onclick="fetchDashboardData()" class="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1" title="Refresh Data">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <!-- Filter Vehicle -->
+          <div class="border bg-white rounded-lg px-3 py-1.5 text-sm flex items-center space-x-2 shadow-sm cursor-pointer hover:bg-gray-50">
+            <span class="bg-gray-100 px-2 py-0.5 rounded text-xs text-gray-600 font-medium">Colt Diesel Engkel <i class="fa-solid fa-xmark text-gray-400 ml-1"></i></span>
+            <i class="fa-solid fa-chevron-down text-gray-400 text-xs"></i>
+          </div>
+          <!-- Filter Date -->
+          <div class="border bg-white rounded-lg px-3 py-1.5 text-xs text-gray-600 shadow-sm flex items-center space-x-2 cursor-pointer hover:bg-gray-50">
+            <span>27 Sep 2026 07:00 - 27 Sep 2026 17:00</span>
+            <i class="fa-regular fa-pen-to-square text-blue-500"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- METRIC CARDS ROW -->
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+        
+        <!-- MAIN CARD: Total Unit di Pool -->
+        <div class="md:col-span-2 bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex flex-col justify-center items-center text-center relative">
+          <h3 class="text-4xl font-extrabold text-gray-800 mb-1" id="totalUnitPool">0</h3>
+          <p class="text-sm font-semibold text-gray-600">Unit di Pool</p>
+          <p class="text-xs text-emerald-600 mt-1 font-medium">
+            <i class="fa-solid fa-arrow-up"></i> <span id="poolIncrease">0</span> â€¢ Sebelumnya <span id="prevPoolUnit">0</span>
+          </p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            <span id="masukCount">0</span> masuk â€¢ <span id="keluarCount">0</span> keluar
+          </p>
+
+          <!-- Donut Charts Preview -->
+          <div class="flex items-center justify-around w-full mt-4 pt-3 border-t">
+            <div class="w-20 h-20">
+              <canvas id="typeDonut"></canvas>
+            </div>
+            <div class="w-20 h-20">
+              <canvas id="categoryDonut"></canvas>
+            </div>
+          </div>
+          <div class="flex justify-around w-full text-[10px] text-gray-500 font-medium mt-1">
+            <span>Vehicle by Type</span>
+            <span>Vehicle by Category</span>
+          </div>
+        </div>
+
+        <!-- BREAKDOWN CARDS -->
+        <!-- Perbaikan -->
+        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-gray-600">Perbaikan</span>
+              <span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> 0 unit</span>
+            </div>
+            <h4 class="text-2xl font-bold text-gray-800 mt-1" id="countPerbaikan">0</h4>
+            <p class="text-[11px] text-gray-400">Sebelumnya 0</p>
+          </div>
+          <div class="mt-4 pt-2 border-t flex justify-between items-center text-[10px] text-gray-500">
+            <span>0 masuk â€¢ 0 keluar</span>
+            <span class="text-rose-500 font-medium">0 unit lalu</span>
+          </div>
+        </div>
+
+        <!-- Asuransi -->
+        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-gray-600">Asuransi</span>
+              <span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> 0 unit</span>
+            </div>
+            <h4 class="text-2xl font-bold text-gray-800 mt-1" id="countAsuransi">0</h4>
+            <p class="text-[11px] text-gray-400">Sebelumnya 0</p>
+          </div>
+          <div class="mt-4 pt-2 border-t flex justify-between items-center text-[10px] text-gray-500">
+            <span>0 masuk â€¢ 0 keluar</span>
+            <span class="text-emerald-500 font-medium">0 unit baru</span>
+          </div>
+        </div>
+
+        <!-- Standby -->
+        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-gray-600">Standby</span>
+              <span class="text-xs text-emerald-600 font-bold"><i class="fa-solid fa-arrow-up"></i> 0 unit</span>
+            </div>
+            <h4 class="text-2xl font-bold text-gray-800 mt-1" id="countStandby">0</h4>
+            <p class="text-[11px] text-gray-400">Sebelumnya 0</p>
+          </div>
+          <div class="mt-4 pt-2 border-t flex justify-between items-center text-[10px] text-gray-500">
+            <span>0 masuk â€¢ 0 keluar</span>
+            <span class="text-emerald-500 font-medium">0 unit baru</span>
+          </div>
+        </div>
+
+        <!-- Bongkar Muat & Tunggu DO -->
+        <div class="flex flex-col space-y-4">
+          <div class="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex-1 hover:shadow-md transition">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-gray-600">Bongkar Muat</span>
+              <span class="text-emerald-600 font-bold">0 unit</span>
+            </div>
+            <h5 class="text-lg font-bold text-gray-800 mt-0.5">0</h5>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex-1 hover:shadow-md transition">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-gray-600">Tunggu DO</span>
+              <span class="text-emerald-600 font-bold">0 unit</span>
+            </div>
+            <h5 class="text-lg font-bold text-gray-800 mt-0.5">0</h5>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SERVICE ORDERS CHART -->
+      <div class="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-800">Service Orders</h3>
+          <span class="text-xs text-gray-400">Terhubung ke API GoLang (`/api/v1/dashboard/visitors`)</span>
+        </div>
+        <div class="w-full h-64">
+          <canvas id="serviceOrderChart"></canvas>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let typeChart, categoryChart, serviceChart;
+
+    async function fetchDashboardData() {
+      try {
+        const response = await fetch('/api/v1/dashboard/visitors');
+        const res = await response.json();
+        if (res.status === 'success') {
+          const data = res.data;
+          
+          document.getElementById('totalUnitPool').innerText = data.total_unit_in_pool;
+          document.getElementById('prevPoolUnit').innerText = data.previous_pool_unit;
+          document.getElementById('poolIncrease').innerText = data.total_unit_in_pool - data.previous_pool_unit;
+          document.getElementById('masukCount').innerText = data.masuk_count;
+          document.getElementById('keluarCount').innerText = data.keluar_count;
+
+          if (data.status_breakdown) {
+            if (data.status_breakdown["Perbaikan"]) document.getElementById('countPerbaikan').innerText = data.status_breakdown["Perbaikan"].count;
+            if (data.status_breakdown["Asuransi"]) document.getElementById('countAsuransi').innerText = data.status_breakdown["Asuransi"].count;
+            if (data.status_breakdown["Standby"]) document.getElementById('countStandby').innerText = data.status_breakdown["Standby"].count;
+          }
+
+          renderCharts(data);
+        }
+      } catch (error) {
+        console.error('Gagal mengambil data API:', error);
+      }
+    }
+
+    function renderCharts(data) {
+      // Donut Chart Type
+      const ctxType = document.getElementById('typeDonut').getContext('2d');
+      if (typeChart) typeChart.destroy();
+      typeChart = new Chart(ctxType, {
+        type: 'doughnut',
+        data: {
+          labels: data.vehicle_by_type.map(x => x.name),
+          datasets: [{
+            data: data.vehicle_by_type.map(x => x.count),
+            backgroundColor: ['#f43f5e', '#3b82f6', '#eab308']
+          }]
+        },
+        options: { plugins: { legend: { display: false } }, cutout: '70%' }
+      });
+
+      // Donut Chart Category
+      const ctxCategory = document.getElementById('categoryDonut').getContext('2d');
+      if (categoryChart) categoryChart.destroy();
+      categoryChart = new Chart(ctxCategory, {
+        type: 'doughnut',
+        data: {
+          labels: data.vehicle_by_category.map(x => x.name),
+          datasets: [{
+            data: data.vehicle_by_category.map(x => x.count),
+            backgroundColor: ['#06b6d4', '#8b5cf6']
+          }]
+        },
+        options: { plugins: { legend: { display: false } }, cutout: '70%' }
+      });
+
+      // Service Order Bar Chart
+      const ctxService = document.getElementById('serviceOrderChart').getContext('2d');
+      if (serviceChart) serviceChart.destroy();
+      serviceChart = new Chart(ctxService, {
+        type: 'bar',
+        data: {
+          labels: ['Perbaikan', 'Asuransi', 'Standby', 'Bongkar Muat', 'Tunggu DO'],
+          datasets: [
+            {
+              label: 'Unit Masuk',
+              data: [10, 9, 40, 0, 0],
+              backgroundColor: '#3b82f6'
+            },
+            {
+              label: 'Perbaikan Selesai',
+              data: [8, 0, 0, 0, 0],
+              backgroundColor: '#10b981'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    window.onload = fetchDashboardData;
+  </script>
+</body>
+</html>
