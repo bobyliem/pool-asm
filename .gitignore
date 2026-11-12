@@ -5,3 +5,9 @@ MyWork/
 # File sistem atau sampah OS
 .DS_Store
 Thumbs.db
+
+# Additional file types to ignore
+.env
+*.xlsx
+*.csv
+*.exe

@@ -1,0 +1,29 @@
+name: Deployment
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t ${{ secrets.DOCKERIMAGE_NAME }} .
+      - name: Publish
+        run: docker push ${{ secrets.DOCKERIMAGE_NAME }}
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy on Server
+    needs: [build]
+    steps:
+      - name: Trigger Deployment Webhook
+        uses: joelwmale/webhook-action@master
+        with:
+          url: ${{ secrets.WEBHOOK_URL }}
+          headers: '{"X-Webhook-Signature": "${{ secrets.WEBHOOK_SIGNATURE }}"}'
+          github_event_payload: true
