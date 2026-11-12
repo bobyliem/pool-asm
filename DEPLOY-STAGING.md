@@ -139,9 +139,10 @@ TZ=Asia/Jakarta
 
 DB_CSV_HOST=db-csv
 DB_CSV_PORT=3306
-DB_CSV_USER=root
-DB_CSV_PASS=GANTI_PASSWORD_MYSQL_STAGING
+DB_CSV_USER=asm
+DB_CSV_PASS=GANTI_PASSWORD_USER_APLIKASI
 DB_CSV_NAME=imp_sampurna
+DB_ROOT_PASS=PASSWORD_ROOT_YANG_SUDAH_ADA
 
 # Akun ini sudah ada di server Head Office. Migrasi tidak membuatnya.
 # Kosongkan kalau kredensial HO belum ada. Dashboard CSV tetap jalan.
@@ -158,7 +159,7 @@ ASM_BOOTSTRAP_USER=staging
 ASM_BOOTSTRAP_PASS=GANTI_PASSWORD_ADMIN
 ```
 
-`.env` ini hanya memakai `root`. User MySQL `asm` belum ada, jadi jangan ditulis di sini. Migrasi membuat user itu nanti, dengan password yang sama dengan `DB_CSV_PASS`, saat aplikasi pertama kali nyala.
+Aplikasi konek sebagai `asm`, bukan `root`. `DB_ROOT_PASS` adalah password root yang sudah ada di volume MySQL. Jangan diubah. `DB_CSV_PASS` adalah password user `asm`. Di server yang sudah jalan, isi `DB_ROOT_PASS` dengan password root yang sekarang, lalu ganti `DB_CSV_USER` menjadi `asm`.
 
 `DB_HO_USER` dan `DB_HO_PASS` dikosongkan dulu. User itu ada di MySQL Head Office (`10.2.1.2`), bukan di database staging, dan migrasi tidak membuatnya. Isi kedua baris itu hanya kalau kamu sudah punya username dan password yang memang sudah dibuat di server HO.
 

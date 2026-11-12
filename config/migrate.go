@@ -27,25 +27,7 @@ func MigrateCsv() error {
 		return fmt.Errorf("nama database tidak valid: %s", cfg.name)
 	}
 
-	serverDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true",
-		cfg.user, cfg.pass, cfg.host, cfg.port)
-	server, err := sql.Open("mysql", serverDSN)
-	if err != nil {
-		return err
-	}
-	defer server.Close()
-	if err := server.Ping(); err != nil {
-		return fmt.Errorf("tidak bisa konek ke MySQL %s:%s: %w", cfg.host, cfg.port, err)
-	}
-
-	createDB := fmt.Sprintf(
-		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-		cfg.name,
-	)
-	if _, err := server.Exec(createDB); err != nil {
-		return fmt.Errorf("gagal membuat database %s: %w", cfg.name, err)
-	}
-	if err := ensureMysqlUser(server, cfg); err != nil {
+	if err := ensureMysqlUser(cfg); err != nil {
 		return err
 	}
 
@@ -91,23 +73,43 @@ func MigrateCsv() error {
 	return nil
 }
 
-func ensureMysqlUser(server *sql.DB, cfg csvConfig) error {
-	appUser := strings.TrimSpace(os.Getenv("DB_CSV_APP_USER"))
-	if appUser == "" {
-		appUser = "asm"
+func ensureMysqlUser(cfg csvConfig) error {
+	rootPass := os.Getenv("DB_ROOT_PASS")
+	if rootPass == "" {
+		rootPass = cfg.pass
 	}
-	appPass := os.Getenv("DB_CSV_APP_PASS")
-	if appPass == "" {
-		appPass = cfg.pass
-	}
-	if appUser == "root" || appPass == "" {
+	if rootPass == "" {
 		return nil
 	}
-	if !dbNamePattern.MatchString(appUser) {
-		return fmt.Errorf("nama user MySQL tidak valid: %s", appUser)
+
+	serverDSN := fmt.Sprintf("root:%s@tcp(%s:%s)/?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true",
+		rootPass, cfg.host, cfg.port)
+	server, err := sql.Open("mysql", serverDSN)
+	if err != nil {
+		return err
+	}
+	defer server.Close()
+	if err := server.Ping(); err != nil {
+		return fmt.Errorf("tidak bisa konek sebagai root: %w", err)
 	}
 
-	quotedPass := "'" + strings.ReplaceAll(appPass, "'", "''") + "'"
+	createDB := fmt.Sprintf(
+		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
+		cfg.name,
+	)
+	if _, err := server.Exec(createDB); err != nil {
+		return fmt.Errorf("gagal membuat database %s: %w", cfg.name, err)
+	}
+
+	if cfg.user == "root" || cfg.pass == "" {
+		return nil
+	}
+	if !dbNamePattern.MatchString(cfg.user) {
+		return fmt.Errorf("nama user MySQL tidak valid: %s", cfg.user)
+	}
+
+	appUser := cfg.user
+	quotedPass := "'" + strings.ReplaceAll(cfg.pass, "'", "''") + "'"
 	for _, host := range []string{"%", "localhost"} {
 		createUser := fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'%s' IDENTIFIED BY %s", appUser, host, quotedPass)
 		if _, err := server.Exec(createUser); err != nil {

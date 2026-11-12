@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password --sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_CSV_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-${DB_CSV_PASS}}
       MYSQL_DATABASE: ${DB_CSV_NAME}
       TZ: Asia/Jakarta
     volumes:
