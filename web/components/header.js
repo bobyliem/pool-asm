@@ -151,10 +151,6 @@ class AppHeader extends HTMLElement {
   }
 }
 
-if (!customElements.get('app-header')) {
-  customElements.define('app-header', AppHeader);
-}
-
 // ==========================================
 // USER AUTHENTICATION & SESSION MANAGEMENT
 // ==========================================
@@ -483,3 +479,7 @@ window.dismissNavSyncBanner = function() {
   const banner = document.getElementById('navSyncBanner');
   if (banner) banner.classList.add('hidden');
 };
+
+if (!customElements.get('app-header')) {
+  customElements.define('app-header', AppHeader);
+}

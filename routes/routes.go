@@ -33,55 +33,72 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	r.Static("/components", "./web/components")
 	r.StaticFile("/favicon.ico", "./web/images/logo-sar.png")
 
+	// Auth Handler (diinisialisasi lebih awal agar bisa memproteksi halaman web)
+	var authHandler *handler.AuthHandler
+	if dbCsv != nil {
+		authRepo := repository.NewAuthRepository(dbCsv)
+		authSvc := service.NewAuthService(authRepo)
+		authHandler = handler.NewAuthHandler(authSvc)
+	}
+
+	// Public Auth Page
+	r.StaticFile("/login", "./web/login.html")
+
 	// Root Route: Redirects to /prj-csv
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, "/prj-csv")
 	})
 
-	// PRJ-HO Routes (Dashboard dari project HO)
-	r.StaticFile("/prj-ho", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
-	r.StaticFile("/prj-ho/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
+	// Protected Web Pages (Wajib punya session login, jika tidak redirect ke /login)
+	pages := r.Group("/")
+	if authHandler != nil {
+		pages.Use(authHandler.RequirePageAuth())
+	}
+	{
+		// PRJ-HO Routes (Dashboard dari project HO)
+		pages.StaticFile("/prj-ho", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
+		pages.StaticFile("/prj-ho/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
 
-	// Backwards compatibility for root paths
-	r.StaticFile("/dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
-	r.StaticFile("/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
+		// Backwards compatibility for root paths
+		pages.StaticFile("/dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
+		pages.StaticFile("/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
 
-	// PRJ-CSV Routes (Dashboard project CSV)
-	r.StaticFile("/prj-csv", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/dashboard", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/spk-per-cust", "./web/prj-csv/spk-per-cust.html")
-	r.StaticFile("/prj-csv/summary-per-cust", "./web/prj-csv/summary-per-cust.html")
-	r.StaticFile("/prj-csv/resume-per-kategori", "./web/prj-csv/resume-per-kategori.html")
-	r.StaticFile("/prj-csv/resume-per-kategori/detail", "./web/prj-csv/resume-per-kategori-detail.html")
-	r.StaticFile("/prj-csv/resume-per-kategori-detail", "./web/prj-csv/resume-per-kategori-detail.html")
-	r.StaticFile("/prj-csv/spk-detail", "./web/prj-csv/spk-detail.html")
-	r.StaticFile("/prj-csv/produksi/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
-	r.StaticFile("/prj-csv/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
-	r.StaticFile("/prj-csv/produksi/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
-	r.StaticFile("/prj-csv/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
-	r.StaticFile("/prj-csv/produksi/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
-	r.StaticFile("/prj-csv/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
-	r.StaticFile("/prj-csv/produksi/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
-	r.StaticFile("/prj-csv/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
-	r.StaticFile("/prj-csv/master-data/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
-	r.StaticFile("/prj-csv/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
-	r.StaticFile("/prj-csv/master-data/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
-	r.StaticFile("/prj-csv/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
-	r.StaticFile("/prj-csv/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
-	r.StaticFile("/prj-csv/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
-	r.StaticFile("/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		// PRJ-CSV Routes (Dashboard project CSV)
+		pages.StaticFile("/prj-csv", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/dashboard", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/spk-per-cust", "./web/prj-csv/spk-per-cust.html")
+		pages.StaticFile("/prj-csv/summary-per-cust", "./web/prj-csv/summary-per-cust.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori", "./web/prj-csv/resume-per-kategori.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori/detail", "./web/prj-csv/resume-per-kategori-detail.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori-detail", "./web/prj-csv/resume-per-kategori-detail.html")
+		pages.StaticFile("/prj-csv/spk-detail", "./web/prj-csv/spk-detail.html")
+		pages.StaticFile("/prj-csv/produksi/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
+		pages.StaticFile("/prj-csv/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
+		pages.StaticFile("/prj-csv/produksi/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
+		pages.StaticFile("/prj-csv/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
+		pages.StaticFile("/prj-csv/produksi/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
+		pages.StaticFile("/prj-csv/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
+		pages.StaticFile("/prj-csv/produksi/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
+		pages.StaticFile("/prj-csv/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
+		pages.StaticFile("/prj-csv/master-data/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
+		pages.StaticFile("/prj-csv/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
+		pages.StaticFile("/prj-csv/master-data/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
+		pages.StaticFile("/prj-csv/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
+		pages.StaticFile("/prj-csv/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/prj-csv/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
 
-	// Authentication & Administrator Routes
-	r.StaticFile("/login", "./web/login.html")
-	r.StaticFile("/admin/users", "./web/admin/users.html")
-	r.StaticFile("/admin/groups", "./web/admin/groups.html")
+		// Administrator Routes
+		pages.StaticFile("/admin/users", "./web/admin/users.html")
+		pages.StaticFile("/admin/groups", "./web/admin/groups.html")
+	}
 
 	// HO Repositories, Services, and Handlers
 	var hoDashboardHandler *handler.HoDashboardHandler
@@ -113,7 +130,6 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	var priorUnitHandler *handler.PriorUnitHandler
 	var closingFinanceHandler *handler.ClosingFinanceHandler
 	var solarHandler *handler.SolarHandler
-	var authHandler *handler.AuthHandler
 	var stockpileSyncHandler *handler.StockpileSyncHandler
 
 	csvSyncSvc := service.NewCsvSyncService(dbCsv)
@@ -145,9 +161,6 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		solarSvc := service.NewSolarService(solarRepo)
 		solarHandler = handler.NewSolarHandler(solarSvc, solarSyncSvc)
 
-		authRepo := repository.NewAuthRepository(dbCsv)
-		authSvc := service.NewAuthService(authRepo)
-		authHandler = handler.NewAuthHandler(authSvc)
 
 		stockpileSyncSvc := service.NewStockpileSyncService(dbCsv)
 		stockpileSyncHandler = handler.NewStockpileSyncHandler(stockpileSyncSvc)
