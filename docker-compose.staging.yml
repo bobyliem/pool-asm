@@ -1,0 +1,45 @@
+services:
+  db-csv:
+    image: mysql:8.0
+    container_name: asm-mysql-csv
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_CSV_PASS}
+      MYSQL_DATABASE: ${DB_CSV_NAME}
+      TZ: Asia/Jakarta
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - asm-net
+
+  app:
+    image: ${ASM_IMAGE}
+    container_name: asm-app
+    restart: unless-stopped
+    depends_on:
+      db-csv:
+        condition: service_healthy
+    ports:
+      - "8011:8011"
+    env_file:
+      - .env
+    environment:
+      DB_CSV_HOST: db-csv
+      DB_CSV_PORT: "3306"
+      TZ: Asia/Jakarta
+    networks:
+      - asm-net
+
+volumes:
+  mysql_data:
+
+networks:
+  asm-net:
+    driver: bridge

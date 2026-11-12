@@ -15,38 +15,53 @@ var (
 	DBHo  *gorm.DB
 )
 
+type csvConfig struct {
+	user string
+	pass string
+	host string
+	port string
+	name string
+}
+
+func loadCsvConfig() csvConfig {
+	cfg := csvConfig{
+		user: os.Getenv("DB_CSV_USER"),
+		pass: os.Getenv("DB_CSV_PASS"),
+		host: os.Getenv("DB_CSV_HOST"),
+		port: os.Getenv("DB_CSV_PORT"),
+		name: os.Getenv("DB_CSV_NAME"),
+	}
+	if cfg.user == "" {
+		cfg.user = "root"
+	}
+	if cfg.host == "" {
+		cfg.host = "127.0.0.1"
+	}
+	if cfg.port == "" {
+		cfg.port = "3307"
+	}
+	if cfg.name == "" {
+		cfg.name = "imp_sampurna"
+	}
+	return cfg
+}
+
 func ConnectCsvDB() *gorm.DB {
-	dbUser := os.Getenv("DB_CSV_USER")
-	if dbUser == "" {
-		dbUser = "root"
-	}
-	dbPass := os.Getenv("DB_CSV_PASS")
-	dbHost := os.Getenv("DB_CSV_HOST")
-	if dbHost == "" {
-		dbHost = "127.0.0.1"
-	}
-	dbPort := os.Getenv("DB_CSV_PORT")
-	if dbPort == "" {
-		dbPort = "3307"
-	}
-	dbName := os.Getenv("DB_CSV_NAME")
-	if dbName == "" {
-		dbName = "imp_sampurna"
-	}
+	cfg := loadCsvConfig()
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPass, dbHost, dbPort, dbName)
+		cfg.user, cfg.pass, cfg.host, cfg.port, cfg.name)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
 	})
 
 	if err != nil {
-		log.Printf("Warning: Gagal konek ke DB CSV (%s:%s/%s): %v\n", dbHost, dbPort, dbName, err)
+		log.Printf("Warning: Gagal konek ke DB CSV (%s:%s/%s): %v\n", cfg.host, cfg.port, cfg.name, err)
 		return nil
 	}
 
-	fmt.Printf("Successfully connected to MySQL CSV Database (%s:%s/%s)!\n", dbHost, dbPort, dbName)
+	fmt.Printf("Successfully connected to MySQL CSV Database (%s:%s/%s)!\n", cfg.host, cfg.port, cfg.name)
 	DBCsv = db
 	return db
 }

@@ -1,5 +1,6 @@
-# Abaikan semua file database SQL
+# Abaikan dump database. File migrasi aplikasi tetap ikut commit.
 *.sql
+!config/migrations/*.sql
 MyWork/
 
 # Rahasia lokal. Jangan di-commit.

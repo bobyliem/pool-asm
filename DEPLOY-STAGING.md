@@ -2,7 +2,7 @@
 
 Satu alur: push ke branch `staging` di GitHub → GitHub Actions build image → image masuk GitHub Container Registry → server staging menarik image dan menjalankan `docker compose`.
 
-Aplikasi yang naik: container `asm-app` (port 8080) dan MySQL `imp_sampurna` (hanya di jaringan Docker, tidak dibuka ke internet). Database Head Office tetap remote lewat `DB_HO_*` di `.env` server.
+Aplikasi yang naik: container `asm-app` (port 8011) dan MySQL `imp_sampurna` (hanya di jaringan Docker, tidak dibuka ke internet). Database Head Office tetap remote lewat `DB_HO_*` di `.env` server.
 
 ```
 laptop  --push staging-->  GitHub
@@ -18,7 +18,7 @@ laptop  --push staging-->  GitHub
                               |
                               v
                      server staging
-                     /opt/asm-staging
+                     /var/www/pool-asm
 ```
 
 Lakukan bagian 1–6 sekali. Setelah itu setiap push ke `staging` deploy sendiri (bagian 7).
@@ -31,7 +31,7 @@ Pipeline gagal kalau langkah ini dilewati.
 
 1. Ubah baris pertama `Dockerfile` dari `golang:1.24-alpine` menjadi `golang:1.26-alpine`. `go.mod` memakai Go 1.26. Image 1.24 tidak bisa meng-compile modul itu.
 2. Jangan memakai `.env` yang sudah ada di GitHub. File itu ikut ter-commit, jadi password di dalamnya anggap sudah bocor. Password MySQL staging yang baru ada di `.staging-secrets` (tidak di-commit). Salin ke `.env` server pada bagian 4. Password user HO di `10.2.1.2` belum diganti: dari mesin ini tidak ada akses admin ke MySQL itu, dan menggantinya akan memutus aplikasi yang masih memakai user lama.
-3. File skema ada di `imp_sampurna.sql` di folder repo ini (diabaikan Git lewat `*.sql`). Isinya tabel kosong yang disusun dari model aplikasi, bukan dump data produksi, karena dump asli tidak ada di repo maupun di mesin ini. Import dilakukan sekali di bagian 6.
+3. Skema tabel ada di `config/migrations/001_csv_schema.sql`. Aplikasi menjalankannya sendiri lewat `go run . migrate` atau saat server nyala. Bukan dump data produksi.
 4. Buat branch `staging` dari commit yang sudah berisi perbaikan Dockerfile, lalu push:
 
 ```bash
@@ -43,12 +43,14 @@ git push -u origin staging
 
 ## 2. Siapkan server staging
 
-Asumsi: Ubuntu 22.04 atau 24.04, akses SSH, IP publik atau IP yang bisa dijangkau GitHub Actions.
+Server yang dipakai adalah server yang sudah ada. Semua proyek di server itu tinggal di `/var/www`, jadi ASM diletakkan di `/var/www/pool-asm`. Jangan buat folder baru di `/opt`.
+
+Asumsi: Ubuntu 22.04 atau 24.04, akses SSH, IP yang bisa dijangkau GitHub Actions. Lewati pemasangan Docker kalau `docker compose version` sudah berhasil.
 
 Masuk sebagai user dengan sudo:
 
 ```bash
-ssh <user>@<IP_STAGING>
+ssh -p <SSH_PORT> <user>@<IP_STAGING>
 ```
 
 Pasang Docker Engine dan plugin Compose:
@@ -64,20 +66,20 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-Buat user khusus deploy (bukan root) dan izinkan menjalankan Docker:
+Pakai user `deploy` yang sudah ada. Buat user itu hanya kalau belum ada, lalu izinkan menjalankan Docker dan milikkan folder proyek:
 
 ```bash
-sudo adduser --disabled-password --gecos "" deploy
+id deploy >/dev/null 2>&1 || sudo adduser --disabled-password --gecos "" deploy
 sudo usermod -aG docker deploy
-sudo mkdir -p /opt/asm-staging
-sudo chown deploy:deploy /opt/asm-staging
+sudo mkdir -p /var/www/pool-asm
+sudo chown deploy:deploy /var/www/pool-asm
 ```
 
 Buka hanya SSH dan aplikasi. MySQL tidak dibuka ke luar:
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 8080/tcp
+sudo ufw allow 8011/tcp
 sudo ufw enable
 ```
 
@@ -98,16 +100,24 @@ Di laptop (bukan di server), buat kunci yang hanya dipakai pipeline:
 ssh-keygen -t ed25519 -f ./asm-staging-deploy -C "github-actions-asm-staging" -N ""
 ```
 
-Pasang public key ke user `deploy` di server:
+`/home/deploy/.ssh/authorized_keys` sudah ada dan dipakai CI/CD GitLab proyek lain. Jangan dihapus atau ditimpa. Tambahkan satu baris kunci GitHub Actions di bawah kunci yang sudah ada.
+
+User `deploy` tidak punya password, jadi `ssh-copy-id deploy@...` akan selalu menanyakan password. Pasang lewat root, dari laptop, di folder yang berisi `asm-staging-deploy.pub`:
+
+`<SSH_PORT>` adalah port SSH server itu, bukan 22.
 
 ```bash
-ssh-copy-id -i ./asm-staging-deploy.pub deploy@<IP_STAGING>
+ssh -p <SSH_PORT> root@<IP_STAGING> 'mkdir -p /home/deploy/.ssh && touch /home/deploy/.ssh/authorized_keys && chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys'
+grep -qxF "$(cat ./asm-staging-deploy.pub)" <(ssh -p <SSH_PORT> root@<IP_STAGING> 'cat /home/deploy/.ssh/authorized_keys') || cat ./asm-staging-deploy.pub | ssh -p <SSH_PORT> root@<IP_STAGING> 'cat >> /home/deploy/.ssh/authorized_keys'
+ssh -p <SSH_PORT> root@<IP_STAGING> 'chown -R deploy:deploy /home/deploy/.ssh'
 ```
+
+Perintah kedua hanya menambahkan baris kalau kunci itu belum ada. Kunci GitLab yang sudah tersimpan tetap di tempatnya.
 
 Tes, harus masuk tanpa password:
 
 ```bash
-ssh -i ./asm-staging-deploy deploy@<IP_STAGING>
+ssh -p <SSH_PORT> -i ./asm-staging-deploy deploy@<IP_STAGING>
 ```
 
 Isi private key (`asm-staging-deploy`, bukan file `.pub`) nanti disimpan sebagai secret `STAGING_SSH_KEY`. Jangan di-commit.
@@ -116,14 +126,14 @@ Isi private key (`asm-staging-deploy`, bukan file `.pub`) nanti disimpan sebagai
 
 ## 4. File yang hidup di server
 
-Login sebagai `deploy`, lalu tulis dua file ini. Keduanya tidak masuk Git.
+`docker-compose.staging.yml` ada di repo. Server mengambil file itu lewat `git clone` atau `git pull`. Yang ditulis manual di server hanya `.env`, karena berisi password.
 
-### 4.1 `/opt/asm-staging/.env`
+### 4.1 `/var/www/pool-asm/.env`
 
 Ganti setiap nilai. `DB_CSV_HOST` harus `db-csv` karena itu nama service di Compose, bukan `localhost`.
 
 ```ini
-PORT=8080
+PORT=8011
 GIN_MODE=release
 TZ=Asia/Jakarta
 
@@ -133,70 +143,40 @@ DB_CSV_USER=root
 DB_CSV_PASS=GANTI_PASSWORD_MYSQL_STAGING
 DB_CSV_NAME=imp_sampurna
 
+# Akun ini sudah ada di server Head Office. Migrasi tidak membuatnya.
+# Kosongkan kalau kredensial HO belum ada. Dashboard CSV tetap jalan.
 DB_HO_HOST=10.2.1.2
 DB_HO_PORT=3306
-DB_HO_USER=GANTI_USER_HO
-DB_HO_PASS=GANTI_PASSWORD_HO
+DB_HO_USER=
+DB_HO_PASS=
 DB_HO_NAME=workshop
 
 ASM_IMAGE=ghcr.io/bobyliem/pool-asm:staging
+
+# User login awal. Hapus dua baris ini setelah bisa login.
+ASM_BOOTSTRAP_USER=staging
+ASM_BOOTSTRAP_PASS=GANTI_PASSWORD_ADMIN
 ```
 
-`DB_HO_*` hanya terisi kalau server staging bisa mencapai `10.2.1.2:3306`. Kalau tidak, aplikasi tetap nyala, endpoint HO mengembalikan error JSON, dashboard CSV tetap jalan setelah database lokal di-import.
+`.env` ini hanya memakai `root`. User MySQL `asm` belum ada, jadi jangan ditulis di sini. Migrasi membuat user itu nanti, dengan password yang sama dengan `DB_CSV_PASS`, saat aplikasi pertama kali nyala.
 
-### 4.2 `/opt/asm-staging/docker-compose.staging.yml`
+`DB_HO_USER` dan `DB_HO_PASS` dikosongkan dulu. User itu ada di MySQL Head Office (`10.2.1.2`), bukan di database staging, dan migrasi tidak membuatnya. Isi kedua baris itu hanya kalau kamu sudah punya username dan password yang memang sudah dibuat di server HO.
 
-Password di healthcheck dibaca dari environment Compose, bukan ditulis ulang di file ini. Baris `MYSQL_ROOT_PASSWORD` mengambil `DB_CSV_PASS` dari `.env` yang satu folder dengan file Compose.
+### 4.2 `docker-compose.staging.yml`
 
-```yaml
-services:
-  db-csv:
-    image: mysql:8.0
-    container_name: asm-mysql-csv
-    restart: unless-stopped
-    command: --default-authentication-plugin=mysql_native_password --sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_CSV_PASS}
-      MYSQL_DATABASE: ${DB_CSV_NAME}
-      TZ: Asia/Jakarta
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
-    networks:
-      - asm-net
+File ini ada di root repo dan ikut di-commit. Jangan salin isinya manual ke server.
 
-  app:
-    image: ${ASM_IMAGE}
-    container_name: asm-app
-    restart: unless-stopped
-    depends_on:
-      db-csv:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    environment:
-      DB_CSV_HOST: db-csv
-      DB_CSV_PORT: "3306"
-      TZ: Asia/Jakarta
-    networks:
-      - asm-net
+Password di healthcheck dibaca dari environment Compose. `MYSQL_ROOT_PASSWORD` mengambil `DB_CSV_PASS` dari `.env` yang satu folder dengan file Compose. Port aplikasi di host adalah `8011`. Port MySQL tidak dipetakan ke host. Database hanya bisa diakses container `asm-app`.
 
-volumes:
-  mysql_data:
+Clone pertama, dari server:
 
-networks:
-  asm-net:
-    driver: bridge
+```bash
+sudo mkdir -p /var/www/pool-asm
+sudo chown deploy:deploy /var/www/pool-asm
+git clone -b staging https://github.com/bobyliem/pool-asm.git /var/www/pool-asm
 ```
 
-Port `3307` sengaja tidak dipetakan. Database hanya bisa diakses container `asm-app`.
+Kalau folder itu sudah ada dan masih kosong, jalankan `git clone` yang sama. `.env` dibuat setelah clone, di dalam folder itu.
 
 ---
 
@@ -214,6 +194,7 @@ Di repo GitHub: **Settings → Secrets and variables → Actions → New reposit
 | Secret | Isi |
 |---|---|
 | `STAGING_HOST` | IP atau hostname server |
+| `STAGING_PORT` | Port SSH, misalnya `225`. Bukan `22` kalau server memakai port lain |
 | `STAGING_USER` | `deploy` |
 | `STAGING_SSH_KEY` | isi penuh file private key `asm-staging-deploy`, termasuk baris `BEGIN` dan `END` |
 | `GHCR_READ_TOKEN` | token fine-grained di atas |
@@ -272,12 +253,14 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.STAGING_HOST }}
+          port: ${{ secrets.STAGING_PORT }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script_stop: true
           script: |
             set -euo pipefail
-            cd /opt/asm-staging
+            cd /var/www/pool-asm
+            git pull --ff-only origin staging
             echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u bobyliem --password-stdin
             docker compose --env-file .env -f docker-compose.staging.yml pull app
             docker compose --env-file .env -f docker-compose.staging.yml up -d
@@ -285,29 +268,33 @@ jobs:
             docker image prune -f
 ```
 
-Push file workflow ke `staging`. Job pertama akan build lalu SSH. MySQL nyala kosong sampai import di bawah selesai.
+Push file workflow ke `staging`. Job pertama akan build lalu SSH. Saat container aplikasi nyala, program Go membuat database `imp_sampurna`, user MySQL `asm`, dan tabelnya dari `config/migrations/001_csv_schema.sql`. Tidak perlu menjalankan file SQL.
 
-### Import database sekali
+### Database
 
-Dari laptop, setelah container `asm-mysql-csv` statusnya healthy:
+Di laptop, dari folder repo, dengan `.env` yang sudah terisi:
 
 ```bash
-scp -i ./asm-staging-deploy imp_sampurna.sql deploy@<IP_STAGING>:/tmp/imp_sampurna.sql
-ssh -i ./asm-staging-deploy deploy@<IP_STAGING>
-cd /opt/asm-staging
-docker compose --env-file .env -f docker-compose.staging.yml exec -T db-csv \
-  sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" imp_sampurna' < /tmp/imp_sampurna.sql
-rm /tmp/imp_sampurna.sql
+go run . migrate
 ```
 
-Ulangi import hanya kalau volume `mysql_data` dihapus. Deploy berikutnya tidak mengosongkan data.
+Di server, perintah yang sama lewat container. Jalankan setelah `docker compose up` kalau ingin mengulang migrasi tanpa menyalakan ulang proses:
+
+```bash
+cd /var/www/pool-asm
+docker compose --env-file .env -f docker-compose.staging.yml exec app /app/asm migrate
+```
+
+Perintah itu hanya membuat database dan tabel yang belum ada. Data yang sudah tersimpan tidak dihapus.
+
+User login awal dibuat kalau `.env` berisi `ASM_BOOTSTRAP_USER` dan `ASM_BOOTSTRAP_PASS`. Kosongkan keduanya setelah user berhasil login. Group `SUPERADMIN` ikut dibuat oleh migrasi.
 
 ### Cek hasil
 
 Di server:
 
 ```bash
-cd /opt/asm-staging
+cd /var/www/pool-asm
 docker compose --env-file .env -f docker-compose.staging.yml ps
 docker compose --env-file .env -f docker-compose.staging.yml logs --tail=50 app
 ```
@@ -315,10 +302,10 @@ docker compose --env-file .env -f docker-compose.staging.yml logs --tail=50 app
 Dari laptop:
 
 ```bash
-curl -I http://<IP_STAGING>:8080/
+curl -I http://<IP_STAGING>:8011/
 ```
 
-Harapan: HTTP 307 ke `/prj-ho/operation-dashboard`. Browser: `http://<IP_STAGING>:8080/login`.
+Harapan: HTTP 307 ke `/prj-ho/operation-dashboard`. Browser: `http://<IP_STAGING>:8011/login`.
 
 Log aplikasi yang sehat memuat baris koneksi ke MySQL CSV. Koneksi HO gagal hanya kalau jaringan ke `10.2.1.2` belum dibuka. Itu tidak menggagalkan container.
 
@@ -329,7 +316,7 @@ Log aplikasi yang sehat memuat baris koneksi ke MySQL CSV. Koneksi HO gagal hany
 1. Kerjakan di branch lain, merge atau cherry-pick ke `staging`.
 2. `git push origin staging`.
 3. Buka tab **Actions** di GitHub. Job `Build image` lalu `Deploy ke server` harus hijau.
-4. Buka lagi `http://<IP_STAGING>:8080/login`.
+4. Buka lagi `http://<IP_STAGING>:8011/login`.
 
 Deploy manual tanpa push: tab Actions → Deploy staging → Run workflow.
 
@@ -348,7 +335,7 @@ tags: |
 Rollback di server, ganti SHA dengan commit yang sebelumnya sehat:
 
 ```bash
-cd /opt/asm-staging
+cd /var/www/pool-asm
 # di .env, sementara:
 # ASM_IMAGE=ghcr.io/bobyliem/pool-asm:sha-<40-karakter-commit>
 docker login ghcr.io -u bobyliem
@@ -372,14 +359,14 @@ Data MySQL tidak ikut ter-rollback. Volume `mysql_data` tetap.
 | `denied` saat server `docker pull` | Token tidak punya Packages Read, atau login user salah | Bagian 5. Username login di script adalah `bobyliem` |
 | SSH `Permission denied` | Private key secret tidak lengkap, atau public key belum di `deploy` | Ulangi bagian 3. Secret harus isi file tanpa `.pub` |
 | `asm-app` restart loop | `.env` salah, atau MySQL belum healthy | `docker compose ... logs app` dan `logs db-csv` |
-| Halaman CSV kosong / query error | Dump belum di-import | Bagian 6, import SQL |
+| Halaman CSV kosong / query error | Migrasi belum jalan, atau MySQL belum healthy | `docker compose ... logs app`, lalu `docker compose ... exec app /app/asm migrate` |
 | Endpoint HO 500 "belum terhubung" | Server tidak sampai ke `10.2.1.2:3306` | Buka firewall kantor untuk IP staging, atau isi `DB_HO_*` yang bisa dijangkau |
 | Sync CSV dari UI gagal | Fitur itu memanggil `php.exe` path Windows | Biarkan di luar staging. Staging ini menjalankan binary Go di Linux |
 
 Perintah yang aman di server saat memperbaiki:
 
 ```bash
-cd /opt/asm-staging
+cd /var/www/pool-asm
 docker compose --env-file .env -f docker-compose.staging.yml logs -f app
 ```
 

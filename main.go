@@ -24,6 +24,17 @@ func main() {
 		log.Println("Notice: .env file not loaded, using default/system environment variables")
 	}
 
+	// Buat database CSV dan jalankan migrasi sebelum server menerima request.
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		if err := config.MigrateCsv(); err != nil {
+			log.Fatalf("Migrasi gagal: %v", err)
+		}
+		return
+	}
+	if err := config.MigrateCsv(); err != nil {
+		log.Printf("Warning: migrasi database CSV gagal: %v", err)
+	}
+
 	// Connect to MySQL CSV Database (imp_sampurna on port 3307)
 	dbCsv := config.ConnectCsvDB()
 
