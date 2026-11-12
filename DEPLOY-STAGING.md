@@ -184,24 +184,29 @@ Kalau folder itu sudah ada dan masih kosong, jalankan `git clone` yang sama. `.e
 
 Image disimpan di GitHub Container Registry paket `bobyliem/pool-asm`. Server butuh token baca paket itu.
 
-1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained token.
-2. Resource owner: `bobyliem`. Repository access: hanya `pool-asm`.
-3. Permission: `Packages` = Read-only.
-4. Salin token sekali. Namai di langkah secret sebagai `GHCR_READ_TOKEN`.
+Jangan memakai fine-grained token. Resource owner-nya hanya akun yang sedang login (`taufikibo`), dan daftar repository di sana hanya repo milik akun itu. `bobyliem/pool-asm` tidak akan muncul, dan permission `Packages` untuk repo itu juga tidak ada.
 
-Di repo GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Buat persis nama ini:
+Buat token classic:
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic).
+2. Note: `pool-asm staging pull`.
+3. Centang scope `read:packages` saja. Jangan centang `repo` kalau tidak perlu.
+4. Generate token, salin sekali.
+
+Token ini milik `taufikibo`. Username login registry juga `taufikibo`, bukan `bobyliem`.
+
+Di repo GitHub, halaman `bobyliem/pool-asm`: **Settings → Secrets and variables → Actions → New repository secret**. Buat persis nama ini:
 
 | Secret | Isi |
 |---|---|
 | `STAGING_HOST` | IP atau hostname server |
-| `STAGING_PORT` | Port SSH, misalnya `225`. Bukan `22` kalau server memakai port lain |
+| `STAGING_PORT` | Port SSH server. Bukan `22` kalau server memakai port lain |
 | `STAGING_USER` | `deploy` |
 | `STAGING_SSH_KEY` | isi penuh file private key `asm-staging-deploy`, termasuk baris `BEGIN` dan `END` |
-| `GHCR_READ_TOKEN` | token fine-grained di atas |
+| `GHCR_USER` | `taufikibo` |
+| `GHCR_READ_TOKEN` | token classic di atas |
 
-`GITHUB_TOKEN` tidak perlu dibuat manual. Actions sudah menyediakannya untuk push image.
-
-Kalau organisasi memakai GitHub Free dan paket GHCR private, pastikan user `deploy` tidak perlu akun GitHub: yang login ke registry adalah token di atas, saat job deploy berjalan.
+`GITHUB_TOKEN` tidak perlu dibuat manual. Actions sudah menyediakannya untuk push image. Yang login ke registry dari server adalah `GHCR_USER` dan `GHCR_READ_TOKEN`, bukan user `deploy`.
 
 ---
 
@@ -261,7 +266,7 @@ jobs:
             set -euo pipefail
             cd /var/www/pool-asm
             git pull --ff-only origin staging
-            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u bobyliem --password-stdin
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USER }} --password-stdin
             docker compose --env-file .env -f docker-compose.staging.yml pull app
             docker compose --env-file .env -f docker-compose.staging.yml up -d
             docker logout ghcr.io
@@ -338,7 +343,7 @@ Rollback di server, ganti SHA dengan commit yang sebelumnya sehat:
 cd /var/www/pool-asm
 # di .env, sementara:
 # ASM_IMAGE=ghcr.io/bobyliem/pool-asm:sha-<40-karakter-commit>
-docker login ghcr.io -u bobyliem
+docker login ghcr.io -u taufikibo
 docker compose --env-file .env -f docker-compose.staging.yml pull app
 docker compose --env-file .env -f docker-compose.staging.yml up -d
 docker logout ghcr.io
@@ -356,7 +361,7 @@ Data MySQL tidak ikut ter-rollback. Volume `mysql_data` tetap.
 |---|---|---|
 | Build gagal di `go mod download` / compile | Dockerfile masih Go 1.24 | Bagian 1, lalu push ulang |
 | `denied` saat push GHCR | Workflow tanpa `packages: write` | Pakai file YAML di bagian 6 utuh |
-| `denied` saat server `docker pull` | Token tidak punya Packages Read, atau login user salah | Bagian 5. Username login di script adalah `bobyliem` |
+| `denied` saat server `docker pull` | Token tidak punya `read:packages`, atau username login bukan pemilik token | Bagian 5. Username login adalah `GHCR_USER` (`taufikibo`), bukan `bobyliem` |
 | SSH `Permission denied` | Private key secret tidak lengkap, atau public key belum di `deploy` | Ulangi bagian 3. Secret harus isi file tanpa `.pub` |
 | `asm-app` restart loop | `.env` salah, atau MySQL belum healthy | `docker compose ... logs app` dan `logs db-csv` |
 | Halaman CSV kosong / query error | Migrasi belum jalan, atau MySQL belum healthy | `docker compose ... logs app`, lalu `docker compose ... exec app /app/asm migrate` |
