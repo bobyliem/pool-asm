@@ -21,9 +21,6 @@ func ConnectCsvDB() *gorm.DB {
 		dbUser = "root"
 	}
 	dbPass := os.Getenv("DB_CSV_PASS")
-	if dbPass == "" {
-		dbPass = "P@ssw0rd"
-	}
 	dbHost := os.Getenv("DB_CSV_HOST")
 	if dbHost == "" {
 		dbHost = "127.0.0.1"

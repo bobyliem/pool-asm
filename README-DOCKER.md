@@ -58,14 +58,14 @@ PORT=8080
 DB_CSV_HOST=db-csv
 DB_CSV_PORT=3306
 DB_CSV_USER=root
-DB_CSV_PASS=P@ssw0rd
+DB_CSV_PASS=GANTI_PASSWORD_MYSQL
 DB_CSV_NAME=imp_sampurna
 
 # Database Head Office (Remote HO Server)
 DB_HO_HOST=10.2.1.2
 DB_HO_PORT=3306
-DB_HO_USER=boby
-DB_HO_PASS=Boby@150926
+DB_HO_USER=GANTI_USER_HO
+DB_HO_PASS=GANTI_PASSWORD_HO
 DB_HO_NAME=workshop
 ```
 
@@ -118,13 +118,12 @@ docker compose logs -f db-csv
 
 - **Web Browser**: Buka `http://<IP_SERVER>:8080/`
 - **Login Default**:
-  - Username: `boby`
-  - Password: `123` (atau sesuai password yang telah diatur)
+  - Username dan password ada di file rahasia lokal, bukan di repo
 - **Akses MySQL Langsung dari Host (Navicat / DBeaver / HeidiSQL)**:
   - Host: `localhost` (atau IP server)
   - Port: `3307`
   - User: `root`
-  - Password: `P@ssw0rd`
+  - Password: nilai `DB_CSV_PASS` di `.env` server
   - Database: `imp_sampurna`
 
 ---

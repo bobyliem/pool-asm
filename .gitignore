@@ -2,6 +2,10 @@
 *.sql
 MyWork/
 
+# Rahasia lokal. Jangan di-commit.
+.env
+.staging-secrets
+
 # File sistem atau sampah OS
 .DS_Store
 Thumbs.db
