@@ -33,9 +33,9 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	r.Static("/components", "./web/components")
 	r.StaticFile("/favicon.ico", "./web/images/logo-sar.png")
 
-	// Root Route: Redirects to /prj-ho/operation-dashboard
+	// Root Route: Redirects to /prj-csv
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusTemporaryRedirect, "/prj-ho/operation-dashboard")
+		c.Redirect(http.StatusTemporaryRedirect, "/prj-csv")
 	})
 
 	// PRJ-HO Routes (Dashboard dari project HO)
