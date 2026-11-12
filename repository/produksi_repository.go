@@ -3,6 +3,7 @@ package repository
 import (
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"asm/models"
@@ -13,6 +14,8 @@ type ProduksiRepository interface {
 	GetResumePerHari(tglAwal, tglAkhir string) (*models.ResumePerHariResponse, error)
 	GetSummaryPerDriver(tglAwal, tglAkhir string) (*models.SummaryPerDriverResponse, error)
 	GetMonitoringRitase(tglAwal, tglAkhir string) (*models.MonitoringRitaseResponse, error)
+	GetTransferOut(filter models.TransferOutFilter) (*models.TransferOutResponse, error)
+	GetTransferOutFilterOptions() (*models.TransferOutFilterOptions, error)
 }
 
 type produksiRepository struct {
@@ -388,5 +391,237 @@ func (r *produksiRepository) GetMonitoringRitase(tglAwal, tglAkhir string) (*mod
 		Rows:       rows,
 		Totals:     totals,
 		GrandTotal: grandTotal,
+	}, nil
+}
+
+func (r *produksiRepository) GetTransferOutFilterOptions() (*models.TransferOutFilterOptions, error) {
+	var products, nopols, destinations []string
+
+	_ = r.db.Raw(`
+		SELECT DISTINCT TRIM(prd) AS prd
+		FROM api_stockpile
+		WHERE dk IN ('Out', 'Transfer Out')
+		  AND TRIM(prd) <> '' AND TRIM(prd) <> '0'
+		ORDER BY prd ASC
+	`).Pluck("prd", &products).Error
+
+	_ = r.db.Raw(`
+		SELECT DISTINCT TRIM(nopol) AS nopol
+		FROM api_stockpile
+		WHERE dk IN ('Out', 'Transfer Out')
+		  AND TRIM(nopol) <> '' AND TRIM(nopol) <> '0'
+		ORDER BY nopol ASC
+	`).Pluck("nopol", &nopols).Error
+
+	_ = r.db.Raw(`
+		SELECT DISTINCT TRIM(dest) AS dest
+		FROM api_stockpile
+		WHERE dk IN ('Out', 'Transfer Out')
+		  AND TRIM(dest) <> '' AND TRIM(dest) <> '0'
+		ORDER BY dest ASC
+	`).Pluck("dest", &destinations).Error
+
+	if products == nil {
+		products = []string{}
+	}
+	if nopols == nil {
+		nopols = []string{}
+	}
+	if destinations == nil {
+		destinations = []string{}
+	}
+
+	return &models.TransferOutFilterOptions{
+		Products:     products,
+		Nopols:       nopols,
+		Destinations: destinations,
+	}, nil
+}
+
+func (r *produksiRepository) GetTransferOut(filter models.TransferOutFilter) (*models.TransferOutResponse, error) {
+	whereClauses := []string{
+		"dk IN ('Out', 'Transfer Out')",
+		"DATE(tgl) BETWEEN ? AND ?",
+	}
+	args := []interface{}{filter.TglAwal, filter.TglAkhir}
+
+	prd := strings.TrimSpace(filter.Prd)
+	if prd != "" && !strings.EqualFold(prd, "all") {
+		whereClauses = append(whereClauses, "TRIM(prd) = ?")
+		args = append(args, prd)
+	}
+
+	nopol := strings.TrimSpace(filter.Nopol)
+	if nopol != "" && !strings.EqualFold(nopol, "all") {
+		whereClauses = append(whereClauses, "TRIM(nopol) LIKE ?")
+		args = append(args, "%"+nopol+"%")
+	}
+
+	dest := strings.TrimSpace(filter.Dest)
+	if dest != "" && !strings.EqualFold(dest, "all") {
+		whereClauses = append(whereClauses, "TRIM(dest) = ?")
+		args = append(args, dest)
+	}
+
+	whereSQL := strings.Join(whereClauses, " AND ")
+
+	query := `
+		SELECT
+			id,
+			TRIM(no_tiket) AS no_tiket,
+			TRIM(reff) AS reff,
+			TRIM(nopol) AS nopol,
+			TRIM(dk) AS dk,
+			TRIM(prd) AS prd,
+			TRIM(src) AS src,
+			TRIM(dest) AS dest,
+			wsrc,
+			wdest,
+			CASE WHEN wdest > 0 THEN ROUND(wsrc - wdest, 2) ELSE 0 END AS selisih,
+			DATE_FORMAT(tgl, '%Y-%m-%d %H:%i:%s') AS tgl,
+			IFNULL(DATE_FORMAT(updated, '%Y-%m-%d %H:%i:%s'), '') AS updated
+		FROM api_stockpile
+		WHERE ` + whereSQL + `
+		ORDER BY tgl DESC, id DESC
+	`
+
+	var items []models.TransferOutItem
+	if err := r.db.Raw(query, args...).Scan(&items).Error; err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = []models.TransferOutItem{}
+	}
+
+	// Build summary from filtered items
+	destSet := make(map[string]bool)
+	prdMap := make(map[string]*models.TransferOutProductSummary)
+	destMap := make(map[string]*models.TransferOutDestSummary)
+	unitMap := make(map[string]*models.TransferOutUnitSummary)
+
+	var totalWsrc, totalWdest, totalWsrcWithPlant float64
+	var totalRitPlant int
+
+	for i := range items {
+		it := &items[i]
+		it.Wsrc = round2(it.Wsrc)
+		it.Wdest = round2(it.Wdest)
+		it.Selisih = round2(it.Selisih)
+
+		totalWsrc += it.Wsrc
+		totalWdest += it.Wdest
+		if it.Wdest > 0 {
+			totalRitPlant++
+			totalWsrcWithPlant += it.Wsrc
+		}
+
+		if it.Nopol != "" && it.Nopol != "0" {
+			if _, ok := unitMap[it.Nopol]; !ok {
+				unitMap[it.Nopol] = &models.TransferOutUnitSummary{Nopol: it.Nopol}
+			}
+			unitMap[it.Nopol].JmlRit++
+			unitMap[it.Nopol].TotalWsrc += it.Wsrc
+			unitMap[it.Nopol].TotalWdest += it.Wdest
+		}
+
+		destLabel := it.Dest
+		if destLabel == "" || destLabel == "0" {
+			destLabel = "(Tanpa Destination)"
+		} else {
+			destSet[destLabel] = true
+		}
+
+		prdLabel := it.Prd
+		if prdLabel == "" || prdLabel == "0" {
+			prdLabel = "(Tanpa Produk)"
+		}
+
+		if _, ok := prdMap[prdLabel]; !ok {
+			prdMap[prdLabel] = &models.TransferOutProductSummary{Prd: prdLabel}
+		}
+		prdMap[prdLabel].JmlRit++
+		prdMap[prdLabel].TotalWsrc += it.Wsrc
+		prdMap[prdLabel].TotalWdest += it.Wdest
+
+		if _, ok := destMap[destLabel]; !ok {
+			destMap[destLabel] = &models.TransferOutDestSummary{Dest: destLabel}
+		}
+		destMap[destLabel].JmlRit++
+		destMap[destLabel].TotalWsrc += it.Wsrc
+		destMap[destLabel].TotalWdest += it.Wdest
+	}
+
+	byProduct := make([]models.TransferOutProductSummary, 0, len(prdMap))
+	for _, v := range prdMap {
+		v.TotalWsrc = round2(v.TotalWsrc)
+		v.TotalWdest = round2(v.TotalWdest)
+		byProduct = append(byProduct, *v)
+	}
+	sort.Slice(byProduct, func(i, j int) bool {
+		return byProduct[i].TotalWsrc > byProduct[j].TotalWsrc
+	})
+
+	byDest := make([]models.TransferOutDestSummary, 0, len(destMap))
+	for _, v := range destMap {
+		v.TotalWsrc = round2(v.TotalWsrc)
+		v.TotalWdest = round2(v.TotalWdest)
+		byDest = append(byDest, *v)
+	}
+	sort.Slice(byDest, func(i, j int) bool {
+		return byDest[i].TotalWsrc > byDest[j].TotalWsrc
+	})
+
+	byUnit := make([]models.TransferOutUnitSummary, 0, len(unitMap))
+	for _, v := range unitMap {
+		v.TotalWsrc = round2(v.TotalWsrc)
+		v.TotalWdest = round2(v.TotalWdest)
+		byUnit = append(byUnit, *v)
+	}
+	sort.Slice(byUnit, func(i, j int) bool {
+		if byUnit[i].JmlRit != byUnit[j].JmlRit {
+			return byUnit[i].JmlRit > byUnit[j].JmlRit
+		}
+		if byUnit[i].TotalWsrc != byUnit[j].TotalWsrc {
+			return byUnit[i].TotalWsrc > byUnit[j].TotalWsrc
+		}
+		return byUnit[i].Nopol < byUnit[j].Nopol
+	})
+
+	totalRit := len(items)
+	var avgWsrcPerRit, selisihPlant, wastePercent float64
+	if totalRit > 0 {
+		avgWsrcPerRit = round2(totalWsrc / float64(totalRit))
+	}
+	if totalWsrcWithPlant > 0 {
+		selisihPlant = round2(totalWsrcWithPlant - totalWdest)
+		wastePercent = round2((selisihPlant / totalWsrcWithPlant) * 100)
+	}
+
+	var lastUpdate string
+	_ = r.db.Raw(`
+		SELECT IFNULL(DATE_FORMAT(MAX(COALESCE(updated, created)), '%d-%b-%Y %H:%i:%s'), '-')
+		FROM api_stockpile
+	`).Scan(&lastUpdate).Error
+
+	return &models.TransferOutResponse{
+		TglAwal:    filter.TglAwal,
+		TglAkhir:   filter.TglAkhir,
+		LastUpdate: lastUpdate,
+		Summary: models.TransferOutSummary{
+			TotalRit:           totalRit,
+			TotalUnit:          len(byUnit),
+			TotalDest:          len(destSet),
+			TotalWsrc:          round2(totalWsrc),
+			TotalWdest:         round2(totalWdest),
+			TotalRitPlant:      totalRitPlant,
+			TotalWsrcWithPlant: round2(totalWsrcWithPlant),
+			SelisihPlant:       selisihPlant,
+			WastePercent:       wastePercent,
+			AvgWsrcPerRit:      avgWsrcPerRit,
+			ByProduct:          byProduct,
+			ByDest:             byDest,
+			ByUnit:             byUnit,
+		},
+		Items: items,
 	}, nil
 }

@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sampurna Workshop (CSV) - Transfer Out</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS CDN untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=8" defer></script>
+  <script src="/web/components/sidebar.js?v=8" defer></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 flex flex-col h-screen overflow-hidden">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN CONTENT) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Transfer Out"></app-sidebar>
+
+    <!-- MAIN REPORT CONTENT -->
+    <main class="flex-1 p-5 overflow-y-auto bg-slate-100 space-y-4">
+
+      <!-- TITLE & BREADCRUMB -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+            <span>Produksi</span>
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <span class="text-blue-600 font-semibold">Transfer Out</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-truck-arrow-right text-blue-600"></i>
+            Laporan Produksi: Transfer Out
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full font-mono">api_stockpile</span>
+          </h2>
+          <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
+            <div class="flex items-center gap-1.5">
+              <i class="fa-solid fa-dolly text-slate-400"></i>
+              <span>Data pengiriman hasil produksi keluar stockpile (Out / Transfer Out)</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-slate-200/60 px-2 py-0.5 rounded text-slate-600">
+              <i class="fa-solid fa-clock text-slate-400"></i>
+              <span>Last Update: <span id="lastUpdateVal" class="text-slate-700 font-semibold">Memuat...</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnSyncStockpile" onclick="triggerStockpileSync()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Sync data 7 hari terakhir dari Metabase ke api_stockpile">
+            <i id="btnSyncStockpileIcon" class="fa-solid fa-cloud-arrow-down"></i>
+            <span id="btnSyncStockpileText">Sync Stockpile</span>
+          </button>
+          <button onclick="fetchTransferOutData()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer" title="Refresh data">
+            <i class="fa-solid fa-rotate text-blue-600"></i> Refresh
+          </button>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- SYNC STATUS BANNER -->
+      <div id="stockpileSyncBanner" class="hidden rounded-xl border px-4 py-2.5 text-xs flex items-center justify-between shadow-2xs">
+        <div class="flex items-center gap-2.5">
+          <i id="stockpileSyncBannerIcon" class="fa-solid fa-circle-notch fa-spin text-sm"></i>
+          <div>
+            <span id="stockpileSyncBannerTitle" class="font-bold">Sync Stockpile:</span>
+            <span id="stockpileSyncBannerMsg" class="ml-1">Memproses sinkronisasi...</span>
+          </div>
+        </div>
+        <button onclick="hideStockpileSyncBanner()" class="text-slate-400 hover:text-slate-600 px-1.5 cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- FILTER CARD -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 shadow-xs">
+        <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-200">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-filter text-blue-600"></i>
+            <span>Filter Data Transfer Out</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuick7Days()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md border border-slate-300 transition cursor-pointer font-medium">
+              7 Hari Terakhir
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+          </div>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end text-xs">
+          <!-- Tgl Awal -->
+          <div class="space-y-1">
+            <label for="filterTglAwal" class="block font-semibold text-slate-600">Tgl Awal</label>
+            <input type="date" id="filterTglAwal"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Tgl Akhir -->
+          <div class="space-y-1">
+            <label for="filterTglAkhir" class="block font-semibold text-slate-600">Tgl Akhir</label>
+            <input type="date" id="filterTglAkhir"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <!-- Produk (prd) -->
+          <div class="space-y-1">
+            <label for="filterPrd" class="block font-semibold text-slate-600">Produk (prd)</label>
+            <select id="filterPrd"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <option value="all">Semua Produk</option>
+            </select>
+          </div>
+
+          <!-- Nopol -->
+          <div class="space-y-1">
+            <label for="filterNopol" class="block font-semibold text-slate-600">Nopol</label>
+            <select id="filterNopol"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <option value="all">Semua Nopol</option>
+            </select>
+          </div>
+
+          <!-- Destination (dest) -->
+          <div class="space-y-1">
+            <label for="filterDest" class="block font-semibold text-slate-600">Destination (dest)</label>
+            <select id="filterDest"
+              class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              <option value="all">Semua Destination</option>
+            </select>
+          </div>
+
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2">
+            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium" title="Reset filter produk, nopol, destination">
+              <i class="fa-solid fa-rotate-left"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUMMARY CARDS -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between pb-2.5 border-b border-slate-200">
+          <div class="flex items-center gap-2 font-bold text-xs text-slate-700">
+            <i class="fa-solid fa-chart-pie text-blue-600"></i>
+            <span>Ringkasan Transfer Out</span>
+          </div>
+          <span class="text-[11px] text-slate-400 italic" id="summaryPeriodLabel">Memuat akumulasi...</span>
+        </div>
+
+        <!-- 4 KPI SUMMARY CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Card 1: Total Pengiriman / Ritase -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-slate-600 font-semibold mb-1.5">
+              <span>Total Pengiriman (Rit)</span>
+              <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <i class="fa-solid fa-truck-fast text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-slate-800 font-mono" id="cardTotalRit">0</div>
+              <div class="text-[11px] text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
+                <button type="button" onclick="openUnitModal()" title="Klik untuk lihat daftar unit & ritase"
+                  class="font-semibold text-blue-700 hover:text-blue-900 underline decoration-dotted underline-offset-2 cursor-pointer inline-flex items-center gap-1">
+                  <span id="cardTotalUnit">0</span> Unit
+                  <i class="fa-solid fa-up-right-from-square text-[9px] opacity-75"></i>
+                </button>
+                <span class="text-slate-300">|</span>
+                <span class="font-semibold text-slate-600"><span id="cardTotalDest">0</span> Destination</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Total Berat Keluar (W.Src) -->
+          <div class="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-indigo-800 font-semibold mb-1.5">
+              <span>Total Berat Keluar (W.Src)</span>
+              <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                <i class="fa-solid fa-weight-hanging text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-indigo-700 font-mono">
+                <span id="cardTotalWsrc">0.00</span>
+                <span class="text-xs font-semibold text-indigo-500">Ton</span>
+              </div>
+              <div class="text-[11px] text-indigo-600 mt-1 font-medium">
+                Rata-rata: <span class="font-bold font-mono" id="cardAvgWsrc">0.00</span> Ton / Rit
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Total Berat Plant (W.Dest) -->
+          <div class="bg-emerald-50/50 border border-emerald-200 rounded-xl p-3.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-emerald-800 font-semibold mb-1.5">
+              <span>Total Diterima Plant (W.Dest)</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div class="text-2xl font-black text-emerald-700 font-mono">
+                <span id="cardTotalWdest">0.00</span>
+                <span class="text-xs font-semibold text-emerald-500">Ton</span>
+              </div>
+              <div class="text-[11px] text-emerald-700 mt-1 font-medium">
+                Terukur Plant: <span class="font-bold font-mono" id="cardRitPlant">0 / 0</span> Rit
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Selisih / Susut Plant -->
+          <div class="bg-amber-50/50 border border-amber-200 rounded-xl p-3.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-amber-800 font-semibold mb-1.5">
+              <span>Selisih / Susut Plant</span>
+              <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                <i class="fa-solid fa-scale-unbalanced text-xs"></i>
+              </span>
+            </div>
+            <div>
+              <div class="text-2xl font-black font-mono text-amber-700" id="cardSelisihPlantWrap">
+                <span id="cardSelisihPlant">0.00</span>
+                <span class="text-xs font-semibold">Ton</span>
+              </div>
+              <div class="text-[11px] text-amber-700 mt-1 font-medium flex items-center justify-between">
+                <span>Susut: <strong class="font-mono" id="cardWastePercent">0.00%</strong></span>
+                <span class="text-[10px] text-slate-500">khusus rit ber-W.Dest</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 BREAKDOWN SUMMARY CARDS (PER PRODUK & PER DESTINATION) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <!-- Breakdown Per Produk -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50/60">
+            <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-200">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <i class="fa-solid fa-cubes text-blue-600"></i>
+                <span>Summary Per Produk</span>
+              </div>
+              <span class="text-[10.5px] text-slate-400" id="badgeProductCount">0 Produk</span>
+            </div>
+            <div id="productSummaryContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-[11px]">
+              <div class="text-center text-slate-400 py-4">Memuat ringkasan produk...</div>
+            </div>
+          </div>
+
+          <!-- Breakdown Per Destination -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-slate-50/60">
+            <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-200">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <i class="fa-solid fa-location-dot text-emerald-600"></i>
+                <span>Summary Per Destination</span>
+              </div>
+              <span class="text-[10.5px] text-slate-400" id="badgeDestCount">0 Destination</span>
+            </div>
+            <div id="destSummaryContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-[11px]">
+              <div class="text-center text-slate-400 py-4">Memuat ringkasan destination...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN DATA TABLE -->
+      <div class="bg-white border border-slate-300 rounded-xl shadow-xs overflow-hidden">
+        <!-- Table Topbar -->
+        <div class="p-3.5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5 bg-slate-50">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-xs text-slate-800">Rincian Transaksi Transfer Out</span>
+            <span id="badgeRowCount" class="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full text-[10.5px]">0 Baris</span>
+          </div>
+
+          <div class="relative w-full sm:w-72">
+            <input type="text" id="quickSearchInput" oninput="applyQuickSearch()" placeholder="Cari no tiket, reff, nopol, produk, destination..."
+              class="w-full pl-8 pr-3 py-1 border border-slate-300 rounded-lg text-[11px] focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2 text-[11px]"></i>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto max-h-[560px]">
+          <table class="w-full text-[11px] text-left border-collapse" id="transferOutTable">
+            <thead class="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] sticky top-0 z-10 uppercase tracking-tight">
+              <tr>
+                <th class="py-2 px-2.5 w-10 text-center whitespace-nowrap">No</th>
+                <th class="py-2 px-3 whitespace-nowrap">Tanggal</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">No. Tiket</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Reff / SJ</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Nopol</th>
+                <th class="py-2 px-2.5 text-center whitespace-nowrap">Tipe</th>
+                <th class="py-2 px-3 whitespace-nowrap">Produk</th>
+                <th class="py-2 px-2.5 whitespace-nowrap">Source</th>
+                <th class="py-2 px-3 whitespace-nowrap">Destination</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-indigo-700">W.Src (Ton)</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-emerald-700">W.Dest (Ton)</th>
+                <th class="py-2 px-3 text-right whitespace-nowrap text-amber-700">Selisih</th>
+              </tr>
+            </thead>
+            <tbody id="transferOutTableBody" class="divide-y divide-slate-200/70 text-[11px] font-normal">
+              <tr>
+                <td colspan="12" class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+                  Memuat data Transfer Out...
+                </td>
+              </tr>
+            </tbody>
+            <tfoot id="transferOutTableFoot" class="bg-slate-100 border-t-2 border-slate-300 text-slate-800 font-bold text-[11px]">
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL DAFTAR UNIT (NOPOL) -->
+  <div id="unitListModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-4" onclick="if (event.target === this) closeUnitModal()">
+    <div class="bg-white border border-slate-300 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-truck text-blue-600"></i>
+            <span>Daftar Unit Transfer Out</span>
+            <span id="unitModalCountBadge" class="bg-blue-100 text-blue-700 text-[10.5px] font-bold px-2 py-0.5 rounded-full">0 Unit</span>
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">Periode: <span id="unitModalPeriod" class="font-semibold text-slate-700">-</span></p>
+        </div>
+        <button type="button" onclick="closeUnitModal()" class="w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="px-5 py-2.5 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-white">
+        <div class="relative flex-1">
+          <input type="text" id="unitModalSearch" oninput="renderUnitModalTable()" placeholder="Cari nopol..."
+            class="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-2.5 text-xs"></i>
+        </div>
+        <button type="button" onclick="exportUnitSummaryExcel()"
+          class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+          <i class="fa-solid fa-file-excel"></i>
+          <span>Export Unit Excel</span>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold text-[10.5px] uppercase sticky top-0 z-10">
+            <tr>
+              <th class="py-2 px-3 w-12 text-center">No</th>
+              <th class="py-2 px-3">Nopol</th>
+              <th class="py-2 px-3 text-right">Jml Rit</th>
+              <th class="py-2 px-3 text-right text-indigo-700">Total W.Src (Ton)</th>
+              <th class="py-2 px-3 text-right text-emerald-700">Total W.Dest (Ton)</th>
+              <th class="py-2 px-3 text-center w-24">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="unitModalTableBody" class="divide-y divide-slate-200/70"></tbody>
+          <tfoot id="unitModalTableFoot" class="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-800 sticky bottom-0"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let rawData = null;
+    let currentFilteredItems = [];
+    let stockpilePollTimer = null;
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '0.00';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatInt(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID');
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function getTodayString() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    }
+
+    function initDates() {
+      const range = window.ASM_SESSION ? window.ASM_SESSION.getDateRange() : {
+        tglAwal: sessionStorage.getItem('asm_tgl_awal') || getTodayString(),
+        tglAkhir: sessionStorage.getItem('asm_tgl_akhir') || getTodayString()
+      };
+      document.getElementById('filterTglAwal').value = range.tglAwal;
+      document.getElementById('filterTglAkhir').value = range.tglAkhir;
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      if (window.ASM_SESSION) window.ASM_SESSION.setDateRange(today, today);
+      document.getElementById('filterTglAwal').value = today;
+      document.getElementById('filterTglAkhir').value = today;
+      fetchTransferOutData();
+    }
+
+    function setQuick7Days() {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 7);
+      const pad = n => String(n).padStart(2, '0');
+      const tglAwal = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+      const tglAkhir = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+      if (window.ASM_SESSION) window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+      fetchTransferOutData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const tglAwal = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      const tglAkhir = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      if (window.ASM_SESSION) window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      document.getElementById('filterTglAwal').value = tglAwal;
+      document.getElementById('filterTglAkhir').value = tglAkhir;
+      fetchTransferOutData();
+    }
+
+    function applyFilter() {
+      const valAwal = document.getElementById('filterTglAwal').value;
+      const valAkhir = document.getElementById('filterTglAkhir').value;
+      if (!valAwal || !valAkhir) {
+        alert('Silakan pilih Tgl Awal dan Tgl Akhir.');
+        return;
+      }
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(valAwal, valAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', valAwal);
+        sessionStorage.setItem('asm_tgl_akhir', valAkhir);
+      }
+      fetchTransferOutData();
+    }
+
+    function resetFilter() {
+      document.getElementById('filterPrd').value = 'all';
+      document.getElementById('filterNopol').value = 'all';
+      document.getElementById('filterDest').value = 'all';
+      document.getElementById('quickSearchInput').value = '';
+      fetchTransferOutData();
+    }
+
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch('/api/v1/csv/produksi/transfer-out/filters');
+        const json = await res.json();
+        if (json.status !== 'success' || !json.data) return;
+
+        const opts = json.data;
+        populateSelect('filterPrd', opts.products || [], 'Semua Produk');
+        populateSelect('filterNopol', opts.nopols || [], 'Semua Nopol');
+        populateSelect('filterDest', opts.destinations || [], 'Semua Destination');
+      } catch (err) {
+        console.error('Gagal memuat opsi filter:', err);
+      }
+    }
+
+    function populateSelect(id, items, defaultLabel) {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const prev = sel.value || 'all';
+      let html = `<option value="all">${defaultLabel}</option>`;
+      items.forEach(item => {
+        html += `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`;
+      });
+      sel.innerHTML = html;
+      if (items.includes(prev)) {
+        sel.value = prev;
+      }
+    }
+
+    async function fetchTransferOutData() {
+      const tglAwal = document.getElementById('filterTglAwal').value || getTodayString();
+      const tglAkhir = document.getElementById('filterTglAkhir').value || getTodayString();
+      const prd = document.getElementById('filterPrd').value || 'all';
+      const nopol = document.getElementById('filterNopol').value || 'all';
+      const dest = document.getElementById('filterDest').value || 'all';
+
+      const tbody = document.getElementById('transferOutTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="12" class="py-8 text-center text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-lg text-blue-600 mb-2 block"></i>
+            Mengambil data Transfer Out...
+          </td>
+        </tr>
+      `;
+
+      const params = new URLSearchParams({
+        tglawal: tglAwal,
+        tglakhir: tglAkhir,
+        prd: prd,
+        nopol: nopol,
+        dest: dest
+      });
+
+      try {
+        const res = await fetch(`/api/v1/csv/produksi/transfer-out?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          rawData = json.data;
+          document.getElementById('lastUpdateVal').innerText = rawData.last_update || '-';
+          renderSummary(rawData.summary, tglAwal, tglAkhir);
+          applyQuickSearch();
+        } else {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="12" class="py-8 text-center text-rose-500 font-semibold">
+                Gagal memuat data: ${escapeHtml(json.message || 'Terjadi kesalahan sistem')}
+              </td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        console.error('Error fetching transfer out:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="12" class="py-8 text-center text-rose-500 font-semibold">
+              Terjadi kesalahan jaringan atau server tidak merespon.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderSummary(summary, tglAwal, tglAkhir) {
+      if (!summary) return;
+      document.getElementById('summaryPeriodLabel').innerText = `${tglAwal} s/d ${tglAkhir}`;
+
+      document.getElementById('cardTotalRit').innerText = formatInt(summary.total_rit);
+      document.getElementById('cardTotalUnit').innerText = formatInt(summary.total_unit);
+      document.getElementById('cardTotalDest').innerText = formatInt(summary.total_dest);
+
+      document.getElementById('cardTotalWsrc').innerText = formatNumber(summary.total_wsrc, 2);
+      document.getElementById('cardAvgWsrc').innerText = formatNumber(summary.avg_wsrc_per_rit, 2);
+
+      document.getElementById('cardTotalWdest').innerText = formatNumber(summary.total_wdest, 2);
+      document.getElementById('cardRitPlant').innerText = `${formatInt(summary.total_rit_plant)} / ${formatInt(summary.total_rit)}`;
+
+      const selisihEl = document.getElementById('cardSelisihPlant');
+      const selisihWrap = document.getElementById('cardSelisihPlantWrap');
+      selisihEl.innerText = formatNumber(summary.selisih_plant, 2);
+      if (summary.selisih_plant > 0) {
+        selisihWrap.className = 'text-2xl font-black font-mono text-amber-700';
+      } else if (summary.selisih_plant < 0) {
+        selisihWrap.className = 'text-2xl font-black font-mono text-emerald-700';
+      } else {
+        selisihWrap.className = 'text-2xl font-black font-mono text-slate-700';
+      }
+      document.getElementById('cardWastePercent').innerText = `${formatNumber(summary.waste_percent, 2)}%`;
+
+      // Render Breakdown Per Produk
+      const prdList = summary.by_product || [];
+      document.getElementById('badgeProductCount').innerText = `${prdList.length} Produk`;
+      const prdContainer = document.getElementById('productSummaryContainer');
+      if (prdList.length === 0) {
+        prdContainer.innerHTML = `<div class="text-center text-slate-400 py-4">Tidak ada data produk</div>`;
+      } else {
+        const totalAllWsrc = summary.total_wsrc || 1;
+        prdContainer.innerHTML = prdList.map(p => {
+          const pct = Math.min(100, Math.max(0, (p.total_wsrc / totalAllWsrc) * 100));
+          return `
+            <div class="bg-white border border-slate-200 rounded-lg p-2">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-slate-800">${escapeHtml(p.prd)}</span>
+                <div class="flex items-center gap-2 font-mono">
+                  <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold">${formatInt(p.jml_rit)} rit</span>
+                  <span class="text-indigo-700 font-bold">${formatNumber(p.total_wsrc, 2)} Ton</span>
+                  ${p.total_wdest > 0 ? `<span class="text-emerald-700 text-[10px]">(Plant: ${formatNumber(p.total_wdest, 2)})</span>` : ''}
+                </div>
+              </div>
+              <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-blue-500 h-full rounded-full" style="width: ${pct.toFixed(1)}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Breakdown Per Destination
+      const destList = summary.by_dest || [];
+      document.getElementById('badgeDestCount').innerText = `${destList.length} Destination`;
+      const destContainer = document.getElementById('destSummaryContainer');
+      if (destList.length === 0) {
+        destContainer.innerHTML = `<div class="text-center text-slate-400 py-4">Tidak ada data destination</div>`;
+      } else {
+        const totalAllWsrc = summary.total_wsrc || 1;
+        destContainer.innerHTML = destList.map(d => {
+          const pct = Math.min(100, Math.max(0, (d.total_wsrc / totalAllWsrc) * 100));
+          return `
+            <div class="bg-white border border-slate-200 rounded-lg p-2">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="font-bold text-slate-800 truncate" title="${escapeHtml(d.dest)}">${escapeHtml(d.dest)}</span>
+                <div class="flex items-center gap-2 font-mono shrink-0">
+                  <span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold">${formatInt(d.jml_rit)} rit</span>
+                  <span class="text-indigo-700 font-bold">${formatNumber(d.total_wsrc, 2)} Ton</span>
+                </div>
+              </div>
+              <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-emerald-500 h-full rounded-full" style="width: ${pct.toFixed(1)}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function applyQuickSearch() {
+      if (!rawData || !rawData.items) return;
+      const q = document.getElementById('quickSearchInput').value.toLowerCase().trim();
+      if (!q) {
+        currentFilteredItems = rawData.items;
+      } else {
+        currentFilteredItems = rawData.items.filter(it => {
+          return (it.no_tiket && it.no_tiket.toLowerCase().includes(q)) ||
+                 (it.reff && it.reff.toLowerCase().includes(q)) ||
+                 (it.nopol && it.nopol.toLowerCase().includes(q)) ||
+                 (it.prd && it.prd.toLowerCase().includes(q)) ||
+                 (it.dest && it.dest.toLowerCase().includes(q)) ||
+                 (it.tgl && it.tgl.toLowerCase().includes(q));
+        });
+      }
+      renderTable(currentFilteredItems);
+    }
+
+    function renderTable(items) {
+      const tbody = document.getElementById('transferOutTableBody');
+      const tfoot = document.getElementById('transferOutTableFoot');
+      document.getElementById('badgeRowCount').innerText = `${formatInt(items.length)} Baris`;
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="12" class="py-8 text-center text-slate-400">
+              <i class="fa-solid fa-inbox text-2xl text-slate-300 mb-2 block"></i>
+              Tidak ada data Transfer Out sesuai filter ini.
+            </td>
+          </tr>
+        `;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      let sumWsrc = 0;
+      let sumWdest = 0;
+      let sumSelisih = 0;
+
+      const rowsHtml = items.map((row, idx) => {
+        sumWsrc += Number(row.wsrc || 0);
+        sumWdest += Number(row.wdest || 0);
+        if (row.wdest > 0) {
+          sumSelisih += Number(row.selisih || 0);
+        }
+
+        const isMissingReffOrDest = !row.reff || row.reff === '0' || !row.dest || row.dest === '0';
+        const rowBg = isMissingReffOrDest ? 'bg-rose-50/40 hover:bg-rose-50' : 'hover:bg-slate-50';
+
+        const reffDisplay = (row.reff && row.reff !== '0')
+          ? `<span class="font-mono text-slate-700">${escapeHtml(row.reff)}</span>`
+          : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-semibold">Kosong</span>`;
+
+        const prdDisplay = (row.prd && row.prd !== '0')
+          ? `<span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold whitespace-nowrap">${escapeHtml(row.prd)}</span>`
+          : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold">Kosong</span>`;
+
+        const destDisplay = (row.dest && row.dest !== '0')
+          ? `<span class="font-medium text-slate-800">${escapeHtml(row.dest)}</span>`
+          : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-semibold">Kosong</span>`;
+
+        const wdestHtml = row.wdest > 0
+          ? `<span class="font-mono font-semibold text-emerald-700">${formatNumber(row.wdest, 2)}</span>`
+          : `<span class="font-mono text-slate-400">0.00</span>`;
+
+        let selisihHtml = `<span class="font-mono text-slate-400">-</span>`;
+        if (row.wdest > 0) {
+          const color = row.selisih > 0 ? 'text-amber-700' : (row.selisih < 0 ? 'text-emerald-700' : 'text-slate-600');
+          selisihHtml = `<span class="font-mono font-semibold ${color}">${formatNumber(row.selisih, 2)}</span>`;
+        }
+
+        return `
+          <tr class="${rowBg} transition border-b border-slate-200/60 leading-tight">
+            <td class="py-2 px-2.5 text-center text-slate-400 whitespace-nowrap">${idx + 1}</td>
+            <td class="py-2 px-3 font-mono text-slate-700 whitespace-nowrap">${escapeHtml(row.tgl || '-')}</td>
+            <td class="py-2 px-2.5 font-mono font-bold text-slate-900 whitespace-nowrap">${escapeHtml(row.no_tiket || '-')}</td>
+            <td class="py-2 px-2.5 whitespace-nowrap">${reffDisplay}</td>
+            <td class="py-2 px-2.5 font-semibold text-slate-800 whitespace-nowrap">${escapeHtml(row.nopol || '-')}</td>
+            <td class="py-2 px-2.5 text-center whitespace-nowrap">
+              <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px]">${escapeHtml(row.dk || '-')}</span>
+            </td>
+            <td class="py-2 px-3 whitespace-nowrap">${prdDisplay}</td>
+            <td class="py-2 px-2.5 text-slate-600 whitespace-nowrap">${escapeHtml(row.src || '-')}</td>
+            <td class="py-2 px-3">${destDisplay}</td>
+            <td class="py-2 px-3 text-right font-mono font-bold text-indigo-700 whitespace-nowrap">${formatNumber(row.wsrc, 2)}</td>
+            <td class="py-2 px-3 text-right whitespace-nowrap">${wdestHtml}</td>
+            <td class="py-2 px-3 text-right whitespace-nowrap">${selisihHtml}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.innerHTML = rowsHtml;
+
+      tfoot.innerHTML = `
+        <tr class="leading-tight">
+          <td colspan="9" class="py-2.5 px-3 uppercase text-slate-700 font-bold tracking-wider">
+            TOTAL (${formatInt(items.length)} Rit)
+          </td>
+          <td class="py-2.5 px-3 text-right font-mono text-indigo-800 font-black whitespace-nowrap">${formatNumber(sumWsrc, 2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-emerald-800 font-black whitespace-nowrap">${formatNumber(sumWdest, 2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-amber-800 font-black whitespace-nowrap">${formatNumber(sumSelisih, 2)}</td>
+        </tr>
+      `;
+    }
+
+    function exportToExcel() {
+      if (!currentFilteredItems || currentFilteredItems.length === 0) {
+        alert('Tidak ada data Transfer Out untuk diexport!');
+        return;
+      }
+
+      let sumWsrc = 0;
+      let sumWdest = 0;
+      let sumSelisih = 0;
+
+      const exportRows = currentFilteredItems.map((r, i) => {
+        sumWsrc += Number(r.wsrc || 0);
+        sumWdest += Number(r.wdest || 0);
+        if (r.wdest > 0) sumSelisih += Number(r.selisih || 0);
+
+        return {
+          'No': i + 1,
+          'Tanggal': r.tgl || '',
+          'No. Tiket': r.no_tiket || '',
+          'Reff / SJ': r.reff || '',
+          'Nopol': r.nopol || '',
+          'Tipe': r.dk || '',
+          'Produk': r.prd || '',
+          'Source': r.src || '',
+          'Destination': r.dest || '',
+          'W.Src (Ton)': r.wsrc || 0,
+          'W.Dest (Ton)': r.wdest || 0,
+          'Selisih (Ton)': r.wdest > 0 ? (r.selisih || 0) : 0
+        };
+      });
+
+      exportRows.push({
+        'No': '',
+        'Tanggal': 'TOTAL',
+        'No. Tiket': `${currentFilteredItems.length} Rit`,
+        'Reff / SJ': '',
+        'Nopol': '',
+        'Tipe': '',
+        'Produk': '',
+        'Source': '',
+        'Destination': '',
+        'W.Src (Ton)': Number(sumWsrc.toFixed(2)),
+        'W.Dest (Ton)': Number(sumWdest.toFixed(2)),
+        'Selisih (Ton)': Number(sumSelisih.toFixed(2))
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Transfer_Out');
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      XLSX.writeFile(wb, `Transfer_Out_${tglAwal}_sd_${tglAkhir}.xlsx`);
+    }
+
+    // ==========================================
+    // STOCKPILE SYNC MANAGER
+    // ==========================================
+    async function triggerStockpileSync() {
+      const btn = document.getElementById('btnSyncStockpile');
+      const icon = document.getElementById('btnSyncStockpileIcon');
+      const text = document.getElementById('btnSyncStockpileText');
+
+      btn.disabled = true;
+      icon.className = 'fa-solid fa-spinner fa-spin';
+      text.innerText = 'Syncing...';
+      showStockpileSyncBanner('running', 'Sync Stockpile:', 'Mengambil data 7 hari terakhir dari Metabase...');
+
+      try {
+        const res = await fetch('/api/v1/stockpile/sync', { method: 'POST' });
+        const json = await res.json();
+        if (!res.ok) {
+          resetStockpileSyncBtn();
+          showStockpileSyncBanner('error', 'Sync Gagal:', json.message || 'Proses sedang berjalan');
+          return;
+        }
+        startStockpileSyncPolling();
+      } catch (err) {
+        resetStockpileSyncBtn();
+        showStockpileSyncBanner('error', 'Sync Error:', err.message);
+      }
+    }
+
+    function startStockpileSyncPolling() {
+      if (stockpilePollTimer) clearInterval(stockpilePollTimer);
+      stockpilePollTimer = setInterval(async () => {
+        try {
+          const res = await fetch('/api/v1/stockpile/sync/status');
+          const json = await res.json();
+          if (!json || !json.data) return;
+          const st = json.data;
+          if (st.is_running) {
+            showStockpileSyncBanner('running', 'Sync Stockpile:', st.message || 'Menyinkronkan...');
+          } else {
+            clearInterval(stockpilePollTimer);
+            stockpilePollTimer = null;
+            resetStockpileSyncBtn();
+            if (st.status === 'success') {
+              showStockpileSyncBanner('success', 'Sync Selesai:', st.message);
+              await loadFilterOptions();
+              await fetchTransferOutData();
+              setTimeout(() => hideStockpileSyncBanner(), 6000);
+            } else {
+              showStockpileSyncBanner('error', 'Sync Gagal:', st.message || 'Terjadi kesalahan');
+            }
+          }
+        } catch (err) {
+          console.error('Polling stockpile sync error:', err);
+        }
+      }, 1500);
+    }
+
+    function resetStockpileSyncBtn() {
+      const btn = document.getElementById('btnSyncStockpile');
+      const icon = document.getElementById('btnSyncStockpileIcon');
+      const text = document.getElementById('btnSyncStockpileText');
+      if (btn) btn.disabled = false;
+      if (icon) icon.className = 'fa-solid fa-cloud-arrow-down';
+      if (text) text.innerText = 'Sync Stockpile';
+    }
+
+    function showStockpileSyncBanner(type, title, msg) {
+      const banner = document.getElementById('stockpileSyncBanner');
+      const icon = document.getElementById('stockpileSyncBannerIcon');
+      const titleEl = document.getElementById('stockpileSyncBannerTitle');
+      const msgEl = document.getElementById('stockpileSyncBannerMsg');
+      if (!banner) return;
+
+      banner.className = 'rounded-xl border px-4 py-2.5 text-xs flex items-center justify-between shadow-2xs';
+      if (type === 'running') {
+        banner.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-900');
+        icon.className = 'fa-solid fa-circle-notch fa-spin text-blue-600 text-sm';
+      } else if (type === 'success') {
+        banner.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-900');
+        icon.className = 'fa-solid fa-circle-check text-emerald-600 text-sm';
+      } else {
+        banner.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-900');
+        icon.className = 'fa-solid fa-circle-exclamation text-rose-600 text-sm';
+      }
+      titleEl.innerText = title;
+      msgEl.innerText = msg;
+    }
+
+    function hideStockpileSyncBanner() {
+      const banner = document.getElementById('stockpileSyncBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    function openUnitModal() {
+      if (!rawData || !rawData.summary) {
+        alert('Data Transfer Out belum dimuat.');
+        return;
+      }
+      const tglAwal = document.getElementById('filterTglAwal').value || rawData.tgl_awal || '-';
+      const tglAkhir = document.getElementById('filterTglAkhir').value || rawData.tgl_akhir || '-';
+      document.getElementById('unitModalPeriod').innerText = `${tglAwal} s/d ${tglAkhir}`;
+      document.getElementById('unitModalSearch').value = '';
+      renderUnitModalTable();
+      document.getElementById('unitListModal').classList.remove('hidden');
+    }
+
+    function closeUnitModal() {
+      document.getElementById('unitListModal').classList.add('hidden');
+    }
+
+    function getFilteredUnitList() {
+      const list = (rawData && rawData.summary && Array.isArray(rawData.summary.by_unit)) ? rawData.summary.by_unit : [];
+      const q = (document.getElementById('unitModalSearch').value || '').toLowerCase().trim();
+      if (!q) return list;
+      return list.filter(u => (u.nopol || '').toLowerCase().includes(q));
+    }
+
+    function renderUnitModalTable() {
+      const units = getFilteredUnitList();
+      const totalUnits = (rawData && rawData.summary && Array.isArray(rawData.summary.by_unit)) ? rawData.summary.by_unit.length : 0;
+      document.getElementById('unitModalCountBadge').innerText = `${formatInt(units.length)} / ${formatInt(totalUnits)} Unit`;
+
+      const tbody = document.getElementById('unitModalTableBody');
+      const tfoot = document.getElementById('unitModalTableFoot');
+
+      if (units.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-400">Tidak ada unit yang sesuai.</td>
+          </tr>
+        `;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      let sumRit = 0;
+      let sumWsrc = 0;
+      let sumWdest = 0;
+
+      tbody.innerHTML = units.map((u, idx) => {
+        sumRit += Number(u.jml_rit || 0);
+        sumWsrc += Number(u.total_wsrc || 0);
+        sumWdest += Number(u.total_wdest || 0);
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-2 px-3 font-mono font-bold text-slate-800">${escapeHtml(u.nopol || '-')}</td>
+            <td class="py-2 px-3 text-right font-mono font-semibold text-blue-700">${formatInt(u.jml_rit)}</td>
+            <td class="py-2 px-3 text-right font-mono font-bold text-indigo-700">${formatNumber(u.total_wsrc, 2)}</td>
+            <td class="py-2 px-3 text-right font-mono font-semibold text-emerald-700">${formatNumber(u.total_wdest, 2)}</td>
+            <td class="py-2 px-3 text-center">
+              <button type="button" data-nopol="${escapeHtml(u.nopol || '')}" onclick="filterByUnitFromModal(this.dataset.nopol)"
+                class="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] cursor-pointer">
+                Filter
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="2" class="py-2.5 px-3 uppercase text-slate-700">TOTAL (${formatInt(units.length)} Unit)</td>
+          <td class="py-2.5 px-3 text-right font-mono text-blue-800">${formatInt(sumRit)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-indigo-800">${formatNumber(sumWsrc, 2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-emerald-800">${formatNumber(sumWdest, 2)}</td>
+          <td></td>
+        </tr>
+      `;
+    }
+
+    function filterByUnitFromModal(nopol) {
+      closeUnitModal();
+      const sel = document.getElementById('filterNopol');
+      const hasOption = sel && Array.from(sel.options).some(opt => opt.value === nopol);
+      if (hasOption) {
+        sel.value = nopol;
+        fetchTransferOutData();
+      } else {
+        document.getElementById('quickSearchInput').value = nopol;
+        applyQuickSearch();
+      }
+    }
+
+    function exportUnitSummaryExcel() {
+      const units = getFilteredUnitList();
+      if (!units || units.length === 0) {
+        alert('Tidak ada data unit untuk diexport!');
+        return;
+      }
+
+      let sumRit = 0;
+      let sumWsrc = 0;
+      let sumWdest = 0;
+      const rows = units.map((u, idx) => {
+        sumRit += Number(u.jml_rit || 0);
+        sumWsrc += Number(u.total_wsrc || 0);
+        sumWdest += Number(u.total_wdest || 0);
+        return {
+          'No': idx + 1,
+          'Nopol': u.nopol || '',
+          'Jml Rit': u.jml_rit || 0,
+          'Total W.Src (Ton)': Number((u.total_wsrc || 0).toFixed(2)),
+          'Total W.Dest (Ton)': Number((u.total_wdest || 0).toFixed(2))
+        };
+      });
+
+      rows.push({
+        'No': '',
+        'Nopol': `TOTAL (${units.length} Unit)`,
+        'Jml Rit': sumRit,
+        'Total W.Src (Ton)': Number(sumWsrc.toFixed(2)),
+        'Total W.Dest (Ton)': Number(sumWdest.toFixed(2))
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Daftar_Unit');
+
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      XLSX.writeFile(wb, `Daftar_Unit_Transfer_Out_${tglAwal}_sd_${tglAkhir}.xlsx`);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('unitListModal');
+        if (modal && !modal.classList.contains('hidden')) {
+          closeUnitModal();
+        }
+      }
+    });
+
+    window.onload = async () => {
+      initDates();
+      await loadFilterOptions();
+      fetchTransferOutData();
+    };
+  </script>
+</body>
+</html>

@@ -68,6 +68,8 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	r.StaticFile("/prj-csv/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
 	r.StaticFile("/prj-csv/produksi/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
 	r.StaticFile("/prj-csv/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
+	r.StaticFile("/prj-csv/produksi/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
+	r.StaticFile("/prj-csv/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
 	r.StaticFile("/prj-csv/master-data/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
 	r.StaticFile("/prj-csv/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
 	r.StaticFile("/prj-csv/master-data/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
@@ -112,6 +114,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	var closingFinanceHandler *handler.ClosingFinanceHandler
 	var solarHandler *handler.SolarHandler
 	var authHandler *handler.AuthHandler
+	var stockpileSyncHandler *handler.StockpileSyncHandler
 
 	csvSyncSvc := service.NewCsvSyncService(dbCsv)
 	csvSyncHandler := handler.NewCsvSyncHandler(csvSyncSvc)
@@ -145,6 +148,9 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		authRepo := repository.NewAuthRepository(dbCsv)
 		authSvc := service.NewAuthService(authRepo)
 		authHandler = handler.NewAuthHandler(authSvc)
+
+		stockpileSyncSvc := service.NewStockpileSyncService(dbCsv)
+		stockpileSyncHandler = handler.NewStockpileSyncHandler(stockpileSyncSvc)
 	}
 
 	// API Endpoints
@@ -193,6 +199,8 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 			api.GET("/csv/produksi/resume-per-hari", produksiHandler.GetResumePerHari)
 			api.GET("/csv/produksi/summary-per-driver", produksiHandler.GetSummaryPerDriver)
 			api.GET("/csv/produksi/monitoring-ritase", produksiHandler.GetMonitoringRitase)
+			api.GET("/csv/produksi/transfer-out", produksiHandler.GetTransferOut)
+			api.GET("/csv/produksi/transfer-out/filters", produksiHandler.GetTransferOutFilterOptions)
 		}
 
 		// Master Data: Prior Unit CRUD Endpoints
@@ -245,6 +253,12 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		// CSV Background Sync Endpoints
 		api.POST("/csv/sync", csvSyncHandler.TriggerSync)
 		api.GET("/csv/sync/status", csvSyncHandler.GetSyncStatus)
+
+		// Stockpile Sync Endpoints (Metabase -> api_stockpile)
+		if stockpileSyncHandler != nil {
+			api.POST("/stockpile/sync", stockpileSyncHandler.TriggerSync)
+			api.GET("/stockpile/sync/status", stockpileSyncHandler.GetSyncStatus)
+		}
 	}
 
 	return r

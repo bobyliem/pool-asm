@@ -46,7 +46,8 @@ class AppSidebar extends HTMLElement {
           submenus: [
             { id: "resume-per-hari", label: "Resume Per Hari", icon: "fa-calendar-day", href: "/prj-csv/produksi/resume-per-hari" },
             { id: "summary-per-driver", label: "Summary Per Driver", icon: "fa-user-tie", href: "/prj-csv/produksi/summary-per-driver" },
-            { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase" }
+            { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase" },
+            { id: "transfer-out", label: "Transfer Out", icon: "fa-truck-arrow-right", href: "/prj-csv/produksi/transfer-out" }
           ]
         },
         {
