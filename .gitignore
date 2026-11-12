@@ -7,7 +7,11 @@ MyWork/
 Thumbs.db
 
 # Additional file types to ignore
-.env
 *.xlsx
 *.csv
 *.exe
+
+# Abaikan semua file environment
+.env
+.env.*
+!.env.example
