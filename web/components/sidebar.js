@@ -1,7 +1,7 @@
 // Modul Component Sidebar Navigation (<app-sidebar></app-sidebar>)
 class AppSidebar extends HTMLElement {
   connectedCallback() {
-    this.className = 'flex flex-col h-full max-h-full overflow-hidden shrink-0';
+    this.className = 'flex flex-col h-full max-h-full shrink-0';
     this.style.height = '100%';
     this.style.maxHeight = '100%';
     this.style.display = 'flex';
@@ -118,8 +118,23 @@ class AppSidebar extends HTMLElement {
           background: #94a3b8;
         }
       </style>
-      <aside id="sidebarNav" class="w-64 bg-white border-r border-gray-200 p-4 pb-12 flex flex-col space-y-4 overflow-y-auto h-full max-h-full shrink-0 transition-all duration-300" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
+      <!-- Backdrop Gelap di Layar Mobile -->
+      <div id="sidebarBackdrop" onclick="window.toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-30 hidden md:hidden transition-opacity"></div>
+
+      <!-- Drawer Sidebar (Di Mobile: Offcanvas Drawer melayang dari kiri, Di Desktop: Sidebar inline normal) -->
+      <aside id="sidebarNav" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 p-4 pb-12 flex flex-col space-y-4 overflow-y-auto h-full max-h-full shrink-0 shadow-2xl transition-transform duration-300 transform -translate-x-full md:static md:translate-x-0 md:shadow-none" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
         
+        <!-- Mobile Drawer Header (Title + Tombol Tutup X) -->
+        <div class="flex items-center justify-between pb-2 border-b border-gray-100 md:hidden">
+          <div class="flex items-center gap-2">
+            <img src="/web/images/logo-sar.png" onerror="this.onerror=null;this.src='https://workshop.sampurna-group.com/images/logo-sar.png'" alt="SAR Logo" class="h-6 w-auto object-contain" />
+            <span class="font-bold text-xs text-gray-800">Menu Navigasi</span>
+          </div>
+          <button onclick="window.toggleSidebar()" class="text-gray-400 hover:text-gray-700 p-1 rounded-lg focus:outline-none">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+
         <!-- Project Switcher Pill -->
         <div class="bg-slate-100 p-1.5 rounded-lg flex items-center justify-between text-xs font-medium">
           <a href="/prj-ho" class="flex-1 text-center py-1.5 rounded-md transition ${isHo || (!isCsv && !isHo) ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-gray-500 hover:text-gray-800'}">
@@ -148,7 +163,7 @@ class AppSidebar extends HTMLElement {
         menuHTML += `
           <li>
             <a href="${sub.href}" 
-               data-menu-id="${sub.id}"
+               data-menu-id="${sub.id}" onclick="if(window.innerWidth < 768) window.toggleSidebar();"
                class="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition duration-150 ${activeClass}">
               <i class="fa-solid ${sub.icon} w-4 text-center"></i>
               <span>${sub.label}</span>
