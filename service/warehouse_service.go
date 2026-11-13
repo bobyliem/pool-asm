@@ -26,21 +26,21 @@ func (s *warehouseService) GetSites() ([]string, error) {
 }
 
 func (s *warehouseService) GetCriticalInventory(site string) (*models.CriticalInventoryResponse, error) {
-	items, err := s.repo.GetCriticalInventory(site)
+	pivotItems, sites, err := s.repo.GetCriticalInventoryPivot(site)
 	if err != nil {
 		return nil, err
 	}
 
-	sites, err := s.repo.GetSites()
-	if err != nil {
-		sites = []string{}
+	items, _ := s.repo.GetCriticalInventory(site)
+	if items == nil {
+		items = []models.CriticalInventoryItem{}
 	}
 
 	summary := models.CriticalInventorySummary{
-		TotalItems: len(items),
+		TotalItems: len(pivotItems),
 	}
 
-	for _, it := range items {
+	for _, it := range pivotItems {
 		switch it.Note {
 		case "UrgentReStock":
 			summary.UrgentRestockCount++
@@ -72,6 +72,7 @@ func (s *warehouseService) GetCriticalInventory(site string) (*models.CriticalIn
 		MonthHeaders: monthHeaders,
 		Sites:        sites,
 		Data:         items,
+		PivotData:    pivotItems,
 		LastUpdate:   lastUpdateStr,
 	}
 

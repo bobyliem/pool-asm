@@ -37,6 +37,7 @@ class AppSidebar extends HTMLElement {
           title: "SPK Harian",
           submenus: [
             { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-csv/spk-per-cust" },
+            { id: "spk-slash-cust", label: "SPK /Cust", icon: "fa-file-invoice-dollar", href: "/prj-csv/spk-slash-cust" },
             { id: "summary-per-cust", label: "Summary Per Cust", icon: "fa-table-cells-large", href: "/prj-csv/summary-per-cust" },
             { id: "resume-per-kategori", label: "Resume Per Kategori", icon: "fa-border-all", href: "/prj-csv/resume-per-kategori" }
           ]

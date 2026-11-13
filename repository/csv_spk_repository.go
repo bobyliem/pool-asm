@@ -61,7 +61,7 @@ func (r *csvSpkRepository) GetFilterOptions() (*models.CsvSpkFilterOptions, erro
 }
 
 func (r *csvSpkRepository) GetSpkPerCust(area, customer, purpose, tglAwal, tglAkhir string) ([]models.CsvSpkPerCustItem, error) {
-	var items []models.CsvSpkPerCustItem
+	items := make([]models.CsvSpkPerCustItem, 0)
 
 	query := `
 		SELECT MAX(site) AS site, MIN(mulai) AS tgl_masuk, MAX(selesai) AS close_spk

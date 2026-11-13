@@ -422,12 +422,14 @@
         const res = await fetch(`/api/v1/csv/reports/spk-per-cust?${params.toString()}`);
         const json = await res.json();
 
-        if (json.status === 'success' && Array.isArray(json.data)) {
-          rawSpkData = json.data;
+        if (json.status === 'success') {
+          rawSpkData = Array.isArray(json.data) ? json.data : [];
           renderTable(rawSpkData);
           updateSummaryMatrix(rawSpkData);
         } else {
-          tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-rose-500">Gagal: ${json.message || 'Data tidak ditemukan'}</td></tr>`;
+          rawSpkData = [];
+          updateSummaryMatrix(rawSpkData);
+          tbody.innerHTML = `<tr><td colspan="14" class="py-6 text-center text-rose-500">Gagal: ${json.message || 'Data tidak ditemukan'}</td></tr>`;
         }
       } catch (err) {
         tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-rose-500">Error menghubungi server backend: ${err.message}</td></tr>`;

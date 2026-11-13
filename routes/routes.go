@@ -74,6 +74,8 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		pages.StaticFile("/prj-csv/", "./web/prj-csv/index.html")
 		pages.StaticFile("/prj-csv/dashboard", "./web/prj-csv/index.html")
 		pages.StaticFile("/prj-csv/spk-per-cust", "./web/prj-csv/spk-per-cust.html")
+		pages.StaticFile("/prj-csv/spk-slash-cust", "./web/prj-csv/spk-slash-cust.html")
+		pages.StaticFile("/prj-csv/spk-cust", "./web/prj-csv/spk-slash-cust.html")
 		pages.StaticFile("/prj-csv/summary-per-cust", "./web/prj-csv/summary-per-cust.html")
 		pages.StaticFile("/prj-csv/resume-per-kategori", "./web/prj-csv/resume-per-kategori.html")
 		pages.StaticFile("/prj-csv/resume-per-kategori/detail", "./web/prj-csv/resume-per-kategori-detail.html")

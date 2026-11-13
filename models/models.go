@@ -155,6 +155,7 @@ type ActiveOperationItem struct {
 
 // DTO untuk Laporan SPK Per Cust
 type SpkPerCustItem struct {
+	ID       string     `gorm:"column:id" json:"id"`
 	Site     string     `gorm:"column:site" json:"site"`
 	TglMasuk *time.Time `gorm:"column:tglMasuk" json:"tgl_masuk"`
 	CloseSpk *time.Time `gorm:"column:closeSpk" json:"close_spk"`
