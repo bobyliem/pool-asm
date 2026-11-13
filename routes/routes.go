@@ -6,12 +6,13 @@ import (
 	"asm/handler"
 	"asm/repository"
 	"asm/service"
+	"asm/service/whatsapp"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
+func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gin.Engine {
 	r := gin.Default()
 
 	// CORS Middleware
@@ -268,6 +269,15 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		// CSV Background Sync Endpoints
 		api.POST("/csv/sync", csvSyncHandler.TriggerSync)
 		api.GET("/csv/sync/status", csvSyncHandler.GetSyncStatus)
+
+		// WhatsApp Bot Endpoints
+		if waBot != nil {
+			waHandler := handler.NewWhatsAppHandler(waBot)
+			r.GET("/wa/qr", waHandler.ShowQRPage)
+			r.GET("/wa/qr/image", waHandler.GetQRImage)
+			r.GET("/wa/status", waHandler.GetStatus)
+			api.POST("/wa/send", waHandler.SendMessage)
+		}
 
 		// Stockpile Sync Endpoints (Metabase -> api_stockpile)
 		if stockpileSyncHandler != nil {
