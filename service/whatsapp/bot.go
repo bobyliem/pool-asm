@@ -303,9 +303,10 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 			return
 		}
 
-		// 5. Resolusi Nomor Pengirim untuk Cek Hak Akses
-		senderJID := v.Info.Sender
-		senderPhone := senderJID.User
+		// 5. Resolusi Nomor Pengirim untuk Cek Hak Akses (konversi LID ke nomor telepon asli jika perlu)
+		senderPhone := b.resolveSenderPhone(v)
+		fmt.Printf("[WhatsApp] Pesan dari %s (Alt: %s, Chat: %s) -> Nomor Asli: %s | Pesan: %s\n",
+			v.Info.Sender, v.Info.SenderAlt, v.Info.Chat, senderPhone, body)
 
 		// Jika dari grup, senderJID adalah orangnya. Chat target reply adalah grupnya.
 		targetChat := v.Info.Chat
@@ -313,6 +314,45 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		// 6. Jalankan router perintah
 		b.handleIncomingCommand(targetChat, senderPhone, body)
 	}
+}
+
+// resolveSenderPhone menyelesaikan nomor telepon pengirim dari berbagai format WhatsApp (termasuk Privacy LID)
+func (b *WhatsAppBot) resolveSenderPhone(msg *events.Message) string {
+	info := msg.Info
+
+	// 1. Jika SenderAlt terisi nomor telepon (WhatsApp mengisi participant_pn / sender_pn saat Sender adalah LID)
+	if (info.SenderAlt.Server == types.DefaultUserServer || info.SenderAlt.Server == types.LegacyUserServer) && info.SenderAlt.User != "" {
+		return info.SenderAlt.User
+	}
+
+	// 2. Jika Sender sendiri adalah nomor telepon biasa (@s.whatsapp.net)
+	if (info.Sender.Server == types.DefaultUserServer || info.Sender.Server == types.LegacyUserServer) && info.Sender.User != "" {
+		return info.Sender.User
+	}
+
+	// 3. Untuk DM langsung (bukan grup), cek apakah Chat JID adalah nomor telepon
+	if !info.IsGroup && (info.Chat.Server == types.DefaultUserServer || info.Chat.Server == types.LegacyUserServer) && info.Chat.User != "" {
+		return info.Chat.User
+	}
+
+	// 4. Cari dari mapping internal whatsmeow LID Store (whatsmeow_lid_map di SQLite)
+	if b.client != nil && b.client.Store != nil && b.client.Store.LIDs != nil {
+		if pnJID, err := b.client.Store.LIDs.GetPNForLID(context.Background(), info.Sender); err == nil && !pnJID.IsEmpty() {
+			if pnJID.User != "" {
+				return pnJID.User
+			}
+		}
+		if !info.IsGroup {
+			if pnJID, err := b.client.Store.LIDs.GetPNForLID(context.Background(), info.Chat); err == nil && !pnJID.IsEmpty() {
+				if pnJID.User != "" {
+					return pnJID.User
+				}
+			}
+		}
+	}
+
+	// Fallback jika tidak ditemukan
+	return info.Sender.User
 }
 
 // handleIncomingCommand memproses keyword dan mengirimkan balasan
