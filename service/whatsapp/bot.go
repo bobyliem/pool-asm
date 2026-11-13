@@ -147,11 +147,71 @@ func (b *WhatsAppBot) Stop() {
 	}
 }
 
+// ReconnectQR mencoba rekoneksi untuk mendapatkan channel QR baru jika belum login dan offline
+func (b *WhatsAppBot) ReconnectQR() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.isLoggedIn || b.client == nil || b.client.IsConnected() {
+		return nil
+	}
+
+	qrChan, err := b.client.GetQRChannel(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if err := b.client.Connect(); err != nil {
+		return err
+	}
+
+	go func() {
+		for evt := range qrChan {
+			if evt.Event == "code" {
+				b.mu.Lock()
+				b.qrText = evt.Code
+				png, err := qrcode.Encode(evt.Code, qrcode.Medium, 300)
+				if err == nil {
+					b.qrPNG = png
+				}
+				b.mu.Unlock()
+
+				fmt.Println("\n==================================================================")
+				fmt.Println("📲 SCAN QR CODE INI DENGAN WHATSAPP (Perangkat Tertaut):")
+				fmt.Println("   Atau buka di browser: http://localhost:8080/wa/qr")
+				fmt.Println("==================================================================")
+				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
+				fmt.Println("==================================================================")
+			} else if evt.Event == "success" {
+				b.mu.Lock()
+				b.isLoggedIn = true
+				b.qrText = ""
+				b.qrPNG = nil
+				b.mu.Unlock()
+				fmt.Println("✅ [WhatsApp] Login WhatsApp BERHASIL! Session tersimpan.")
+			}
+		}
+	}()
+
+	return nil
+}
+
 // GetQR mengembalikan teks QR, PNG bytes, dan status login
 func (b *WhatsAppBot) GetQR() (string, []byte, bool) {
 	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.qrText, b.qrPNG, b.isLoggedIn
+	qrText := b.qrText
+	qrPNG := b.qrPNG
+	isLoggedIn := b.isLoggedIn
+	isConnected := b.client != nil && b.client.IsConnected()
+	b.mu.RUnlock()
+
+	if !isLoggedIn && !isConnected {
+		go func() {
+			_ = b.ReconnectQR()
+		}()
+	}
+
+	return qrText, qrPNG, isLoggedIn
 }
 
 // GetStatus mengembalikan status detail koneksi
