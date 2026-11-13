@@ -21,7 +21,8 @@ func NewSpkRepository(db *gorm.DB) SpkRepository {
 func (r *spkRepository) GetSpkPerCust(tglAwal, tglAkhir, area, cust, purpose string) ([]models.SpkPerCustItem, error) {
 	var items []models.SpkPerCustItem
 	query := `
-SELECT s.name AS site
+SELECT so.id AS id
+	, s.name AS site
 	, so.releasedAt AS tglMasuk
 	, so.completedAt AS closeSpk
 	, vh.plate_number AS nopol

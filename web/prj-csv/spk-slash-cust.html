@@ -537,7 +537,19 @@
             <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(service)}</td>
             <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(part)}</td>
             <td class="py-2 px-3 text-right font-medium text-slate-700">${formatRupiah(ban)}</td>
-            <td class="py-2 px-3 text-right font-bold text-emerald-700">${formatRupiah(rowTotal)}</td>
+            <td class="py-2 px-3 text-right font-bold text-emerald-700 whitespace-nowrap" onclick="event.stopPropagation()">
+              ${item.id 
+                ? `<a href="https://workshop.sampurna-group.com/workshop/service-orders/${item.id}/progress" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="text-emerald-700 hover:text-emerald-900 underline decoration-dotted inline-flex items-center gap-1 group font-bold"
+                      title="Buka Service Order di Workshop App (${item.id})">
+                      <span>${formatRupiah(rowTotal)}</span>
+                      <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-emerald-600 group-hover:text-emerald-800"></i>
+                   </a>`
+                : `<span class="text-emerald-700 font-bold">${formatRupiah(rowTotal)}</span>`
+              }
+            </td>
             <td class="py-2 px-3 text-slate-700 max-w-xs break-words">${item.notes || '-'}</td>
           </tr>
         `;
