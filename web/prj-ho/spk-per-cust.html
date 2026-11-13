@@ -481,10 +481,10 @@
           omset.grand += rowTotal;
         }
 
-        // Row background class: Kalo Close SPK kosong, beri background pink yang lebih solid
+        // Row background class: Kalo Close SPK kosong (Pending), beri background kuning muda
         const rowBgClass = isClosed 
           ? "hover:bg-slate-50 transition border-b border-slate-100" 
-          : "bg-pink-200/75 hover:bg-pink-200 transition border-b border-pink-300 font-normal";
+          : "bg-yellow-100/75 hover:bg-yellow-100 transition border-b border-yellow-200 font-normal";
 
         // Nomor SPK warna merah jika openskb > 0
         const isOpenSkb = (item.openskb || 0) > 0;
@@ -522,7 +522,7 @@
             <td class="py-2 px-3 text-center font-semibold text-slate-500">${idx + 1}</td>
             <td class="py-2 px-3 font-medium text-slate-800">${item.site || '-'}</td>
             <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${formatDateTime(item.tgl_masuk)}</td>
-            <td class="py-2 px-3 whitespace-nowrap ${isClosed ? 'text-slate-700' : 'text-pink-800 font-bold italic'}">${formatDateTime(item.close_spk)}</td>
+            <td class="py-2 px-3 whitespace-nowrap ${isClosed ? 'text-slate-700' : 'text-amber-700 font-bold italic'}">${formatDateTime(item.close_spk)}</td>
             <td class="py-2 px-3 ${nopolClass} whitespace-nowrap">${item.nopol || '-'}${shieldIcon}${lelangIcon}${banIcon}</td>
             <td class="py-2 px-3 font-semibold text-blue-600">${item.cust_code || '-'}</td>
             <td class="py-2 px-3">
