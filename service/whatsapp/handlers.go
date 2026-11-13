@@ -1,12 +1,14 @@
 package whatsapp
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	"go.mau.fi/whatsmeow/types"
 	"gorm.io/gorm"
 )
 
@@ -812,9 +814,33 @@ Berikut perintah operasional khusus Admin:
    Menampilkan menu bantuan khusus admin ini.`
 }
 
-// HandleCommandRegistrasi: /registrasi
-func HandleCommandRegistrasi(db *gorm.DB, bot *WhatsAppBot, senderPhone string) string {
-	_, p0, p62 := CleanPhone(senderPhone)
+// HandleCommandRegistrasi: /registrasi [nomor_hp_opsional]
+func HandleCommandRegistrasi(db *gorm.DB, bot *WhatsAppBot, senderJID types.JID, senderPhone, parameter string) string {
+	targetPhone := strings.TrimSpace(parameter)
+
+	// Jika parameter kosong dan nomor pengirim terdeteksi sebagai Privacy LID WhatsApp
+	if targetPhone == "" && IsLID(senderPhone) {
+		return "⚠️ Akun WhatsApp Anda menggunakan ID Privasi.\n\nSilakan daftarkan nomor HP Anda dengan format:\n*/registrasi [Nomor_HP]*\n\nContoh:\n*/registrasi 085715780197*"
+	}
+
+	// Tentukan nomor HP yang akan didaftarkan
+	regPhone := senderPhone
+	if targetPhone != "" {
+		regPhone = targetPhone
+	}
+
+	_, p0, p62 := CleanPhone(regPhone)
+	if IsLID(regPhone) || len(p0) < 10 {
+		return "Format nomor HP tidak valid. Masukkan nomor HP seluler yang benar.\nContoh: */registrasi 085715780197*"
+	}
+
+	// Jika pengirim menggunakan LID, simpan pemetaan permanen LID -> Nomor HP di whatsmeow SQLite
+	if bot != nil && bot.client != nil {
+		if senderJID.Server == types.HiddenUserServer || senderJID.Server == types.HostedLIDServer {
+			pnJID := types.NewJID(p62, types.DefaultUserServer)
+			bot.client.StoreLIDPNMapping(context.Background(), senderJID, pnJID)
+		}
+	}
 
 	var user struct {
 		ID     int64 `gorm:"column:id"`
@@ -839,7 +865,13 @@ func HandleCommandRegistrasi(db *gorm.DB, bot *WhatsAppBot, senderPhone string) 
 		return fmt.Sprintf("Status akun Anda: %d. Silahkan hubungi admin kami.", user.Statue)
 	}
 
-	// Daftarkan ke tabel users
+	// Bersihkan jika ada entri LID lama dari pengirim ini di tabel users
+	if IsLID(senderPhone) {
+		_, oldLidP0, oldLidP62 := CleanPhone(senderPhone)
+		db.Table("users").Where("no_hp = ? OR no_hp = ?", oldLidP0, oldLidP62).Delete(nil)
+	}
+
+	// Daftarkan ke tabel users dengan nomor HP asli yang bersih
 	newUser := map[string]interface{}{
 		"no_hp":    p0,
 		"statue":   0,
@@ -861,7 +893,7 @@ func HandleCommandRegistrasi(db *gorm.DB, bot *WhatsAppBot, senderPhone string) 
 		go bot.SendMessage(a.NoHp, adminNotifyMsg)
 	}
 
-	return "Anda mengaktifkan fitur WA Auto Response kami, mohon menunggu sampai aktifasi akun Anda diaktifkan."
+	return fmt.Sprintf("Pendaftaran nomor %s berhasil.\nMohon menunggu sampai aktifasi akun Anda diaktifkan oleh admin.", p0)
 }
 
 // HandleCommandAktifasi: /aktifasi [no_hp] [getpass]
