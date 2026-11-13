@@ -620,7 +620,13 @@
       const tglAwal = document.getElementById("filterTglAwal").value || sessionStorage.getItem("tglawal") || getTodayDate();
       const tglAkhir = document.getElementById("filterTglAkhir").value || sessionStorage.getItem("tglakhir") || getTodayDate();
       const url = `/prj-csv/spk-detail?nopol=${encodeURIComponent(nopol)}&tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
-      window.open(url, "_blank");
+      
+      const w = 1180;
+      const h = 760;
+      const left = Math.max(0, Math.floor((window.screen.width - w) / 2));
+      const top = Math.max(0, Math.floor((window.screen.height - h) / 2));
+      
+      window.open(url, 'SpkDetailPopup', `width=${w},height=${h},top=${top},left=${left},scrollbars=yes,resizable=yes`);
     }
 
     // Apply Filter Button Action
