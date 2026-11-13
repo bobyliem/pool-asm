@@ -15,3 +15,11 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# WhatsApp session & SQLite
+data/
+*.db
+*.db-*
+
+pool-dashboard/
+
