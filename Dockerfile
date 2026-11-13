@@ -37,6 +37,10 @@ COPY --from=builder /app/asm /app/asm
 # Copy static web assets
 COPY web/ /app/web/
 
+# Buat direktori data untuk session SQLite WhatsApp dan pasang Volume persisten
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
+
 # Set environment defaults
 ENV PORT=8080 \
     GIN_MODE=release \
