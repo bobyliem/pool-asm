@@ -41,16 +41,39 @@ type MonthHeader struct {
 	Label string `json:"label"` // Mei 2026, Jun 2026, ...
 }
 
+// SiteStockData merepresentasikan nilai Avg dan Stock per area
+type SiteStockData struct {
+	Avg   float64 `json:"avg"`
+	Stock float64 `json:"stock"`
+}
+
+// CriticalInventoryPivotItem merepresentasikan satu baris produk yang dipivot per area dinamis
+type CriticalInventoryPivotItem struct {
+	Sku           string                   `json:"sku"`
+	NamaProduk    string                   `json:"nama_produk"`
+	Sites         map[string]SiteStockData `json:"sites"`
+	TotalAvg      float64                  `json:"total_avg"`
+	TotalStock    float64                  `json:"total_stock"`
+	Note          string                   `json:"note"`
+	CriticalSites []string                 `json:"critical_sites"`
+	QtyPo         *float64                 `json:"qty_po"`
+	Po            *string                  `json:"po"`
+	PoDate        *string                  `json:"po_date"`
+	Estimasi      *string                  `json:"estimasi"`
+	Statue        *string                  `json:"statue"`
+}
+
 // CriticalInventoryResponse response API lengkap
 type CriticalInventoryResponse struct {
-	Status       string                   `json:"status"`
-	Message      string                   `json:"message,omitempty"`
-	SelectedSite string                   `json:"selected_site"`
-	Summary      CriticalInventorySummary `json:"summary"`
-	MonthHeaders []MonthHeader            `json:"month_headers"`
-	Sites        []string                 `json:"sites"`
-	Data         []CriticalInventoryItem  `json:"data"`
-	LastUpdate   string                   `json:"last_update"`
+	Status       string                       `json:"status"`
+	Message      string                       `json:"message,omitempty"`
+	SelectedSite string                       `json:"selected_site"`
+	Summary      CriticalInventorySummary     `json:"summary"`
+	MonthHeaders []MonthHeader                `json:"month_headers"`
+	Sites        []string                     `json:"sites"`
+	Data         []CriticalInventoryItem      `json:"data"`
+	PivotData    []CriticalInventoryPivotItem `json:"pivot_data"`
+	LastUpdate   string                       `json:"last_update"`
 }
 
 // GetMonthHeadersHelper menghasilkan label nama bulan 6 bulan ke belakang

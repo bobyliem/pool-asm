@@ -213,29 +213,8 @@
         <!-- Table Container with Natural Large Viewport -->
         <div class="overflow-x-auto flex-1 min-h-[480px]">
           <table id="criticalTable" class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-100 text-slate-700 border-b border-gray-200 shadow-sm font-semibold uppercase tracking-wider text-[11px]">
-              <tr>
-                <th class="py-2.5 px-3 text-center w-12">No</th>
-                <th class="py-2.5 px-3">Site</th>
-                <th class="py-2.5 px-3">Status</th>
-                <th class="py-2.5 px-3">SKU</th>
-                <th class="py-2.5 px-3 min-w-[220px]">Nama Produk</th>
-                <th class="py-2.5 px-3 text-right bg-blue-50/50">Stock</th>
-                <th class="py-2.5 px-3 text-right bg-blue-50/50">Avg (6 Bln)</th>
-                <!-- 6 Bulan Headers -->
-                <th id="thBln1" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 1</th>
-                <th id="thBln2" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 2</th>
-                <th id="thBln3" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 3</th>
-                <th id="thBln4" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 4</th>
-                <th id="thBln5" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 5</th>
-                <th id="thBln6" class="py-2.5 px-2.5 text-right font-medium text-slate-600">Bln 6</th>
-                <!-- PO Information -->
-                <th class="py-2.5 px-3 text-right bg-amber-50/50">Qty PO</th>
-                <th class="py-2.5 px-3 bg-amber-50/50">No PO</th>
-                <th class="py-2.5 px-3 bg-amber-50/50">Tgl PO</th>
-                <th class="py-2.5 px-3 bg-amber-50/50">Estimasi</th>
-                <th class="py-2.5 px-3 bg-amber-50/50">Status PO</th>
-              </tr>
+            <thead id="tableHead" class="bg-slate-100 text-slate-700 border-b border-gray-200 shadow-sm font-semibold uppercase tracking-wider text-[11px]">
+              <!-- Dynamic Two-Tier Header rendered by renderTableHeader() -->
             </thead>
             <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
               <!-- Loading Skeleton -->
@@ -257,7 +236,7 @@
   <!-- JAVASCRIPT LOGIC -->
   <script>
     let rawInventoryData = [];
-    let currentMonthHeaders = [];
+    let activeSites = [];
 
     document.addEventListener("DOMContentLoaded", () => {
       loadCriticalInventory();
@@ -271,9 +250,10 @@
       if (refreshIcon) refreshIcon.classList.add("fa-spin");
 
       const tbody = document.getElementById("tableBody");
+      const colSpan = 3 + (activeSites.length > 0 ? activeSites.length * 2 : 6) + 2 + 1 + 5;
       tbody.innerHTML = `
         <tr>
-          <td colspan="18" class="text-center py-16 text-gray-400">
+          <td colspan="${colSpan}" class="text-center py-16 text-gray-400">
             <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-500 mb-2"></i>
             <p class="text-sm font-medium">Memuat data dari Server HO...</p>
           </td>
@@ -289,16 +269,17 @@
           throw new Error(result.message || "Gagal mengambil data");
         }
 
-        rawInventoryData = result.data || [];
-        currentMonthHeaders = result.month_headers || [];
+        // Ambil data pivot (matrix per area)
+        rawInventoryData = result.pivot_data || [];
+        activeSites = result.sites || ["Cicangkal", "Cilegon", "Lampung"];
 
         // Update Sites options if available
         if (result.sites && result.sites.length > 0) {
           updateSiteDropdown(result.sites, selectedSite);
         }
 
-        // Update Month Headers
-        updateMonthHeaders(currentMonthHeaders);
+        // Render Dynamic Two-Tier Header
+        renderTableHeader(activeSites);
 
         // Update Summary Cards
         updateSummaryCards(result.summary);
@@ -306,7 +287,7 @@
         // Update Last Update
         document.getElementById("lastUpdateText").innerText = result.last_update || "-";
 
-        // Render Table
+        // Render Table Rows
         applyLocalFilters();
 
       } catch (err) {
@@ -325,6 +306,55 @@
       }
     }
 
+    function renderTableHeader(sites) {
+      const thead = document.getElementById("tableHead");
+      if (!thead) return;
+
+      // Row 1: Header Grup (Rowspan 2 untuk info dasar & Status, Colspan 2 untuk tiap Area & Total, Colspan 5 untuk PO)
+      let row1 = `
+        <tr class="bg-slate-100 text-slate-800 border-b border-gray-300 font-bold uppercase tracking-wider text-[11px]">
+          <th rowspan="2" class="py-2.5 px-3 text-center w-12 border-r border-gray-300">No</th>
+          <th rowspan="2" class="py-2.5 px-3 whitespace-nowrap border-r border-gray-300">SKU</th>
+          <th rowspan="2" class="py-2.5 px-3 min-w-[240px] border-r border-gray-300">Nama Produk</th>
+      `;
+
+      sites.forEach(s => {
+        row1 += `<th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-slate-200/80 text-slate-800 font-bold">${escapeHtml(s)}</th>`;
+      });
+
+      row1 += `
+          <th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-blue-100/90 text-blue-900 font-bold">Total</th>
+          <th rowspan="2" class="py-2.5 px-3 text-center border-r border-gray-300">Status</th>
+          <th colspan="5" class="py-2 px-3 text-center bg-amber-100/90 text-amber-900 font-bold">Informasi PO</th>
+        </tr>
+      `;
+
+      // Row 2: Sub-kolom (Avg | Stok untuk tiap Area dan Total, serta rincian PO)
+      let row2 = `
+        <tr class="bg-slate-50 text-slate-700 border-b border-gray-300 font-semibold text-[10.5px]">
+      `;
+
+      sites.forEach(s => {
+        row2 += `
+          <th class="py-1.5 px-2 text-right bg-slate-100/60 text-slate-600 font-medium">Avg</th>
+          <th class="py-1.5 px-2 text-right bg-slate-100/60 font-bold border-r border-gray-300">Stok</th>
+        `;
+      });
+
+      row2 += `
+          <th class="py-1.5 px-2 text-right bg-blue-50/80 text-blue-900 font-bold">Avg</th>
+          <th class="py-1.5 px-2 text-right bg-blue-50/80 text-blue-900 font-bold border-r border-gray-300">Stok</th>
+          <th class="py-1.5 px-2 text-right bg-amber-50/80 text-amber-900 font-semibold">Qty PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">No PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Tgl PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Estimasi</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Status PO</th>
+        </tr>
+      `;
+
+      thead.innerHTML = row1 + row2;
+    }
+
     function updateSiteDropdown(sites, currentSelected) {
       const sel = document.getElementById("siteFilter");
       if (!sel) return;
@@ -338,17 +368,6 @@
       sel.innerHTML = html;
     }
 
-    function updateMonthHeaders(headers) {
-      if (!headers || headers.length < 6) return;
-      for (let i = 0; i < 6; i++) {
-        const th = document.getElementById(`thBln${i + 1}`);
-        if (th && headers[i]) {
-          th.innerText = headers[i].label;
-          th.title = `Pemakaian ${headers[i].label}`;
-        }
-      }
-    }
-
     function updateSummaryCards(summary) {
       if (!summary) return;
       document.getElementById("cardTotalItems").innerText = (summary.total_items || 0).toLocaleString();
@@ -359,11 +378,18 @@
     }
 
     function applyLocalFilters() {
+      const siteFilter = document.getElementById("siteFilter").value;
       const noteFilter = document.getElementById("noteFilter").value;
       const poFilter = document.getElementById("poFilter").value;
       const searchKeyword = (document.getElementById("searchInput").value || "").toLowerCase().trim();
 
       let filtered = rawInventoryData.filter(item => {
+        // Filter Area/Site Kritis
+        if (siteFilter !== "ALL") {
+          const hasCritSite = item.critical_sites && item.critical_sites.includes(siteFilter);
+          if (!hasCritSite) return false;
+        }
+
         // Filter Note Status
         if (noteFilter !== "ALL" && item.note !== noteFilter) {
           return false;
@@ -377,13 +403,12 @@
           return false;
         }
 
-        // Search Keyword (SKU, Nama Produk, No PO, Site)
+        // Search Keyword (SKU, Nama Produk, No PO)
         if (searchKeyword !== "") {
           const sku = (item.sku || "").toLowerCase();
           const name = (item.nama_produk || "").toLowerCase();
           const po = (item.po || "").toLowerCase();
-          const site = (item.area || "").toLowerCase();
-          if (!sku.includes(searchKeyword) && !name.includes(searchKeyword) && !po.includes(searchKeyword) && !site.includes(searchKeyword)) {
+          if (!sku.includes(searchKeyword) && !name.includes(searchKeyword) && !po.includes(searchKeyword)) {
             return false;
           }
         }
@@ -406,10 +431,12 @@
         filterBadge.classList.add("hidden");
       }
 
+      const colSpan = 3 + (activeSites.length * 2) + 2 + 1 + 5;
+
       if (data.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="18" class="text-center py-12 text-gray-400">
+            <td colspan="${colSpan}" class="text-center py-12 text-gray-400">
               <i class="fa-solid fa-inbox text-3xl mb-2 text-gray-300"></i>
               <p class="text-sm">Tidak ada data critical inventory yang cocok dengan filter.</p>
             </td>
@@ -425,11 +452,13 @@
         let rowClass = "hover:bg-slate-50 transition";
         if (row.note === "UrgentReStock") {
           statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200"><i class="fa-solid fa-triangle-exclamation mr-1 text-[9px]"></i>Urgent</span>`;
-          rowClass = "hover:bg-red-50/30 transition";
+          rowClass = "hover:bg-red-50/20 transition";
         } else if (row.note === "LowStock") {
           statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Low Stock</span>`;
+          rowClass = "hover:bg-amber-50/20 transition";
         } else if (row.note === "Check") {
           statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">Check</span>`;
+          rowClass = "hover:bg-purple-50/20 transition";
         } else {
           statusBadge = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">-</span>`;
         }
@@ -444,34 +473,48 @@
           poStatusBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">${escapeHtml(row.statue)}</span>`;
         }
 
-        // Highlight stock if 0 or negative
-        let stockClass = "text-right font-semibold bg-blue-50/20";
-        if (row.stock <= 0) {
-          stockClass = "text-right font-extrabold text-red-600 bg-red-50/30";
+        // Build dynamic site cells
+        let siteCells = "";
+        activeSites.forEach(s => {
+          const sData = (row.sites && row.sites[s]) ? row.sites[s] : { avg: 0, stock: 0 };
+          let stockClass = "text-right font-medium text-gray-800";
+          
+          if (sData.stock < 0) {
+            stockClass = "text-right font-extrabold text-red-600 bg-red-50/60";
+          } else if (sData.stock === 0 && sData.avg > 0) {
+            stockClass = "text-right font-extrabold text-red-600 bg-red-50/40";
+          } else if (sData.stock < sData.avg) {
+            stockClass = "text-right font-bold text-amber-700 bg-amber-50/40";
+          }
+
+          siteCells += `
+            <td class="py-2 px-2.5 text-right font-mono text-slate-600 bg-slate-50/30">${formatNumber(sData.avg)}</td>
+            <td class="py-2 px-2.5 ${stockClass} font-mono border-r border-gray-200">${formatNumber(sData.stock)}</td>
+          `;
+        });
+
+        // Total cells styling
+        let totStockClass = "text-right font-bold text-blue-900 bg-blue-50/30";
+        if (row.total_stock < 0) {
+          totStockClass = "text-right font-extrabold text-red-600 bg-red-50/60";
+        } else if (row.total_stock < row.total_avg) {
+          totStockClass = "text-right font-bold text-amber-700 bg-amber-50/50";
         }
 
         html += `
           <tr class="${rowClass}">
-            <td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">${idx + 1}</td>
-            <td class="py-2 px-3 font-semibold text-gray-800 whitespace-nowrap">${escapeHtml(row.area)}</td>
-            <td class="py-2 px-3 whitespace-nowrap">${statusBadge}</td>
-            <td class="py-2 px-3 font-mono text-[11px] text-blue-700 font-semibold whitespace-nowrap">${escapeHtml(row.sku)}</td>
-            <td class="py-2 px-3 font-medium text-gray-900">${escapeHtml(row.nama_produk)}</td>
-            <td class="py-2 px-3 ${stockClass}">${formatNumber(row.stock)}</td>
-            <td class="py-2 px-3 text-right font-semibold text-gray-700 bg-blue-50/20">${formatNumber(row.avg)}</td>
-            
-            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln1)}</td>
-            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln2)}</td>
-            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln3)}</td>
-            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln4)}</td>
-            <td class="py-2 px-2 text-right font-mono text-gray-600">${formatNumber(row.bln5)}</td>
-            <td class="py-2 px-2 text-right font-mono text-gray-600 font-semibold text-slate-800">${formatNumber(row.bln6)}</td>
-
-            <td class="py-2 px-3 text-right font-semibold text-indigo-700 bg-amber-50/20">${row.qty_po != null ? formatNumber(row.qty_po) : '-'}</td>
-            <td class="py-2 px-3 font-mono text-[11px] text-gray-800 whitespace-nowrap bg-amber-50/20">${row.po ? escapeHtml(row.po) : '-'}</td>
-            <td class="py-2 px-3 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${poDate}</td>
-            <td class="py-2 px-3 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${estimasi}</td>
-            <td class="py-2 px-3 whitespace-nowrap bg-amber-50/20">${poStatusBadge}</td>
+            <td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px] border-r border-gray-100">${idx + 1}</td>
+            <td class="py-2 px-3 font-mono text-[11px] text-blue-700 font-semibold whitespace-nowrap border-r border-gray-100">${escapeHtml(row.sku)}</td>
+            <td class="py-2 px-3 font-medium text-gray-900 border-r border-gray-200">${escapeHtml(row.nama_produk)}</td>
+            ${siteCells}
+            <td class="py-2 px-2.5 text-right font-mono font-bold text-blue-900 bg-blue-50/20">${formatNumber(row.total_avg)}</td>
+            <td class="py-2 px-2.5 ${totStockClass} font-mono border-r border-gray-200">${formatNumber(row.total_stock)}</td>
+            <td class="py-2 px-3 text-center whitespace-nowrap border-r border-gray-200">${statusBadge}</td>
+            <td class="py-2 px-2.5 text-right font-semibold font-mono text-indigo-700 bg-amber-50/20">${row.qty_po != null ? formatNumber(row.qty_po) : '-'}</td>
+            <td class="py-2 px-2.5 font-mono text-[11px] text-gray-800 whitespace-nowrap bg-amber-50/20">${row.po ? escapeHtml(row.po) : '-'}</td>
+            <td class="py-2 px-2 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${poDate}</td>
+            <td class="py-2 px-2 text-gray-500 whitespace-nowrap text-[11px] bg-amber-50/20">${estimasi}</td>
+            <td class="py-2 px-2.5 whitespace-nowrap bg-amber-50/20">${poStatusBadge}</td>
           </tr>
         `;
       });
@@ -480,18 +523,18 @@
     }
 
     function formatNumber(num) {
-      if (num == null) return "0";
+      if (num == null || isNaN(num)) return "0";
       return Number(num).toLocaleString();
     }
 
     function formatDate(dateStr) {
-      if (!dateStr || dateStr === "" || dateStr.startsWith("0000")) return "-";
+      if (!dateStr || dateStr === "" || dateStr.startsWith("0000") || dateStr.startsWith("0001")) return "-";
       try {
         const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr.substring(0, 10);
-        return d.toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
+        if (isNaN(d.getTime())) return "-";
+        return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
       } catch (e) {
-        return dateStr;
+        return "-";
       }
     }
 
@@ -512,26 +555,28 @@
       }
 
       const exportRows = rawInventoryData.map((it, idx) => {
-        return {
+        const rowObj = {
           "No": idx + 1,
-          "Site": it.area,
-          "Status Note": it.note,
           "SKU": it.sku,
-          "Nama Produk": it.nama_produk,
-          "Stock": it.stock,
-          "Avg": it.avg,
-          [currentMonthHeaders[0]?.label || "Bln 1"]: it.bln1,
-          [currentMonthHeaders[1]?.label || "Bln 2"]: it.bln2,
-          [currentMonthHeaders[2]?.label || "Bln 3"]: it.bln3,
-          [currentMonthHeaders[3]?.label || "Bln 4"]: it.bln4,
-          [currentMonthHeaders[4]?.label || "Bln 5"]: it.bln5,
-          [currentMonthHeaders[5]?.label || "Bln 6"]: it.bln6,
-          "Qty PO": it.qty_po != null ? it.qty_po : "",
-          "No PO": it.po || "",
-          "Tgl PO": formatDate(it.po_date),
-          "Estimasi Delivery": formatDate(it.estimasi),
-          "Status PO": it.statue || ""
+          "Nama Produk": it.nama_produk
         };
+
+        activeSites.forEach(s => {
+          const sData = (it.sites && it.sites[s]) ? it.sites[s] : { avg: 0, stock: 0 };
+          rowObj[`${s} Avg`] = sData.avg;
+          rowObj[`${s} Stok`] = sData.stock;
+        });
+
+        rowObj["Total Avg"] = it.total_avg;
+        rowObj["Total Stok"] = it.total_stock;
+        rowObj["Status"] = it.note;
+        rowObj["Qty PO"] = it.qty_po != null ? it.qty_po : "";
+        rowObj["No PO"] = it.po || "";
+        rowObj["Tgl PO"] = formatDate(it.po_date);
+        rowObj["Estimasi Delivery"] = formatDate(it.estimasi);
+        rowObj["Status PO"] = it.statue || "";
+
+        return rowObj;
       });
 
       const worksheet = XLSX.utils.json_to_sheet(exportRows);
@@ -539,7 +584,7 @@
       XLSX.utils.book_append_sheet(workbook, worksheet, "Critical Inventory");
 
       const siteVal = document.getElementById("siteFilter").value;
-      const fileName = `Critical_Inventory_${siteVal}_${new Date().toISOString().substring(0, 10)}.xlsx`;
+      const fileName = `Critical_Inventory_Matrix_${siteVal}_${new Date().toISOString().substring(0, 10)}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     }
   </script>
