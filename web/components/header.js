@@ -42,7 +42,19 @@ class AppHeader extends HTMLElement {
           </a>
         </div>
 
-        <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- WhatsApp Bot Status Indicator Pill (Badge Monitoring) -->
+          <a id="navWaStatusLink" href="/wa/qr" target="_blank" class="border border-slate-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none shadow-2xs text-slate-500" title="Memeriksa status WhatsApp Bot...">
+            <div class="relative flex items-center justify-center">
+              <i class="fa-brands fa-whatsapp text-sm sm:text-base text-slate-600" id="navWaStatusIcon"></i>
+              <span id="navWaStatusPing" class="hidden absolute -top-1 -right-1 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+            </div>
+            <span id="navWaStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span id="navWaStatusText" class="text-[11px] sm:text-xs font-bold text-slate-600 truncate max-w-[80px] sm:max-w-[120px]">WA: Cek...</span>
+          </a>
           <!-- User Profile Dropdown Button -->
           <div class="relative">
             <div id="navUserProfileBtn" onclick="window.toggleUserMenu(event)" class="border border-blue-200/80 rounded-xl px-2.5 sm:px-3 py-1 flex items-center gap-2 sm:gap-2.5 bg-blue-50/70 hover:bg-blue-100/80 cursor-pointer transition select-none shadow-2xs">
@@ -155,6 +167,9 @@ class AppHeader extends HTMLElement {
     if (isCsv) {
       window.checkNavSyncStatus();
     }
+
+    // Inisialisasi Monitoring Status WhatsApp
+    window.initNavWhatsAppStatus();
   }
 }
 
@@ -507,6 +522,85 @@ window.showNavSyncBanner = function(type, title, msg) {
 window.dismissNavSyncBanner = function() {
   const banner = document.getElementById('navSyncBanner');
   if (banner) banner.classList.add('hidden');
+};
+
+
+// Monitoring Status Realtime WhatsApp Bot
+window.initNavWhatsAppStatus = function() {
+  const checkStatus = async () => {
+    try {
+      const res = await fetch('/wa/status');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const data = json.data || {};
+      const isLoggedIn = data.is_logged_in === true;
+      const isConnected = data.status === 'CONNECTED';
+      const phone = data.phone && data.phone !== '-' ? data.phone : '';
+
+      const link = document.getElementById('navWaStatusLink');
+      const icon = document.getElementById('navWaStatusIcon');
+      const ping = document.getElementById('navWaStatusPing');
+      const dot = document.getElementById('navWaStatusDot');
+      const text = document.getElementById('navWaStatusText');
+
+      if (!link) return;
+
+      if (isLoggedIn && isConnected) {
+        // ONLINE (Hijau)
+        link.className = 'border border-emerald-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-emerald-50/80 hover:bg-emerald-100 cursor-pointer transition select-none shadow-2xs text-emerald-700';
+        link.title = `WhatsApp Bot: ONLINE\nNomor: ${phone || 'Terhubung'}\nKlik untuk melihat status`;
+        link.href = '/wa/qr';
+        if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-emerald-600';
+        if (ping) ping.classList.add('hidden');
+        if (dot) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+          dot.classList.remove('hidden');
+        }
+        if (text) {
+          text.className = 'text-[11px] sm:text-xs font-bold text-emerald-800 truncate max-w-[80px] sm:max-w-[120px]';
+          text.innerText = phone ? `WA: ${phone}` : 'WA: Online';
+        }
+      } else {
+        // OFFLINE / Perlu Scan (Merah) -> Klik langsung ke /wa/qr untuk scan!
+        link.className = 'border border-rose-300 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-rose-50 hover:bg-rose-100 cursor-pointer transition select-none shadow-2xs text-rose-700 animate-pulse sm:animate-none';
+        link.title = 'WhatsApp Bot OFFLINE / Belum Login!\nKlik di sini untuk langsung Scan QR Code WhatsApp';
+        link.href = '/wa/qr';
+        if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-rose-600';
+        if (dot) dot.classList.add('hidden');
+        if (ping) ping.classList.remove('hidden');
+        if (text) {
+          text.className = 'text-[11px] sm:text-xs font-black text-rose-700 truncate max-w-[80px] sm:max-w-[120px]';
+          text.innerText = 'Scan WA';
+        }
+      }
+    } catch (err) {
+      const link = document.getElementById('navWaStatusLink');
+      const icon = document.getElementById('navWaStatusIcon');
+      const ping = document.getElementById('navWaStatusPing');
+      const dot = document.getElementById('navWaStatusDot');
+      const text = document.getElementById('navWaStatusText');
+      if (link) {
+        link.className = 'border border-rose-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-rose-50 text-rose-700 cursor-pointer shadow-2xs';
+        link.title = 'WhatsApp Bot OFFLINE. Klik untuk Scan QR.';
+        link.href = '/wa/qr';
+      }
+      if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-rose-600';
+      if (dot) dot.classList.add('hidden');
+      if (ping) ping.classList.remove('hidden');
+      if (text) {
+        text.className = 'text-[11px] sm:text-xs font-bold text-rose-700';
+        text.innerText = 'Scan WA';
+      }
+    }
+  };
+
+  // Cek segera saat pertama kali dimuat
+  checkStatus();
+
+  // Polling berkala setiap 15 detik
+  if (!window._navWaStatusInterval) {
+    window._navWaStatusInterval = setInterval(checkStatus, 15000);
+  }
 };
 
 if (!customElements.get('app-header')) {
