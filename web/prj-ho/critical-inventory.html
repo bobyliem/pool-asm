@@ -18,12 +18,22 @@
   <script src="/web/components/sidebar.js?v=10" defer></script>
 
   <style>
-    /* Sticky header table custom styling */
-    #criticalTable thead th {
+    /* Sticky multi-row table header */
+    #criticalTable thead tr:first-child th {
       position: sticky;
       top: 0;
+      z-index: 25;
+      background-color: #f1f5f9;
+    }
+    #criticalTable thead tr:first-child th[rowspan="2"] {
+      z-index: 30;
+      background-color: #f1f5f9;
+    }
+    #criticalTable thead tr:nth-child(2) th {
+      position: sticky;
+      top: 33px;
       z-index: 20;
-      background-color: #f1f5f9; /* Slate 100 solid */
+      background-color: #f8fafc;
     }
     /* Custom thin scrollbar */
     ::-webkit-scrollbar {
@@ -319,13 +329,13 @@
       `;
 
       sites.forEach(s => {
-        row1 += `<th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-slate-200/80 text-slate-800 font-bold">${escapeHtml(s)}</th>`;
+        row1 += `<th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-slate-200 text-slate-800 font-bold">${escapeHtml(s)}</th>`;
       });
 
       row1 += `
-          <th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-blue-100/90 text-blue-900 font-bold">Total</th>
+          <th colspan="2" class="py-2 px-3 text-center border-r border-gray-300 bg-blue-100 text-blue-900 font-bold">Total</th>
           <th rowspan="2" class="py-2.5 px-3 text-center border-r border-gray-300">Status</th>
-          <th colspan="5" class="py-2 px-3 text-center bg-amber-100/90 text-amber-900 font-bold">Informasi PO</th>
+          <th colspan="5" class="py-2 px-3 text-center bg-amber-100 text-amber-900 font-bold">Informasi PO</th>
         </tr>
       `;
 
@@ -336,23 +346,34 @@
 
       sites.forEach(s => {
         row2 += `
-          <th class="py-1.5 px-2 text-right bg-slate-100/60 text-slate-600 font-medium">Avg</th>
-          <th class="py-1.5 px-2 text-right bg-slate-100/60 font-bold border-r border-gray-300">Stok</th>
+          <th class="py-1.5 px-2 text-right bg-slate-100 text-slate-600 font-medium">Avg</th>
+          <th class="py-1.5 px-2 text-right bg-slate-100 font-bold border-r border-gray-300">Stok</th>
         `;
       });
 
       row2 += `
-          <th class="py-1.5 px-2 text-right bg-blue-50/80 text-blue-900 font-bold">Avg</th>
-          <th class="py-1.5 px-2 text-right bg-blue-50/80 text-blue-900 font-bold border-r border-gray-300">Stok</th>
-          <th class="py-1.5 px-2 text-right bg-amber-50/80 text-amber-900 font-semibold">Qty PO</th>
-          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">No PO</th>
-          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Tgl PO</th>
-          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Estimasi</th>
-          <th class="py-1.5 px-2 text-left bg-amber-50/80 text-amber-900 font-semibold">Status PO</th>
+          <th class="py-1.5 px-2 text-right bg-blue-50 text-blue-900 font-bold">Avg</th>
+          <th class="py-1.5 px-2 text-right bg-blue-50 text-blue-900 font-bold border-r border-gray-300">Stok</th>
+          <th class="py-1.5 px-2 text-right bg-amber-50 text-amber-900 font-semibold">Qty PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50 text-amber-900 font-semibold">No PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50 text-amber-900 font-semibold">Tgl PO</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50 text-amber-900 font-semibold">Estimasi</th>
+          <th class="py-1.5 px-2 text-left bg-amber-50 text-amber-900 font-semibold">Status PO</th>
         </tr>
       `;
 
       thead.innerHTML = row1 + row2;
+
+      // Atur posisi sticky row 2 secara dinamis persis di bawah row 1
+      requestAnimationFrame(() => {
+        const firstRow = thead.querySelector("tr:first-child");
+        if (firstRow) {
+          const r1Height = firstRow.offsetHeight;
+          thead.querySelectorAll("tr:nth-child(2) th").forEach(th => {
+            th.style.top = `${r1Height}px`;
+          });
+        }
+      });
     }
 
     function updateSiteDropdown(sites, currentSelected) {
