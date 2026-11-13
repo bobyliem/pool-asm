@@ -312,7 +312,7 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		targetChat := v.Info.Chat
 
 		// 6. Jalankan router perintah
-		b.handleIncomingCommand(targetChat, senderPhone, body)
+		b.handleIncomingCommand(targetChat, v.Info.Sender, senderPhone, body)
 	}
 }
 
@@ -356,7 +356,7 @@ func (b *WhatsAppBot) resolveSenderPhone(msg *events.Message) string {
 }
 
 // handleIncomingCommand memproses keyword dan mengirimkan balasan
-func (b *WhatsAppBot) handleIncomingCommand(chatJID types.JID, senderPhone, body string) {
+func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, senderPhone, body string) {
 	parts := strings.Fields(body)
 	if len(parts) == 0 {
 		return
@@ -415,7 +415,7 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID types.JID, senderPhone, body
 		reply = HandleCommandUpdateLelang(b.dbCsv, parameter)
 
 	case "/registrasi":
-		reply = HandleCommandRegistrasi(b.dbCsv, b, senderPhone)
+		reply = HandleCommandRegistrasi(b.dbCsv, b, senderJID, senderPhone, parameter)
 
 	case "/aktifasi":
 		reply = HandleCommandAktifasi(b.dbCsv, b, senderPhone, parameter)

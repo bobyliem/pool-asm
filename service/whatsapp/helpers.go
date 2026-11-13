@@ -64,6 +64,28 @@ func CleanPhone(phone string) (raw string, phone0 string, phone62 string) {
 	return raw, phone0, phone62
 }
 
+// IsLID mengecek apakah string nomor merupakan WhatsApp Privacy LID (bukan nomor telepon GSM standar)
+func IsLID(phone string) bool {
+	parts := strings.Split(phone, "@")
+	re := regexp.MustCompile(`\D+`)
+	digits := re.ReplaceAllString(parts[0], "")
+
+	// Jika nomor sangat panjang (> 13 digit) atau tidak berawalan 08 / 628
+	if len(digits) > 13 {
+		return true
+	}
+	clean := digits
+	if strings.HasPrefix(clean, "62") {
+		clean = clean[2:]
+	} else if strings.HasPrefix(clean, "0") {
+		clean = clean[1:]
+	}
+	if !strings.HasPrefix(clean, "8") {
+		return true
+	}
+	return false
+}
+
 // IsAdmin mengecek apakah nomor HP terdaftar sebagai Admin di tabel settings
 func IsAdmin(db *gorm.DB, phone string) bool {
 	if db == nil {
