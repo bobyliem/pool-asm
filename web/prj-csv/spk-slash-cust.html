@@ -518,8 +518,9 @@
         else if (kat === 'asuransi') katBadge = 'bg-blue-50 text-blue-700 border border-blue-200';
         else if (kat === 'storing') katBadge = 'bg-amber-50 text-amber-700 border border-amber-200';
 
+        const cleanNopol = (item.nopol || "").trim();
         return `
-          <tr class="${rowBgClass}">
+          <tr onclick="openSpkDetail(this.dataset.nopol)" data-nopol="${cleanNopol}" class="${rowBgClass} cursor-pointer hover:opacity-90" title="Klik untuk membuka detail SPK ${cleanNopol}">
             <td class="py-2 px-3 text-center font-semibold text-slate-500">${idx + 1}</td>
             <td class="py-2 px-3 font-medium text-slate-800">${item.site || '-'}</td>
             <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${formatDateTime(item.tgl_masuk)}</td>
@@ -599,6 +600,15 @@
                (item.notes || '').toLowerCase().includes(query);
       });
       renderTable(filtered);
+    }
+
+    // Buka Detail SPK di Window / Tab Baru
+    function openSpkDetail(nopol) {
+      if (!nopol || nopol === "-") return;
+      const tglAwal = document.getElementById("filterTglAwal").value || sessionStorage.getItem("tglawal") || getTodayDate();
+      const tglAkhir = document.getElementById("filterTglAkhir").value || sessionStorage.getItem("tglakhir") || getTodayDate();
+      const url = `/prj-csv/spk-detail?nopol=${encodeURIComponent(nopol)}&tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}`;
+      window.open(url, "_blank");
     }
 
     // Apply Filter Button Action
