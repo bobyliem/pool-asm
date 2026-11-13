@@ -4,6 +4,7 @@ import (
 	"asm/models"
 	"asm/service"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -68,6 +69,32 @@ func (h *AuthHandler) RequireAuth() gin.HandlerFunc {
 		c.Set("grp_id", sess.GrpID)
 		c.Set("group_name", sess.GroupName)
 
+		c.Next()
+	}
+}
+
+// Middleware Autentikasi untuk Halaman Web (redirect ke /login jika belum login)
+func (h *AuthHandler) RequirePageAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := h.extractToken(c)
+		if token == "" {
+			redirectTarget := url.QueryEscape(c.Request.RequestURI)
+			c.Redirect(http.StatusFound, "/login?redirect="+redirectTarget)
+			c.Abort()
+			return
+		}
+
+		sess, valid := h.authService.ValidateToken(token)
+		if !valid || sess == nil {
+			c.SetCookie("asm_session", "", -1, "/", "", false, false)
+			redirectTarget := url.QueryEscape(c.Request.RequestURI)
+			c.Redirect(http.StatusFound, "/login?redirect="+redirectTarget)
+			c.Abort()
+			return
+		}
+
+		// Perbarui cookie sliding window 30 menit (1800 detik)
+		c.SetCookie("asm_session", token, 1800, "/", "", false, false)
 		c.Next()
 	}
 }
