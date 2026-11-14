@@ -68,7 +68,8 @@ class AppSidebar extends HTMLElement {
           title: "ADMINISTRATOR",
           submenus: [
             { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users" },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" }
+            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" },
+            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs" }
           ]
         }
       ];
@@ -97,7 +98,8 @@ class AppSidebar extends HTMLElement {
           title: "ADMINISTRATOR",
           submenus: [
             { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users" },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" }
+            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" },
+            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs" }
           ]
         }
       ];

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cron Jobs Scheduler - Administrator - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=11" defer></script>
+  <script src="/web/components/sidebar.js?v=11" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Cron Jobs"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-4 py-3 overflow-hidden bg-slate-50 flex flex-col space-y-3">
+
+      <!-- TOP BAR -->
+      <div class="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-300 rounded-lg px-3 py-2 shadow-2xs shrink-0">
+        
+        <!-- Left: Title & KPI Badges -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-clock text-blue-600 text-base"></i>
+            <h2 class="text-sm font-bold text-slate-800">Cron Jobs Scheduler</h2>
+            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono">cron_jobs</span>
+          </div>
+
+          <span class="text-slate-300">|</span>
+
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <div class="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded flex items-center gap-1 shadow-2xs">
+              <span class="text-slate-500 font-medium">Total:</span>
+              <span id="statTotal" class="font-bold text-slate-800">0</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 text-emerald-800 shadow-2xs">
+              <span class="font-medium">Active:</span>
+              <span id="statActive" class="font-bold">0</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1 text-amber-800 shadow-2xs">
+              <span class="font-medium">Running:</span>
+              <span id="statRunning" class="font-bold">0</span>
+            </div>
+            <div class="bg-purple-50 border border-purple-300 px-2 py-0.5 rounded flex items-center gap-1 text-purple-800 shadow-2xs">
+              <i class="fa-brands fa-whatsapp text-xs text-purple-600"></i>
+              <span class="font-medium">Notifikasi WA:</span>
+              <span class="font-bold">Tabel settings</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="handleGlobalRefresh()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1.5 rounded border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-xs"></i>
+            <span>Refresh Data</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB NAVIGATION & CONTAINER -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        
+        <!-- TAB HEADERS -->
+        <div class="flex items-center justify-between border-b border-slate-200 bg-slate-100/80 px-2 pt-1.5 shrink-0">
+          <div class="flex items-center gap-1">
+            <!-- Tab 1 Button -->
+            <button id="tabBtnJobs" onclick="switchTab('jobs')" class="px-4 py-2 font-bold text-xs rounded-t-lg transition flex items-center gap-2 border-t border-l border-r border-slate-300 bg-white text-blue-600 -mb-[1px] shadow-2xs cursor-pointer">
+              <i class="fa-solid fa-list-check text-blue-600"></i>
+              <span>Daftar Pekerjaan Terjadwal (Jobs Registry)</span>
+              <span id="tabBadgeJobs" class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+            </button>
+
+            <!-- Tab 2 Button -->
+            <button id="tabBtnLogs" onclick="switchTab('logs')" class="px-4 py-2 font-semibold text-xs rounded-t-lg transition flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 -mb-[1px] cursor-pointer">
+              <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+              <span>Riwayat Eksekusi Task</span>
+              <span id="tabBadgeLogs" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+            </button>
+          </div>
+
+          <div class="text-[11px] text-slate-500 pr-2">
+            Auto-refresh setiap 15 detik
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1 CONTENT: DAFTAR CRON JOBS -->
+        <!-- ========================================== -->
+        <div id="tabContentJobs" class="flex-1 flex flex-col overflow-hidden">
+          <div class="overflow-x-auto flex-1 overflow-y-auto">
+            <table class="w-full text-left border-collapse border-spacing-0">
+              <thead class="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 shadow-2xs">
+                <tr class="text-[11px] font-semibold text-slate-700 divide-x divide-slate-200">
+                  <th class="py-2 px-3 text-center w-10">No</th>
+                  <th class="py-2 px-3 min-w-[180px]">Nama Job & Key</th>
+                  <th class="py-2 px-3 min-w-[200px]">Deskripsi</th>
+                  <th class="py-2 px-3 text-center min-w-[130px]">Jadwal Cron</th>
+                  <th class="py-2 px-3 text-center min-w-[90px]">Aktif</th>
+                  <th class="py-2 px-3 text-center min-w-[80px]">WA Alert</th>
+                  <th class="py-2 px-3 text-center min-w-[100px]">Status Terakhir</th>
+                  <th class="py-2 px-3 min-w-[160px]">Eksekusi Terakhir</th>
+                  <th class="py-2 px-3 min-w-[220px]">Pesan Terakhir</th>
+                  <th class="py-2 px-3 text-center min-w-[140px]">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="jobsTableBody" class="divide-y divide-slate-100 text-[11px]">
+                <tr>
+                  <td colspan="10" class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-spinner fa-spin text-base mb-1 text-blue-500"></i>
+                    <p>Memuat data cron jobs...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2 CONTENT: RIWAYAT EKSEKUSI (zz_schedule_task) -->
+        <!-- ========================================== -->
+        <div id="tabContentLogs" class="flex-1 flex flex-col overflow-hidden hidden">
+          
+          <!-- Filter Bar Periode Tanggal -->
+          <div class="px-3 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                <i class="fa-regular fa-calendar-days text-blue-600"></i>
+                <span>Periode Running Time:</span>
+              </span>
+
+              <div class="flex items-center gap-1.5">
+                <input type="date" id="filterTglAwal" onchange="onDateFilterChange()" class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+                <span class="text-slate-400 text-xs">s/d</span>
+                <input type="date" id="filterTglAkhir" onchange="onDateFilterChange()" class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              </div>
+
+              <button onclick="setFilterToday()" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-semibold border border-slate-300 rounded shadow-2xs transition cursor-pointer">
+                Hari Ini
+              </button>
+
+              <button onclick="fetchLogs()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
+                <i class="fa-solid fa-filter text-[10px]"></i>
+                <span>Filter</span>
+              </button>
+            </div>
+
+            <div class="text-[11px] text-slate-600 flex items-center gap-2">
+              <span>Total Ditemukan: <b id="logCountDisplay" class="text-slate-900 font-bold">0</b> baris</span>
+              <span class="text-slate-300">|</span>
+              <span class="text-slate-500 font-mono">zz_schedule_task</span>
+            </div>
+          </div>
+
+          <!-- Logs Table Container -->
+          <div class="overflow-x-auto flex-1 overflow-y-auto">
+            <table class="w-full text-left border-collapse border-spacing-0">
+              <thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 shadow-2xs">
+                <tr class="text-[11px] font-semibold text-slate-700 divide-x divide-slate-200">
+                  <th class="py-2 px-3 text-center w-14">ID Task</th>
+                  <th class="py-2 px-3 min-w-[200px]">Nama Task</th>
+                  <th class="py-2 px-3 min-w-[160px]">Waktu Mulai (running_time)</th>
+                  <th class="py-2 px-3 min-w-[160px]">Waktu Selesai (finish_time)</th>
+                  <th class="py-2 px-3 text-center min-w-[90px]">Durasi</th>
+                  <th class="py-2 px-3 text-center min-w-[100px]">Status (Flag)</th>
+                  <th class="py-2 px-3 text-right min-w-[90px]">Jml Data</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody" class="divide-y divide-slate-100 text-[11px]">
+                <tr>
+                  <td colspan="7" class="py-8 text-center text-slate-400">
+                    <i class="fa-solid fa-spinner fa-spin text-sm mb-1 text-blue-500"></i>
+                    <p>Memuat riwayat eksekusi...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL EDIT JOB -->
+  <div id="modalEditJob" class="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 border border-slate-200 overflow-hidden">
+      <div class="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-blue-400 text-sm"></i>
+          <h3 class="font-bold text-sm">Edit Konfigurasi Cron Job</h3>
+        </div>
+        <button onclick="closeModal('modalEditJob')" class="text-slate-400 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveJob(event)" class="p-4 space-y-3">
+        <input type="hidden" id="editJobId" />
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Key Job</label>
+          <input type="text" id="editJobKey" disabled class="w-full px-2.5 py-1.5 text-xs bg-slate-100 text-slate-500 border border-slate-300 rounded font-mono" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Tampilan Job <span class="text-red-500">*</span></label>
+          <input type="text" id="editJobNama" required class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Deskripsi</label>
+          <textarea id="editJobDesc" rows="2" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Jadwal Cron Expression <span class="text-red-500">*</span></label>
+          <input type="text" id="editJobCronExpr" required placeholder="0 6-23,0 * * *" class="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+          <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+            <span>Contoh: <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-blue-600">0 6-23,0 * * *</code> (Tiap jam 06:00 - 24:00)</span>
+          </div>
+          <div class="mt-1.5">
+            <select id="presetCronExpr" onchange="applyPresetCron(this.value)" class="w-full px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded text-slate-600">
+              <option value="">-- Pilih Template Jadwal Cepat --</option>
+              <option value="0 6-23,0 * * *">Tiap Jam (06:00 - 24:00 WIB)</option>
+              <option value="0 * * * *">Setiap Jam (24 Jam Penuh)</option>
+              <option value="*/30 * * * *">Setiap 30 Menit</option>
+              <option value="0 6,12,18 * * *">3x Sehari (Jam 06:00, 12:00, 18:00)</option>
+              <option value="0 6 * * *">1x Sehari (Jam 06:00 Pagi)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-2 flex items-center justify-between border-t border-slate-100">
+          <label class="text-[11px] font-bold text-slate-700 flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="editJobNotifyWA" class="w-4 h-4 text-purple-600 rounded border-slate-300" />
+            <span>Kirim Notifikasi Laporan ke WhatsApp (Tabel settings)</span>
+          </label>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('modalEditJob')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs cursor-pointer">Batal</button>
+          <button type="submit" id="btnSubmitJob" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded text-xs shadow-2xs cursor-pointer">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let allJobs = [];
+    let currentTab = 'jobs';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initDateFilters();
+      fetchJobs();
+      fetchLogs();
+      // Auto refresh tiap 15 detik
+      setInterval(handleAutoRefresh, 15000);
+    });
+
+    // Helper: Format tanggal YYYY-MM-DD
+    function getTodayDate() {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // Inisialisasi tanggal awal & akhir dari session (default: hari ini jika kosong)
+    function initDateFilters() {
+      const today = getTodayDate();
+      let tglAwal = sessionStorage.getItem('tglawal') || sessionStorage.getItem('asm_tgl_awal');
+      let tglAkhir = sessionStorage.getItem('tglakhir') || sessionStorage.getItem('asm_tgl_akhir');
+
+      if (!tglAwal) {
+        tglAwal = today;
+        sessionStorage.setItem('tglawal', tglAwal);
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      }
+      if (!tglAkhir) {
+        tglAkhir = today;
+        sessionStorage.setItem('tglakhir', tglAkhir);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+
+      const inputAwal = document.getElementById('filterTglAwal');
+      const inputAkhir = document.getElementById('filterTglAkhir');
+      if (inputAwal) inputAwal.value = tglAwal;
+      if (inputAkhir) inputAkhir.value = tglAkhir;
+    }
+
+    function onDateFilterChange() {
+      const tglAwal = document.getElementById('filterTglAwal').value;
+      const tglAkhir = document.getElementById('filterTglAkhir').value;
+      if (tglAwal) {
+        sessionStorage.setItem('tglawal', tglAwal);
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      }
+      if (tglAkhir) {
+        sessionStorage.setItem('tglakhir', tglAkhir);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+      fetchLogs();
+    }
+
+    function setFilterToday() {
+      const today = getTodayDate();
+      document.getElementById('filterTglAwal').value = today;
+      document.getElementById('filterTglAkhir').value = today;
+      sessionStorage.setItem('tglawal', today);
+      sessionStorage.setItem('tglakhir', today);
+      sessionStorage.setItem('asm_tgl_awal', today);
+      sessionStorage.setItem('asm_tgl_akhir', today);
+      fetchLogs();
+    }
+
+    // Tab Switcher
+    function switchTab(tab) {
+      currentTab = tab;
+      const btnJobs = document.getElementById('tabBtnJobs');
+      const btnLogs = document.getElementById('tabBtnLogs');
+      const contentJobs = document.getElementById('tabContentJobs');
+      const contentLogs = document.getElementById('tabContentLogs');
+
+      if (tab === 'jobs') {
+        btnJobs.className = "px-4 py-2 font-bold text-xs rounded-t-lg transition flex items-center gap-2 border-t border-l border-r border-slate-300 bg-white text-blue-600 -mb-[1px] shadow-2xs cursor-pointer";
+        btnLogs.className = "px-4 py-2 font-semibold text-xs rounded-t-lg transition flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 -mb-[1px] cursor-pointer";
+        contentJobs.classList.remove('hidden');
+        contentLogs.classList.add('hidden');
+      } else {
+        btnLogs.className = "px-4 py-2 font-bold text-xs rounded-t-lg transition flex items-center gap-2 border-t border-l border-r border-slate-300 bg-white text-blue-600 -mb-[1px] shadow-2xs cursor-pointer";
+        btnJobs.className = "px-4 py-2 font-semibold text-xs rounded-t-lg transition flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 -mb-[1px] cursor-pointer";
+        contentLogs.classList.remove('hidden');
+        contentJobs.classList.add('hidden');
+      }
+    }
+
+    async function handleGlobalRefresh() {
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('fa-spin');
+      try {
+        await Promise.all([fetchJobs(), fetchLogs()]);
+      } finally {
+        if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 400);
+      }
+    }
+
+    function handleAutoRefresh() {
+      fetchJobs();
+      fetchLogs();
+    }
+
+    async function fetchJobs() {
+      try {
+        const res = await fetch('/api/v1/admin/cron/jobs');
+        const json = await res.json();
+        if (json.status === 'success') {
+          allJobs = json.data || [];
+          renderJobsTable(allJobs);
+          updateKPI(allJobs);
+          const badge = document.getElementById('tabBadgeJobs');
+          if (badge) badge.textContent = allJobs.length;
+        } else {
+          showErrorInTable('jobsTableBody', json.message || 'Gagal memuat jobs');
+        }
+      } catch (err) {
+        showErrorInTable('jobsTableBody', 'Gagal menghubungi server: ' + err.message);
+      }
+    }
+
+    async function fetchLogs() {
+      const tglAwal = document.getElementById('filterTglAwal')?.value || sessionStorage.getItem('tglawal') || getTodayDate();
+      const tglAkhir = document.getElementById('filterTglAkhir')?.value || sessionStorage.getItem('tglakhir') || getTodayDate();
+
+      try {
+        const url = `/api/v1/admin/cron/logs?tglawal=${encodeURIComponent(tglAwal)}&tglakhir=${encodeURIComponent(tglAkhir)}&limit=200`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status === 'success') {
+          const logs = json.data || [];
+          renderLogsTable(logs);
+          const logCountEl = document.getElementById('logCountDisplay');
+          if (logCountEl) logCountEl.textContent = logs.length;
+          const badge = document.getElementById('tabBadgeLogs');
+          if (badge) badge.textContent = logs.length;
+        } else {
+          showErrorInTable('logsTableBody', json.message || 'Gagal memuat log');
+        }
+      } catch (err) {
+        showErrorInTable('logsTableBody', 'Gagal memuat log: ' + err.message);
+      }
+    }
+
+    function updateKPI(jobs) {
+      document.getElementById('statTotal').textContent = jobs.length;
+      document.getElementById('statActive').textContent = jobs.filter(j => j.is_active === 1).length;
+      document.getElementById('statRunning').textContent = jobs.filter(j => j.is_running === 1).length;
+    }
+
+    function renderJobsTable(jobs) {
+      const tbody = document.getElementById('jobsTableBody');
+      if (!jobs || jobs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-slate-400">Tidak ada cron job yang terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = jobs.map((job, idx) => {
+        // Status Badge
+        let statusBadge = '';
+        if (job.is_running === 1) {
+          statusBadge = `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse"><i class="fa-solid fa-spinner fa-spin text-[9px]"></i> Running</span>`;
+        } else if (job.last_status === 'success') {
+          statusBadge = `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-check text-[9px]"></i> Sukses</span>`;
+        } else if (job.last_status === 'failed') {
+          statusBadge = `<span class="inline-flex items-center gap-1 bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-xmark text-[9px]"></i> Gagal</span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Idle</span>`;
+        }
+
+        // Active Toggle Switch
+        const isActive = job.is_active === 1;
+        const activeSwitch = `
+          <button onclick="toggleJob(${job.id})" title="${isActive ? 'Klik untuk Nonaktifkan' : 'Klik untuk Aktifkan'}" class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}">
+            <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}"></span>
+          </button>
+        `;
+
+        // WA Badge
+        const waBadge = job.notify_wa === 1 
+          ? `<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-1"><i class="fa-brands fa-whatsapp"></i> ON</span>`
+          : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">OFF</span>`;
+
+        // Last Run & Duration
+        let lastRunText = '-';
+        if (job.last_run_at) {
+          const d = new Date(job.last_run_at);
+          lastRunText = `<span class="font-medium text-slate-800">${d.toLocaleString('id-ID')}</span>`;
+          if (job.last_duration_sec > 0) {
+            lastRunText += ` <span class="text-[10px] text-slate-400 font-mono">(${job.last_duration_sec}s)</span>`;
+          }
+        }
+
+        return `
+          <tr class="hover:bg-slate-50 divide-x divide-slate-100 ${job.is_running === 1 ? 'bg-amber-50/50' : ''}">
+            <td class="py-2 px-3 text-center text-slate-400">${idx + 1}</td>
+            <td class="py-2 px-3">
+              <div class="font-bold text-slate-800">${escapeHtml(job.nama)}</div>
+              <div class="font-mono text-[10px] text-blue-600">${escapeHtml(job.job_key)}</div>
+            </td>
+            <td class="py-2 px-3 text-slate-600 text-[10px]">${escapeHtml(job.desc || '-')}</td>
+            <td class="py-2 px-3 text-center">
+              <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 text-[10px] font-semibold">${escapeHtml(job.cron_expr)}</span>
+            </td>
+            <td class="py-2 px-3 text-center">${activeSwitch}</td>
+            <td class="py-2 px-3 text-center">${waBadge}</td>
+            <td class="py-2 px-3 text-center">${statusBadge}</td>
+            <td class="py-2 px-3">${lastRunText}</td>
+            <td class="py-2 px-3">
+              <div class="text-[10px] text-slate-600 truncate max-w-xs" title="${escapeHtml(job.last_message || '')}">
+                ${escapeHtml(job.last_message || '-')}
+              </div>
+            </td>
+            <td class="py-2 px-3 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="runJob(${job.id}, '${escapeHtml(job.nama)}')" ${job.is_running === 1 ? 'disabled' : ''} class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 text-white disabled:text-slate-400 font-semibold rounded text-[10px] flex items-center gap-1 shadow-2xs transition cursor-pointer" title="Eksekusi job sekarang">
+                  <i class="fa-solid fa-play text-[9px]"></i>
+                  <span>Run</span>
+                </button>
+                <button onclick="openEditModal(${job.id})" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-[10px] flex items-center gap-1 border border-slate-300 shadow-2xs transition cursor-pointer" title="Edit konfigurasi">
+                  <i class="fa-solid fa-pen text-[9px]"></i>
+                  <span>Edit</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderLogsTable(logs) {
+      const tbody = document.getElementById('logsTableBody');
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">Tidak ada riwayat eksekusi pada periode tanggal yang dipilih.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(l => {
+        let flagBadge = '';
+        if (l.flag === 0 && !l.finish_time) {
+          flagBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[10px] animate-pulse">Running</span>`;
+        } else if (l.flag === 1) {
+          flagBadge = `<span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Sukses (1)</span>`;
+        } else {
+          flagBadge = `<span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Gagal (${l.flag})</span>`;
+        }
+
+        const start = l.running_time ? new Date(l.running_time) : null;
+        const finish = l.finish_time ? new Date(l.finish_time) : null;
+
+        let duration = '-';
+        if (start && finish) {
+          const sec = Math.round((finish - start) / 1000);
+          duration = `${sec}s`;
+        }
+
+        return `
+          <tr class="hover:bg-slate-50 divide-x divide-slate-100">
+            <td class="py-2 px-3 text-center font-mono text-slate-500">${l.id}</td>
+            <td class="py-2 px-3 font-semibold text-slate-800">${escapeHtml(l.nama)}</td>
+            <td class="py-2 px-3 text-slate-600">${start ? start.toLocaleString('id-ID') : '-'}</td>
+            <td class="py-2 px-3 text-slate-600">${finish ? finish.toLocaleString('id-ID') : '<span class="text-amber-600 font-medium italic">Sedang berjalan...</span>'}</td>
+            <td class="py-2 px-3 text-center font-mono font-medium text-slate-700">${duration}</td>
+            <td class="py-2 px-3 text-center">${flagBadge}</td>
+            <td class="py-2 px-3 text-right font-mono text-slate-700">${l.jml || 0}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function toggleJob(id) {
+      try {
+        const res = await fetch(`/api/v1/admin/cron/jobs/${id}/toggle`, { method: 'POST' });
+        const json = await res.json();
+        if (json.status === 'success') {
+          fetchJobs();
+        } else {
+          alert('Gagal toggle job: ' + json.message);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function runJob(id, nama) {
+      if (!confirm(`Jalankan pekerjaan "${nama}" sekarang?`)) return;
+      try {
+        const res = await fetch(`/api/v1/admin/cron/jobs/${id}/run`, { method: 'POST' });
+        const json = await res.json();
+        if (json.status === 'success') {
+          alert(`Job "${nama}" telah dimulai di background! Laporan akan otomatis dikirim ke WhatsApp saat selesai.`);
+          setTimeout(handleGlobalRefresh, 800);
+        } else {
+          alert('Gagal menjalankan job: ' + json.message);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function openEditModal(id) {
+      const job = allJobs.find(j => j.id === id);
+      if (!job) return;
+
+      document.getElementById('editJobId').value = job.id;
+      document.getElementById('editJobKey').value = job.job_key;
+      document.getElementById('editJobNama').value = job.nama;
+      document.getElementById('editJobDesc').value = job.desc || '';
+      document.getElementById('editJobCronExpr').value = job.cron_expr;
+      document.getElementById('editJobNotifyWA').checked = (job.notify_wa === 1);
+      document.getElementById('presetCronExpr').value = '';
+
+      document.getElementById('modalEditJob').classList.remove('hidden');
+    }
+
+    function applyPresetCron(val) {
+      if (val) {
+        document.getElementById('editJobCronExpr').value = val;
+      }
+    }
+
+    async function handleSaveJob(e) {
+      e.preventDefault();
+      const id = document.getElementById('editJobId').value;
+      const nama = document.getElementById('editJobNama').value.trim();
+      const desc = document.getElementById('editJobDesc').value.trim();
+      const cron_expr = document.getElementById('editJobCronExpr').value.trim();
+      const notify_wa = document.getElementById('editJobNotifyWA').checked ? 1 : 0;
+
+      const btn = document.getElementById('btnSubmitJob');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res = await fetch(`/api/v1/admin/cron/jobs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nama, desc, cron_expr, notify_wa: notify_wa })
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+          closeModal('modalEditJob');
+          fetchJobs();
+        } else {
+          alert('Gagal menyimpan: ' + json.message);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Perubahan';
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function showErrorInTable(id, msg) {
+      document.getElementById(id).innerHTML = `<tr><td colspan="10" class="py-6 text-center text-red-500">${escapeHtml(msg)}</td></tr>`;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
