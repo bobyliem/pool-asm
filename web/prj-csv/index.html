@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard (CSV) - ASM Workshop</title>
@@ -453,15 +456,18 @@
         return { bg: 'bg-blue-600 text-white', label: 'text-blue-600' };
       }
 
-      // 2. Kategori Bongkar Muat -> Hijau (Bongkar) / Merah (Muat)
-      if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat') {
-        const info = (item.information || '').toLowerCase();
+      // 2. Kategori Bongkar Muat -> Hijau (Bongkar) / Merah (Muat) / Orange (Bongkar/Muat)
+      const isBM = (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat');
+      if (isBM) {
+        const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
         if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
           return { bg: 'bg-emerald-600 text-white', label: 'text-emerald-600' };
         }
         if (info.includes('muat') || info.includes('muqt')) {
           return { bg: 'bg-rose-600 text-white', label: 'text-rose-600' };
         }
+        // Tidak mengandung kata 'bongkar' ataupun 'muat' -> Orange
+        return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
       }
 
       // Default: Antrian (Warna Orange)
@@ -501,12 +507,14 @@
         if (isAntrian) {
           if (purpose === 'Standby') {
             headerStatus = 'StandBy';
-          } else if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat') {
-            const info = (item.information || '').toLowerCase();
+          } else if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat') {
+            const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
             if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
               headerStatus = 'Bongkar';
             } else if (info.includes('muat') || info.includes('muqt')) {
               headerStatus = 'Muat';
+            } else {
+              headerStatus = 'Bongkar/Muat';
             }
           }
         }
