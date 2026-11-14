@@ -101,6 +101,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 		// Administrator Routes
 		pages.StaticFile("/admin/users", "./web/admin/users.html")
 		pages.StaticFile("/admin/groups", "./web/admin/groups.html")
+		pages.StaticFile("/admin/cron-jobs", "./web/admin/cron_jobs.html")
 	}
 
 	// HO Repositories, Services, and Handlers
@@ -134,6 +135,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 	var closingFinanceHandler *handler.ClosingFinanceHandler
 	var solarHandler *handler.SolarHandler
 	var stockpileSyncHandler *handler.StockpileSyncHandler
+	var cronHandler *handler.CronHandler
 
 	csvSyncSvc := service.NewCsvSyncService(dbCsv)
 	csvSyncHandler := handler.NewCsvSyncHandler(csvSyncSvc)
@@ -167,6 +169,10 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 
 		stockpileSyncSvc := service.NewStockpileSyncService(dbCsv)
 		stockpileSyncHandler = handler.NewStockpileSyncHandler(stockpileSyncSvc)
+
+		cronSvc := service.NewCronService(dbCsv, csvSyncSvc, solarSyncSvc, stockpileSyncSvc, waBot)
+		cronSvc.Start()
+		cronHandler = handler.NewCronHandler(cronSvc)
 	}
 
 	// API Endpoints
@@ -264,6 +270,15 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.DELETE("/admin/groups/:id", authHandler.RequireAuth(), authHandler.DeleteGroup)
 			api.GET("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.GetGroupMenus)
 			api.POST("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.SaveGroupMenus)
+		}
+
+		// Cron Job Endpoints
+		if cronHandler != nil {
+			api.GET("/admin/cron/jobs", cronHandler.GetJobs)
+			api.POST("/admin/cron/jobs/:id/toggle", cronHandler.ToggleJob)
+			api.POST("/admin/cron/jobs/:id/run", cronHandler.RunJob)
+			api.PUT("/admin/cron/jobs/:id", cronHandler.UpdateJob)
+			api.GET("/admin/cron/logs", cronHandler.GetLogs)
 		}
 
 		// CSV Background Sync Endpoints
