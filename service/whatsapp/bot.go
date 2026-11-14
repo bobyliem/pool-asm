@@ -56,7 +56,7 @@ func (b *WhatsAppBot) Start() error {
 	}
 
 	dbPath := filepath.Join(dataDir, "whatsapp_session.db")
-	dbUri := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)", dbPath)
+	dbUri := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_busy_timeout=5000", dbPath)
 
 	logLevel := "INFO"
 	clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
@@ -75,6 +75,7 @@ func (b *WhatsAppBot) Start() error {
 
 	b.client = whatsmeow.NewClient(deviceStore, clientLog)
 	b.client.AddEventHandler(b.eventHandler)
+	b.client.EnableAutoReconnect = true
 
 	// 3. Cek apakah sudah login sebelumnya
 	if b.client.Store.ID == nil {
@@ -147,12 +148,21 @@ func (b *WhatsAppBot) Stop() {
 	}
 }
 
+// IsLoggedIn mengecek apakah bot sudah terhubung/memiliki device store yang valid
+func (b *WhatsAppBot) IsLoggedIn() bool {
+	if b.client == nil || b.client.Store == nil {
+		return false
+	}
+	return b.client.Store.ID != nil
+}
+
 // ReconnectQR mencoba rekoneksi untuk mendapatkan channel QR baru jika belum login dan offline
 func (b *WhatsAppBot) ReconnectQR() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.isLoggedIn || b.client == nil || b.client.IsConnected() {
+	// Jika sudah ada session tersimpan di store, JANGAN minta QR baru!
+	if b.IsLoggedIn() || b.client == nil || b.client.IsConnected() {
 		return nil
 	}
 
@@ -177,7 +187,7 @@ func (b *WhatsAppBot) ReconnectQR() error {
 				b.mu.Unlock()
 
 				fmt.Println("\n==================================================================")
-				fmt.Println("📲 SCAN QR CODE INI DENGAN WHATSAPP (Perangkat Tertaut):")
+				fmt.Println("SCAN QR CODE INI DENGAN WHATSAPP (Perangkat Tertaut):")
 				fmt.Println("   Atau buka di browser: http://localhost:8080/wa/qr")
 				fmt.Println("==================================================================")
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
@@ -188,7 +198,7 @@ func (b *WhatsAppBot) ReconnectQR() error {
 				b.qrText = ""
 				b.qrPNG = nil
 				b.mu.Unlock()
-				fmt.Println("✅ [WhatsApp] Login WhatsApp BERHASIL! Session tersimpan.")
+				fmt.Println("[WhatsApp] Login WhatsApp BERHASIL! Session tersimpan.")
 			}
 		}
 	}()
@@ -201,13 +211,22 @@ func (b *WhatsAppBot) GetQR() (string, []byte, bool) {
 	b.mu.RLock()
 	qrText := b.qrText
 	qrPNG := b.qrPNG
-	isLoggedIn := b.isLoggedIn
-	isConnected := b.client != nil && b.client.IsConnected()
 	b.mu.RUnlock()
 
+	isLoggedIn := b.IsLoggedIn()
+	isConnected := b.client != nil && b.client.IsConnected()
+
+	// Jika belum login dan sedang offline, buat request QR channel baru
 	if !isLoggedIn && !isConnected {
 		go func() {
 			_ = b.ReconnectQR()
+		}()
+	} else if isLoggedIn && !isConnected {
+		// Jika SUDAH login tapi terputus koneksi (jaringan drop), hubungkan ulang tanpa meminta QR!
+		go func() {
+			if b.client != nil {
+				_ = b.client.Connect()
+			}
 		}()
 	}
 
@@ -221,6 +240,8 @@ func (b *WhatsAppBot) GetStatus() map[string]interface{} {
 
 	status := "OFFLINE"
 	phone := "-"
+	isLoggedIn := b.IsLoggedIn()
+
 	if b.client != nil {
 		if b.client.IsConnected() {
 			status = "CONNECTED"
@@ -232,7 +253,7 @@ func (b *WhatsAppBot) GetStatus() map[string]interface{} {
 
 	return map[string]interface{}{
 		"status":       status,
-		"is_logged_in": b.isLoggedIn,
+		"is_logged_in": isLoggedIn,
 		"phone":        phone,
 		"time":         time.Now().Format("2006-01-02 15:04:05"),
 	}
@@ -264,14 +285,34 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	case *events.Connected:
 		b.mu.Lock()
 		b.isConnected = true
+		b.isLoggedIn = true
 		b.mu.Unlock()
+		fmt.Println("✅ [WhatsApp] Connected to WhatsApp Server.")
+
+	case *events.Disconnected:
+		b.mu.Lock()
+		b.isConnected = false
+		b.mu.Unlock()
+		fmt.Println("⚠️ [WhatsApp] Disconnected from WhatsApp Server (AutoReconnect aktif).")
+
+	case *events.ConnectFailure:
+		b.mu.Lock()
+		b.isConnected = false
+		b.mu.Unlock()
+		fmt.Printf("⚠️ [WhatsApp] Connect Failure: %s (Reason: %v)\n", v.PermanentDisconnectDescription(), v.Reason)
+
+	case *events.StreamReplaced:
+		b.mu.Lock()
+		b.isConnected = false
+		b.mu.Unlock()
+		fmt.Println("🚨 [WhatsApp] STREAM REPLACED: Sesi dibuka oleh instance lain! WhatsApp hanya mengizinkan 1 koneksi aktif per sesi.")
 
 	case *events.LoggedOut:
 		b.mu.Lock()
 		b.isLoggedIn = false
 		b.isConnected = false
 		b.mu.Unlock()
-		fmt.Println("⚠️ [WhatsApp] Bot telah Logged Out dari WhatsApp.")
+		fmt.Printf("❌ [WhatsApp] Bot telah Logged Out dari WhatsApp: %s (Reason: %v)\n", v.PermanentDisconnectDescription(), v.Reason)
 
 	case *events.Message:
 		// 1. Abaikan pesan dari diri sendiri
@@ -445,11 +486,16 @@ func (b *WhatsAppBot) replyText(chatJID types.JID, text string) {
 		return
 	}
 
+	// Simulasi status mengetik (typing indicator) untuk naturalitas & mencegah deteksi spam
+	_ = b.client.SendChatPresence(context.Background(), chatJID, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+	time.Sleep(300 * time.Millisecond)
+
 	msg := &waProto.Message{
 		Conversation: proto.String(text),
 	}
 
 	_, err := b.client.SendMessage(context.Background(), chatJID, msg)
+	_ = b.client.SendChatPresence(context.Background(), chatJID, types.ChatPresencePaused, types.ChatPresenceMediaText)
 	if err != nil {
 		fmt.Printf("⚠️ [WhatsApp] Error sending reply to %s: %v\n", chatJID.String(), err)
 	}
