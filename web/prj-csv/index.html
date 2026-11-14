@@ -436,7 +436,7 @@
       renderTabContent(activeKey);
     }
 
-    function getCardTheme(item) {
+    function getCardTheme(item, purpose) {
       const note = (item.note || '').toLowerCase();
       const notelate = (item.notelate || '').toLowerCase();
       
@@ -446,6 +446,24 @@
       if (note.includes('onprogress') || notelate.includes('onprogress')) {
         return { bg: 'bg-emerald-500 text-white', label: 'text-emerald-600' };
       }
+      
+      // Khusus Antrian:
+      // 1. Kategori Standby -> Warna Biru
+      if (purpose === 'Standby') {
+        return { bg: 'bg-blue-600 text-white', label: 'text-blue-600' };
+      }
+
+      // 2. Kategori Bongkar Muat -> Hijau (Bongkar) / Merah (Muat)
+      if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat') {
+        const info = (item.information || '').toLowerCase();
+        if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+          return { bg: 'bg-emerald-600 text-white', label: 'text-emerald-600' };
+        }
+        if (info.includes('muat') || info.includes('muqt')) {
+          return { bg: 'bg-rose-600 text-white', label: 'text-rose-600' };
+        }
+      }
+
       // Default: Antrian (Warna Orange)
       return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
     }
@@ -467,11 +485,32 @@
         return;
       }
 
-      const cardsHtml = items.map((item, idx) => {
-        const theme = getCardTheme(item);
+      const currentArea = sessionStorage.getItem('csv_dash_area') || (document.getElementById('filterArea') ? document.getElementById('filterArea').value : 'ALL') || 'ALL';
+      const isAllArea = !currentArea || currentArea === 'ALL' || currentArea === 'Semua Area' || currentArea.toLowerCase() === 'all area';
 
-        // Header status text: note + notelate (e.g. "Antrian [1 day/s late]" atau "OnProgress")
-        let headerStatus = item.note || 'Antrian';
+      const cardsHtml = items.map((item, idx) => {
+        const theme = getCardTheme(item, purpose);
+
+        // Header status text logic
+        let noteRaw = item.note || 'Antrian';
+        const isSelesai = noteRaw.toLowerCase().includes('selesai') || noteRaw.toLowerCase().includes('finished') || (item.notelate || '').toLowerCase().includes('selesai');
+        const isOnProgress = noteRaw.toLowerCase().includes('onprogress') || (item.notelate || '').toLowerCase().includes('onprogress');
+        const isAntrian = !isSelesai && !isOnProgress;
+
+        let headerStatus = noteRaw;
+        if (isAntrian) {
+          if (purpose === 'Standby') {
+            headerStatus = 'StandBy';
+          } else if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat') {
+            const info = (item.information || '').toLowerCase();
+            if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+              headerStatus = 'Bongkar';
+            } else if (info.includes('muat') || info.includes('muqt')) {
+              headerStatus = 'Muat';
+            }
+          }
+        }
+
         if (item.notelate && item.notelate.startsWith('[') && !headerStatus.includes('[')) {
           headerStatus = `${headerStatus} ${item.notelate}`;
         }
@@ -507,9 +546,17 @@
 
         return `
           <div class="border border-slate-300 rounded bg-white text-[11px] overflow-hidden shadow-2xs hover:shadow-xs transition shrink-0">
-              <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex justify-between items-center">
-                  <span class="truncate pr-1">${idx + 1}. ${headerStatus}</span>
-                  <span class="font-normal text-[9px] shrink-0">${item.tglmasuk || '-'}</span>
+              <div class="${theme.bg} font-bold px-2 py-1 text-[10px]">
+                  <div class="flex justify-between items-center">
+                      <span class="truncate pr-1">${idx + 1}. ${headerStatus}</span>
+                      <span class="font-normal text-[9px] shrink-0">${item.tglmasuk || '-'}</span>
+                  </div>
+                  ${isAllArea ? `
+                  <div class="flex items-center gap-1 text-[9px] font-semibold mt-0.5 pt-0.5 border-t border-current/20 opacity-95">
+                      <i class="fa-solid fa-location-dot text-[8px]"></i>
+                      <span class="truncate">${item.sitename || '-'}</span>
+                  </div>
+                  ` : ''}
               </div>
               <div class="px-2 pt-1.5 pb-2 flex gap-2 items-center">
                   <i onclick="openUnitSpkDetail('${(item.no_pol || '').replace(/'/g, "\\'")}', '${item.tgl_masuk || ''}')" class="fa-solid fa-truck ${truckIconColor} text-lg shrink-0 cursor-pointer" title="Buka Detail SPK"></i>

@@ -96,6 +96,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 			END AS driver
 			, v.category
 			, DATE_FORMAT(v.entrydate, '%d-%b-%y %H:%i') AS tglmasuk
+			, IFNULL(v.information, '') AS information
 			, CASE 
 				WHEN LENGTH(v.exitdate) > 0 THEN 'Selesai'
 				ELSE IFNULL(wo.note, 'Antrian')
@@ -146,6 +147,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 		SELECT sitename, nopol, nopol AS no_pol, cust_code, driver, category
 			, DATE_FORMAT(released_at_raw, '%d-%b-%y %H:%i') AS tglmasuk
 			, DATE_FORMAT(released_at_raw, '%Y-%m-%d') AS tgl_masuk
+			, '' AS information
 			, CASE WHEN SUM(tkerja) <> SUM(fkerja) THEN 'OnProgress' ELSE 'Finished' END AS note
 			, CASE 
 				WHEN DATEDIFF(CURDATE(), DATE(released_at_raw)) > 0 AND LENGTH(IFNULL(exitdate_raw,'')) = 0 THEN CONCAT('[', DATEDIFF(CURDATE(), DATE(released_at_raw)), ' day/s late]')

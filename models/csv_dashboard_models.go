@@ -9,6 +9,7 @@ type CsvVisitorCategoryItem struct {
 	Category     string  `gorm:"column:category" json:"category"`
 	TglMasuk     string  `gorm:"column:tglmasuk" json:"tglmasuk"`
 	TglMasukDate string  `gorm:"column:tgl_masuk" json:"tgl_masuk"`
+	Information  string  `gorm:"column:information" json:"information"`
 	Note     string  `gorm:"column:note" json:"note"`
 	NoteLate string  `gorm:"column:notelate" json:"notelate"`
 	Catt     string  `gorm:"column:catt" json:"catt"`
