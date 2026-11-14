@@ -504,10 +504,21 @@
         const isAntrian = !isSelesai && !isOnProgress;
 
         let headerStatus = noteRaw;
-        if (isAntrian) {
-          if (purpose === 'Standby') {
+        const isBM = (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat');
+
+        if (isSelesai && isBM) {
+          const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
+          if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+            headerStatus = 'Selesai Bongkar';
+          } else if (info.includes('muat') || info.includes('muqt')) {
+            headerStatus = 'Selesai Muat';
+          } else {
+            headerStatus = 'Selesai Bongkar Muat';
+          }
+        } else if (isAntrian) {
+          if (purpose === 'Standby' || item.purpose === 'Standby') {
             headerStatus = 'StandBy';
-          } else if (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat') {
+          } else if (isBM) {
             const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
             if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
               headerStatus = 'Bongkar';
