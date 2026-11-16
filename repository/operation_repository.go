@@ -1,12 +1,15 @@
-﻿package repository
+package repository
 
 import (
+	"strings"
+
 	"asm/models"
 	"gorm.io/gorm"
 )
 
 type OperationRepository interface {
-	GetOperationSummary() (*models.OperationSummary, error)
+	GetOperationSummary(siteId string) (*models.OperationSummary, error)
+	GetSites() ([]models.Site, error)
 }
 
 type operationRepository struct {
@@ -17,10 +20,29 @@ func NewOperationRepository(db *gorm.DB) OperationRepository {
 	return &operationRepository{db: db}
 }
 
-func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, error) {
-	// Query Konfirmasi Kelengkapan langsung dari MySQL database 'sampurna'
+func (r *operationRepository) GetSites() ([]models.Site, error) {
+	var sites []models.Site
+	err := r.db.Table("sites").
+		Select("id, name").
+		Where("deletedAt IS NULL").
+		Order("name ASC").
+		Scan(&sites).Error
+	return sites, err
+}
+
+func (r *operationRepository) GetOperationSummary(siteId string) (*models.OperationSummary, error) {
+	isFilterSite := siteId != "" && strings.ToUpper(siteId) != "ALL"
+
+	// 1. Query Konfirmasi Kelengkapan
+	var sSiteCond string
+	var sSiteArgs []interface{}
+	if isFilterSite {
+		sSiteCond = "AND s.siteId = ?"
+		sSiteArgs = append(sSiteArgs, siteId)
+	}
+
 	var kelengkapan models.KelengkapanSummary
-	queryKelengkapan := `
+	tmplKelengkapan := `
 		SELECT 
 			COALESCE(SUM(asuransi), 0) AS asuransi, 
 			COALESCE(SUM(perbaikan), 0) AS perbaikan, 
@@ -41,11 +63,12 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 				AND s.deletedAt IS NULL
 				AND c.status = 1
 				AND s.status != 10
-				AND s.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+				{{SITE_COND}}
 		) AS dt
 	`
+	queryKelengkapan := strings.ReplaceAll(tmplKelengkapan, "{{SITE_COND}}", sSiteCond)
 
-	if err := r.db.Raw(queryKelengkapan).Scan(&kelengkapan).Error; err != nil {
+	if err := r.db.Raw(queryKelengkapan, sSiteArgs...).Scan(&kelengkapan).Error; err != nil {
 		kelengkapan = models.KelengkapanSummary{
 			Perbaikan: 0,
 			Asuransi:  0,
@@ -55,9 +78,16 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 		}
 	}
 
-	// Query Overdue langsung dari MySQL database 'sampurna'
+	// 2. Query Overdue
+	var soSiteCond string
+	var soSiteArgs []interface{}
+	if isFilterSite {
+		soSiteCond = "AND so.siteId = ?"
+		soSiteArgs = append(soSiteArgs, siteId)
+	}
+
 	var overdue models.OverdueSummary
-	queryOverdue := `
+	tmplOverdue := `
 		SELECT 
 			COALESCE(SUM(perbaikan), 0) AS perbaikan, 
 			COALESCE(SUM(asuransi), 0) AS asuransi, 
@@ -77,11 +107,12 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 				AND so.deletedAt IS NULL
 				AND so.completedAt IS NULL
 				AND DATE(IFNULL(so.releasedAt, '2000-01-01')) < CURDATE()
-				AND so.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+				{{SITE_COND}}
 		) AS dt
 	`
+	queryOverdue := strings.ReplaceAll(tmplOverdue, "{{SITE_COND}}", soSiteCond)
 
-	if err := r.db.Raw(queryOverdue).Scan(&overdue).Error; err != nil {
+	if err := r.db.Raw(queryOverdue, soSiteArgs...).Scan(&overdue).Error; err != nil {
 		overdue = models.OverdueSummary{
 			Perbaikan: 0,
 			Asuransi:  0,
@@ -91,10 +122,17 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 		}
 	}
 
-	// Query 6 Kolom Kategori (Visitors Status In/Out/Saldo)
+	// 3. Query 6 Kolom Kategori (Visitors Status In/Out/Saldo)
+	var vsSiteCond string
+	var vsSiteArgs []interface{}
+	if isFilterSite {
+		vsSiteCond = "AND vs.siteId = ?"
+		vsSiteArgs = append(vsSiteArgs, siteId)
+	}
+
 	columnStats := make(map[string]models.ColumnCategoryStat)
 	var statsList []models.ColumnCategoryStat
-	queryColumnStats := `
+	tmplColumnStats := `
 		SELECT kategori
 			, COALESCE(SUM(last_in), 0) AS last_in
 			, COALESCE(SUM(last_out), 0) AS last_out
@@ -111,13 +149,14 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 				, CASE WHEN DATE(vs.entryDate) = CURDATE() AND DATE(vs.exitDate) = CURDATE() THEN 1 ELSE 0 END AS now_out
 			FROM visitors vs
 			WHERE vs.deletedAt IS NULL
-				AND vs.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+				{{SITE_COND}}
 				AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
 		) AS dt
 		GROUP BY kategori
 	`
+	queryColumnStats := strings.ReplaceAll(tmplColumnStats, "{{SITE_COND}}", vsSiteCond)
 
-	if err := r.db.Raw(queryColumnStats).Scan(&statsList).Error; err == nil {
+	if err := r.db.Raw(queryColumnStats, vsSiteArgs...).Scan(&statsList).Error; err == nil {
 		for _, stat := range statsList {
 			columnStats[stat.Kategori] = stat
 		}
@@ -126,11 +165,17 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 	// Query List Kartu Unit per Kategori
 	unitCardsMap := make(map[string][]models.UnitCardItem)
 
-	// 1. Query Kartu Unit Kategori Umum (Perbaikan, Storing, Standby, Bongkar Muat, Tunggu DO)
+	// 4. Query Kartu Unit Kategori Umum (Perbaikan, Storing, Standby, Bongkar Muat, Tunggu DO)
+	var defaultCardArgs []interface{}
+	if isFilterSite {
+		defaultCardArgs = append(defaultCardArgs, siteId, siteId)
+	}
+
 	var defaultUnitCards []models.UnitCardItem
-	queryDefaultCards := `
+	tmplDefaultCards := `
 		SELECT IFNULL(est.statue, '-') AS statue
 			, IFNULL(DATE_FORMAT(vs.entryDate, '%d %b %Y %H:%i'), '-') AS entryDate
+			, s.name AS area_name
 			, vh.category_value AS kategori
 			, vs.purpose_value AS purpose_kategori
 			, IFNULL(vsd.name, '-') AS driver
@@ -159,17 +204,18 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 			FROM service_orders so
 			LEFT JOIN visitors vs ON so.visitorId = vs.id
 			WHERE vs.deletedAt IS NULL
-				AND vs.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+				{{SITE_COND}}
 				AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
 		) AS est ON vs.id = est.id
 		WHERE vs.deletedAt IS NULL
-			AND vs.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+			{{SITE_COND}}
 			AND vs.purpose_value != 'Asuransi'
 			AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
 		ORDER BY est.a, vs.exitDate, DATE(vs.entryDate)
 	`
+	queryDefaultCards := strings.ReplaceAll(tmplDefaultCards, "{{SITE_COND}}", vsSiteCond)
 
-	if err := r.db.Raw(queryDefaultCards).Scan(&defaultUnitCards).Error; err == nil {
+	if err := r.db.Raw(queryDefaultCards, defaultCardArgs...).Scan(&defaultUnitCards).Error; err == nil {
 		for _, item := range defaultUnitCards {
 			key := item.PurposeKategori
 			if key == "" {
@@ -179,11 +225,17 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 		}
 	}
 
-	// 2. Query Khusus Kartu Unit Kategori Asuransi
+	// 5. Query Khusus Kartu Unit Kategori Asuransi
+	var asuransiCardArgs []interface{}
+	if isFilterSite {
+		asuransiCardArgs = append(asuransiCardArgs, siteId, siteId)
+	}
+
 	var asuransiUnitCards []models.UnitCardItem
-	queryAsuransiCards := `
+	tmplAsuransiCards := `
 		SELECT IFNULL(est.statue, '-') AS statue
 			, IFNULL(DATE_FORMAT(vs.entryDate, '%d %b %Y %H:%i'), '-') AS entryDate
+			, s.name AS area_name
 			, vh.category_value AS kategori
 			, vs.purpose_value AS purpose_kategori
 			, IFNULL(vsd.name, '-') AS driver
@@ -212,20 +264,21 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 			FROM service_orders so
 			LEFT JOIN visitors vs ON so.visitorId = vs.id
 			WHERE vs.deletedAt IS NULL
-				AND vs.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+				{{SITE_COND}}
 				AND vs.purpose_value = 'Asuransi'
 				AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
 				AND so.status NOT IN(8)
 		) AS est ON vs.id = est.id
 		WHERE vs.deletedAt IS NULL
-			AND vs.siteId = '00000017-b43e-11ee-bde1-bfcb6ff3c685'
+			{{SITE_COND}}
 			AND vs.purpose_value = 'Asuransi'
 			AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
 			AND est.a <> 7
 		ORDER BY est.a, vs.exitDate, DATE(vs.entryDate)
 	`
+	queryAsuransiCards := strings.ReplaceAll(tmplAsuransiCards, "{{SITE_COND}}", vsSiteCond)
 
-	if err := r.db.Raw(queryAsuransiCards).Scan(&asuransiUnitCards).Error; err == nil {
+	if err := r.db.Raw(queryAsuransiCards, asuransiCardArgs...).Scan(&asuransiUnitCards).Error; err == nil {
 		for _, item := range asuransiUnitCards {
 			key := item.PurposeKategori
 			if key == "" {
@@ -245,54 +298,8 @@ func (r *operationRepository) GetOperationSummary() (*models.OperationSummary, e
 		Overdue:          overdue,
 		ColumnStats:      columnStats,
 		UnitCards:        unitCardsMap,
-		ActiveOperations: []models.ActiveOperationItem{
-			{
-				ID:           1,
-				OrderNumber:  "SO-202609-012",
-				PlateNumber:  "B 9123 SPU",
-				VehicleType:  "Colt Diesel Engkel",
-				WorkStatus:   "Sedang Dikerjakan",
-				MechanicName: "Budi Santoso",
-				Progress:     75,
-				EntryDate:    "27 Sep 2026 08:30",
-				EstimatedETA: "27 Sep 2026 16:00",
-			},
-			{
-				ID:           2,
-				OrderNumber:  "SO-202609-015",
-				PlateNumber:  "B 9844 UYT",
-				VehicleType:  "Fuso Tronton",
-				WorkStatus:   "Tunggu Sparepart",
-				MechanicName: "Ahmad Rizki",
-				Progress:     40,
-				EntryDate:    "27 Sep 2026 09:15",
-				EstimatedETA: "28 Sep 2026 11:00",
-			},
-			{
-				ID:           3,
-				OrderNumber:  "SO-202609-018",
-				PlateNumber:  "B 8211 KLP",
-				VehicleType:  "Pickup L300",
-				WorkStatus:   "Uji Coba / QC",
-				MechanicName: "Dedi Prasetyo",
-				Progress:     90,
-				EntryDate:    "27 Sep 2026 07:45",
-				EstimatedETA: "27 Sep 2026 14:30",
-			},
-			{
-				ID:           4,
-				OrderNumber:  "SO-202609-020",
-				PlateNumber:  "B 9500 TKS",
-				VehicleType:  "Canter HD 125",
-				WorkStatus:   "Pemeriksaan Awal",
-				MechanicName: "Hendra Wijaya",
-				Progress:     15,
-				EntryDate:    "27 Sep 2026 10:00",
-				EstimatedETA: "27 Sep 2026 17:30",
-			},
-		},
+		ActiveOperations: []models.ActiveOperationItem{},
 	}
 
 	return summary, nil
 }
-

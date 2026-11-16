@@ -237,9 +237,12 @@
           <div class="mt-1.5">
             <select id="presetCronExpr" onchange="applyPresetCron(this.value)" class="w-full px-2 py-1 text-[11px] bg-slate-50 border border-slate-200 rounded text-slate-600">
               <option value="">-- Pilih Template Jadwal Cepat --</option>
+              <option value="*/15 6-23,0 * * *">Setiap 15 Menit (06:00 - 24:00 WIB)</option>
+              <option value="*/15 * * * *">Setiap 15 Menit (24 Jam Penuh)</option>
+              <option value="*/30 6-23,0 * * *">Setiap 30 Menit (06:00 - 24:00 WIB)</option>
+              <option value="*/30 * * * *">Setiap 30 Menit (24 Jam Penuh)</option>
               <option value="0 6-23,0 * * *">Tiap Jam (06:00 - 24:00 WIB)</option>
               <option value="0 * * * *">Setiap Jam (24 Jam Penuh)</option>
-              <option value="*/30 * * * *">Setiap 30 Menit</option>
               <option value="0 6,12,18 * * *">3x Sehari (Jam 06:00, 12:00, 18:00)</option>
               <option value="0 6 * * *">1x Sehari (Jam 06:00 Pagi)</option>
             </select>

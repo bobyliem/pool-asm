@@ -181,8 +181,12 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 		// 1. HO Operation Dashboard, SPK, and Warehouse Endpoints
 		if operationHandler != nil {
 			api.GET("/dashboard/operation", operationHandler.GetOperationSummary)
+			api.GET("/dashboard/operation/sites", operationHandler.GetSites)
 		} else {
 			api.GET("/dashboard/operation", func(c *gin.Context) {
+				c.JSON(500, gin.H{"status": "error", "message": "Database HO (10.2.1.2) belum terhubung"})
+			})
+			api.GET("/dashboard/operation/sites", func(c *gin.Context) {
 				c.JSON(500, gin.H{"status": "error", "message": "Database HO (10.2.1.2) belum terhubung"})
 			})
 		}

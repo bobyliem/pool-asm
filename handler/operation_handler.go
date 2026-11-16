@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"net/http"
@@ -16,7 +16,8 @@ func NewOperationHandler(svc service.OperationService) *OperationHandler {
 }
 
 func (h *OperationHandler) GetOperationSummary(c *gin.Context) {
-	summary, err := h.operationService.GetOperationSummary()
+	siteId := c.DefaultQuery("site_id", c.DefaultQuery("site", c.DefaultQuery("area", "ALL")))
+	summary, err := h.operationService.GetOperationSummary(siteId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
@@ -31,3 +32,18 @@ func (h *OperationHandler) GetOperationSummary(c *gin.Context) {
 	})
 }
 
+func (h *OperationHandler) GetSites(c *gin.Context) {
+	sites, err := h.operationService.GetSites()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   sites,
+	})
+}
