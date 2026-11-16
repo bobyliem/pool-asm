@@ -23,3 +23,6 @@ data/
 
 pool-dashboard/
 
+
+*.exe~
+scratch/
