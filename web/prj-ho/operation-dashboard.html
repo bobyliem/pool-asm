@@ -477,8 +477,9 @@
               return foundKey ? data.unit_cards[foundKey] : [];
             };
 
-            // Aturan filter: kalo "All", ga usa munculin informasi area di card data row nya
-            const showAreaInCard = (currentAreaFilter !== 'ALL' && currentAreaFilter !== '');
+            // Aturan filter: kalo "All", Baris kedua pada header card menampilkan nama Area terkait.
+            // Jika filter Area dipilih ke Area spesifik: Informasi area pada baris kedua card tidak dimunculkan (header card tetap ringkas 1 baris).
+            const showAreaInCard = (currentAreaFilter === 'ALL' || !currentAreaFilter);
 
             categories.forEach(cat => {
               const container = document.getElementById(`col_${cat.id}_cards`);

@@ -22,11 +22,28 @@ func NewOperationRepository(db *gorm.DB) OperationRepository {
 
 func (r *operationRepository) GetSites() ([]models.Site, error) {
 	var sites []models.Site
-	err := r.db.Table("sites").
-		Select("id, name").
-		Where("deletedAt IS NULL").
-		Order("name ASC").
-		Scan(&sites).Error
+	query := `
+		SELECT DISTINCT s.id, s.name
+		FROM sites s
+		WHERE s.deletedAt IS NULL
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM visitors vs
+		      WHERE vs.siteId = s.id
+		        AND vs.deletedAt IS NULL
+		        AND (DATE(vs.entryDate) = CURDATE() OR vs.exitDate IS NULL OR DATE(vs.exitDate) = CURDATE())
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM service_orders so
+		      WHERE so.siteId = s.id
+		        AND so.deletedAt IS NULL
+		        AND so.status NOT IN (4, 8, 10)
+		        AND so.completedAt IS NULL
+		    )
+		  )
+		ORDER BY s.name ASC
+	`
+	err := r.db.Raw(query).Scan(&sites).Error
 	return sites, err
 }
 
