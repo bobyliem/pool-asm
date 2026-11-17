@@ -38,7 +38,47 @@ type authRepository struct {
 }
 
 func NewAuthRepository(db *gorm.DB) AuthRepository {
-	return &authRepository{db: db}
+	repo := &authRepository{db: db}
+	repo.seedDefaultMenus()
+	return repo
+}
+
+func (r *authRepository) seedDefaultMenus() {
+	if r.db == nil {
+		return
+	}
+
+	// 1. Pastikan modul ADMINISTRATOR ada di menumaster (modul PRJ-CSV)
+	var mm models.MenuMaster
+	if err := r.db.Where("id = 9 OR nama = 'ADMINISTRATOR'").First(&mm).Error; err != nil {
+		now := time.Now()
+		mm = models.MenuMaster{
+			ID:      9,
+			Modul:   "PRJ-CSV",
+			Nama:    "ADMINISTRATOR",
+			Urut:    "90",
+			Created: &now,
+		}
+		_ = r.db.Create(&mm).Error
+	} else if mm.Modul != "PRJ-CSV" {
+		_ = r.db.Model(&models.MenuMaster{}).Where("id = ?", mm.ID).Update("modul", "PRJ-CSV").Error
+	}
+
+	// 2. Pastikan menu Master User (14), Master Group (15), Cron Jobs (18) ada di tabel menu agar muncul di checklist Master Group -> Setup Menu
+	defaultMenus := []models.Menu{
+		{ID: 14, MmID: 9, Nama: "Master User", Urut: "1", Aktif: 1},
+		{ID: 15, MmID: 9, Nama: "Master Group", Urut: "2", Aktif: 1},
+		{ID: 18, MmID: 9, Nama: "Cron Jobs", Urut: "3", Aktif: 1},
+	}
+
+	for _, dm := range defaultMenus {
+		var existing models.Menu
+		if err := r.db.Where("id = ? OR (mm_id = ? AND nama = ?)", dm.ID, dm.MmID, dm.Nama).First(&existing).Error; err != nil {
+			now := time.Now()
+			dm.Created = &now
+			_ = r.db.Create(&dm).Error
+		}
+	}
 }
 
 func (r *authRepository) GetUserByUsername(usrn string) (*models.MenuLogin, error) {

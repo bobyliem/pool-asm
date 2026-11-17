@@ -114,6 +114,7 @@ func (h *AuthHandler) RequireMenuAuth(menuID int) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
@@ -158,6 +159,7 @@ func (h *AuthHandler) RequirePageMenuAuth(menuID int) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
 		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
 		if err != nil {
 			c.Redirect(http.StatusFound, "/prj-csv")
