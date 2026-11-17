@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"context"
+	"sort"
 	"database/sql"
 	"fmt"
 	"regexp"
@@ -579,6 +580,188 @@ func HandleCommandOmsetPendingCust(db *gorm.DB, custCode string) string {
 		FormatRupiah(totalService), FormatRupiah(totalPart), FormatRupiah(totalBan), FormatRupiah(grandTotal))
 }
 
+// HandleCommandPendingHarian: /pendingharian
+// Menampilkan rekap unit dengan SPK yang masih Open (belum close) untuk periode hari ini, dikelompokkan berdasarkan Area dan Kategori.
+func HandleCommandPendingHarian(db *gorm.DB) string {
+	type spkRow struct {
+		Site         string `gorm:"column:site"`
+		Category     string `gorm:"column:category"`
+		ServiceOrder string `gorm:"column:service_order"`
+		PlateNumber  string `gorm:"column:plate_number"`
+		BodyNumber   string `gorm:"column:body_number"`
+		LastNotes    string `gorm:"column:last_notes"`
+		Information  string `gorm:"column:information"`
+		ReleasedAt   string `gorm:"column:released_at"`
+	}
+
+	query := `
+		SELECT 
+			site,
+			category,
+			service_order,
+			MAX(plate_number) AS plate_number,
+			MAX(body_number) AS body_number,
+			MAX(last_notes) AS last_notes,
+			MAX(information) AS information,
+			MIN(released_at) AS released_at
+		FROM imp_service_order
+		WHERE statue <> 'Canceled'
+		  AND completed_at IS NULL
+		  AND DATE(released_at) <= CURDATE()
+		GROUP BY site, category, service_order
+		ORDER BY site, category, released_at ASC
+	`
+
+	var rows []spkRow
+	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+		return "❌ Gagal mengambil data SPK pending: " + err.Error()
+	}
+
+	// 1. Dapatkan update time terakhir dari log_imp (atau current time)
+	var lastUpdate string
+	_ = db.Raw("SELECT DATE_FORMAT(MAX(finished), '%d-%b-%y %H:%i') FROM log_imp").Scan(&lastUpdate)
+	if lastUpdate == "" {
+		lastUpdate = time.Now().Format("02-Jan-06 15:04")
+	}
+
+	// 4 Area Standar
+	standardSites := []string{"CICANGKAL", "CICANGKAL (SAR)", "CILEGON", "LAMPUNG"}
+
+	siteOrder := make([]string, 0)
+	siteSeen := make(map[string]bool)
+
+	for _, s := range standardSites {
+		siteOrder = append(siteOrder, s)
+		siteSeen[s] = true
+	}
+
+	type siteData struct {
+		name       string
+		catOrder   []string
+		categories map[string][]string
+		totalUnits int
+	}
+
+	siteMap := make(map[string]*siteData)
+	for _, s := range siteOrder {
+		siteMap[s] = &siteData{
+			name:       s,
+			catOrder:   make([]string, 0),
+			categories: make(map[string][]string),
+			totalUnits: 0,
+		}
+	}
+
+	grandTotal := 0
+
+	for _, r := range rows {
+		siteName := strings.ToUpper(strings.TrimSpace(r.Site))
+		if siteName == "" {
+			siteName = "LAIN-LAIN"
+		}
+
+		if !siteSeen[siteName] {
+			siteSeen[siteName] = true
+			siteOrder = append(siteOrder, siteName)
+			siteMap[siteName] = &siteData{
+				name:       siteName,
+				catOrder:   make([]string, 0),
+				categories: make(map[string][]string),
+				totalUnits: 0,
+			}
+		}
+
+		catName := strings.ToUpper(strings.TrimSpace(r.Category))
+		if catName == "" {
+			catName = "OTHERS"
+		}
+
+		sData := siteMap[siteName]
+		if _, exists := sData.categories[catName]; !exists {
+			sData.catOrder = append(sData.catOrder, catName)
+			sData.categories[catName] = make([]string, 0)
+		}
+
+		unitName := strings.TrimSpace(r.PlateNumber)
+		if unitName == "" || unitName == "-" {
+			unitName = strings.TrimSpace(r.BodyNumber)
+		}
+		if unitName == "" {
+			unitName = r.ServiceOrder
+		}
+		if strings.HasPrefix(strings.ToUpper(unitName), "KABIN LOHAN") {
+			unitName = "KABIN LOHAN"
+		}
+
+		isPending := strings.Contains(siteName, "SAR") ||
+			strings.Contains(strings.ToUpper(r.LastNotes), "PENDING") ||
+			strings.Contains(strings.ToUpper(r.Information), "PENDING")
+
+		if isPending {
+			unitName += " (PENDING)"
+		}
+
+		sData.categories[catName] = append(sData.categories[catName], unitName)
+		sData.totalUnits++
+		grandTotal++
+	}
+
+	// Prioritas urutan kategori agar konsisten (Perbaikan, Asuransi, Ban, Storing, Others)
+	catPriority := map[string]int{
+		"PERBAIKAN": 1,
+		"ASURANSI":  2,
+		"BAN":       3,
+		"STORING":   4,
+		"OTHERS":    5,
+	}
+
+	for _, sData := range siteMap {
+		sort.SliceStable(sData.catOrder, func(i, j int) bool {
+			p1 := 99
+			p2 := 99
+			if p, ok := catPriority[sData.catOrder[i]]; ok {
+				p1 = p
+			}
+			if p, ok := catPriority[sData.catOrder[j]]; ok {
+				p2 = p
+			}
+			if p1 != p2 {
+				return p1 < p2
+			}
+			return sData.catOrder[i] < sData.catOrder[j]
+		})
+	}
+
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("SPK BELUM CLOSE (%d UNIT)\n", grandTotal))
+	output.WriteString(fmt.Sprintf("Update: %s\n\n", lastUpdate))
+
+	for i, sName := range siteOrder {
+		sData := siteMap[sName]
+		output.WriteString("====================\n")
+		output.WriteString(fmt.Sprintf("%s : %d UNIT\n", sName, sData.totalUnits))
+		output.WriteString("--------------------")
+
+		if sData.totalUnits > 0 {
+			for _, cName := range sData.catOrder {
+				units := sData.categories[cName]
+				output.WriteString(fmt.Sprintf("\n%s : %d UNIT\n", cName, len(units)))
+				for uIdx, u := range units {
+					output.WriteString(fmt.Sprintf("%d. %s \n", uIdx+1, u))
+				}
+			}
+		} else {
+			output.WriteString("\n")
+		}
+
+		if i < len(siteOrder)-1 {
+			output.WriteString("\n")
+		}
+	}
+
+	return output.String()
+}
+
 // HandleCommandInfoLelang: /infolelang [nopol]
 func HandleCommandInfoLelang(db *gorm.DB, parameter string) string {
 	param := strings.TrimSpace(parameter)
@@ -783,10 +966,13 @@ Berikut perintah yang tersedia:
 7. */updatelelang [nopol]*
    Memperbarui catatan/note progres unit lelang.
 
-8. */registrasi*
+8. */pendingharian*
+   Mengecek daftar unit dengan SPK masih Open (belum close) hari ini per Area & Kategori.
+
+9. */registrasi*
    Mendaftar untuk aktivasi penggunaan bot WA AutoResponse.
 
-9. */help*
+10. */help*
    Menampilkan daftar menu bantuan ini.`
 }
 
