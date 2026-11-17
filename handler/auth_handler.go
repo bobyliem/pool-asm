@@ -99,6 +99,88 @@ func (h *AuthHandler) RequirePageAuth() gin.HandlerFunc {
 	}
 }
 
+// RequireMenuAuth memeriksa hak akses menu untuk API endpoints
+func (h *AuthHandler) RequireMenuAuth(menuID int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := h.extractToken(c)
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized"})
+			c.Abort()
+			return
+		}
+		sess, valid := h.authService.ValidateToken(token)
+		if !valid || sess == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized"})
+			c.Abort()
+			return
+		}
+		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+			c.Abort()
+			return
+		}
+		hasAccess := false
+		for _, id := range allowedMenuIDs {
+			if id == menuID {
+				hasAccess = true
+				break
+			}
+		}
+		if !hasAccess {
+			c.JSON(http.StatusForbidden, gin.H{
+				"status":  "error",
+				"message": "Akses ditolak: Group Anda tidak memiliki hak akses untuk menu ini.",
+			})
+			c.Abort()
+			return
+		}
+		c.Set("user_id", sess.UserID)
+		c.Set("username", sess.Username)
+		c.Set("grp_id", sess.GrpID)
+		c.Next()
+	}
+}
+
+// RequirePageMenuAuth memeriksa hak akses menu untuk route halaman HTML
+func (h *AuthHandler) RequirePageMenuAuth(menuID int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := h.extractToken(c)
+		if token == "" {
+			c.Redirect(http.StatusFound, "/login?redirect="+url.QueryEscape(c.Request.RequestURI))
+			c.Abort()
+			return
+		}
+		sess, valid := h.authService.ValidateToken(token)
+		if !valid || sess == nil {
+			c.SetCookie("asm_session", "", -1, "/", "", false, false)
+			c.Redirect(http.StatusFound, "/login?redirect="+url.QueryEscape(c.Request.RequestURI))
+			c.Abort()
+			return
+		}
+		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/prj-csv")
+			c.Abort()
+			return
+		}
+		hasAccess := false
+		for _, id := range allowedMenuIDs {
+			if id == menuID {
+				hasAccess = true
+				break
+			}
+		}
+		if !hasAccess {
+			// Jika tidak punya akses ke menu ini, redirect ke dashboard
+			c.Redirect(http.StatusFound, "/prj-csv")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 // POST /api/v1/auth/login
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest

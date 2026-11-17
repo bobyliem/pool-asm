@@ -6,6 +6,21 @@ class AppSidebar extends HTMLElement {
     this.style.maxHeight = '100%';
     this.style.display = 'flex';
 
+    this._onAuthUpdated = () => {
+      this.render();
+    };
+    window.addEventListener('auth-updated', this._onAuthUpdated);
+
+    this.render();
+  }
+
+  disconnectedCallback() {
+    if (this._onAuthUpdated) {
+      window.removeEventListener('auth-updated', this._onAuthUpdated);
+    }
+  }
+
+  render() {
     const activeMenu = this.getAttribute('active-menu') || 'Dashboard';
     
     // Determine current project context
@@ -30,46 +45,46 @@ class AppSidebar extends HTMLElement {
         {
           title: "HOME",
           submenus: [
-            { id: "dashboard", label: "Dashboard", icon: "fa-chart-line", href: "/prj-csv/dashboard" }
+            { id: "dashboard", label: "Dashboard", icon: "fa-chart-line", href: "/prj-csv/dashboard", menuId: 1 }
           ]
         },
         {
           title: "SPK Harian",
           submenus: [
-            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-csv/spk-per-cust" },
-            { id: "spk-slash-cust", label: "SPK /Cust", icon: "fa-file-invoice-dollar", href: "/prj-csv/spk-slash-cust" },
-            { id: "summary-per-cust", label: "Summary Per Cust", icon: "fa-table-cells-large", href: "/prj-csv/summary-per-cust" },
-            { id: "resume-per-kategori", label: "Resume Per Kategori", icon: "fa-border-all", href: "/prj-csv/resume-per-kategori" }
+            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-csv/spk-per-cust", menuId: 2 },
+            { id: "spk-slash-cust", label: "SPK /Cust", icon: "fa-file-invoice-dollar", href: "/prj-csv/spk-slash-cust", menuId: 17 },
+            { id: "summary-per-cust", label: "Summary Per Cust", icon: "fa-table-cells-large", href: "/prj-csv/summary-per-cust", menuId: 3 },
+            { id: "resume-per-kategori", label: "Resume Per Kategori", icon: "fa-border-all", href: "/prj-csv/resume-per-kategori", menuId: 4 }
           ]
         },
         {
           title: "PRODUKSI",
           submenus: [
-            { id: "resume-per-hari", label: "Resume Per Hari", icon: "fa-calendar-day", href: "/prj-csv/produksi/resume-per-hari" },
-            { id: "summary-per-driver", label: "Summary Per Driver", icon: "fa-user-tie", href: "/prj-csv/produksi/summary-per-driver" },
-            { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase" },
-            { id: "transfer-out", label: "Transfer Out", icon: "fa-truck-arrow-right", href: "/prj-csv/produksi/transfer-out" }
+            { id: "resume-per-hari", label: "Resume Per Hari", icon: "fa-calendar-day", href: "/prj-csv/produksi/resume-per-hari", menuId: 5 },
+            { id: "summary-per-driver", label: "Summary Per Driver", icon: "fa-user-tie", href: "/prj-csv/produksi/summary-per-driver", menuId: 6 },
+            { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase", menuId: 7 },
+            { id: "transfer-out", label: "Transfer Out", icon: "fa-truck-arrow-right", href: "/prj-csv/produksi/transfer-out", menuId: 16 }
           ]
         },
         {
           title: "COLOKAN SOLAR",
           submenus: [
-            { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar" }
+            { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar", menuId: 8 }
           ]
         },
         {
           title: "MASTER DATA",
           submenus: [
-            { id: "prior-unit", label: "Prior Unit", icon: "fa-truck-fast", href: "/prj-csv/prior-unit" },
-            { id: "closing-finance", label: "Closing Finance", icon: "fa-file-invoice-dollar", href: "/prj-csv/closing-finance" }
+            { id: "prior-unit", label: "Prior Unit", icon: "fa-truck-fast", href: "/prj-csv/prior-unit", menuId: 9 },
+            { id: "closing-finance", label: "Closing Finance", icon: "fa-file-invoice-dollar", href: "/prj-csv/closing-finance", menuId: 10 }
           ]
         },
         {
           title: "ADMINISTRATOR",
           submenus: [
-            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users" },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" },
-            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs" }
+            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users", menuId: 14 },
+            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups", menuId: 15 },
+            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs", menuId: 18 }
           ]
         }
       ];
@@ -79,31 +94,52 @@ class AppSidebar extends HTMLElement {
         {
           title: "OPERATION",
           submenus: [
-            { id: "op-dashboard", label: "Operation Dashboard", icon: "fa-gauge-high", href: basePrefix ? basePrefix + "/operation-dashboard" : "/operation-dashboard" }
+            { id: "op-dashboard", label: "Operation Dashboard", icon: "fa-gauge-high", href: basePrefix ? basePrefix + "/operation-dashboard" : "/operation-dashboard", menuId: 11 }
           ]
         },
         {
           title: "SPK HARIAN",
           submenus: [
-            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: basePrefix ? basePrefix + "/spk-per-cust" : "/spk-per-cust" }
+            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: basePrefix ? basePrefix + "/spk-per-cust" : "/spk-per-cust", menuId: 12 }
           ]
         },
         {
           title: "WAREHOUSE",
           submenus: [
-            { id: "critical-inventory", label: "Critical Inventory", icon: "fa-boxes-stacked", href: basePrefix ? basePrefix + "/warehouse/critical-inventory" : "/prj-ho/warehouse/critical-inventory" }
+            { id: "critical-inventory", label: "Critical Inventory", icon: "fa-boxes-stacked", href: basePrefix ? basePrefix + "/warehouse/critical-inventory" : "/prj-ho/warehouse/critical-inventory", menuId: 13 }
           ]
         },
         {
           title: "ADMINISTRATOR",
           submenus: [
-            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users" },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups" },
-            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs" }
+            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users", menuId: 14 },
+            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups", menuId: 15 },
+            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs", menuId: 18 }
           ]
         }
       ];
     }
+
+    // Ambil daftar menu yang diizinkan untuk user saat ini dari session
+    let allowedMenuIds = null;
+    try {
+      const cu = JSON.parse(sessionStorage.getItem('current_user') || '{}');
+      if (cu && Array.isArray(cu.allowed_menu_ids)) {
+        allowedMenuIds = cu.allowed_menu_ids;
+      }
+    } catch (e) {}
+
+    // Filter menu berdasarkan hak akses
+    const filteredStructure = menuStructure.map(menu => {
+      const submenus = menu.submenus.filter(sub => {
+        if (!allowedMenuIds) return true; // Belum ter-fetch, biarkan tampil terlebih dahulu
+        if (sub.menuId !== undefined) {
+          return allowedMenuIds.includes(sub.menuId);
+        }
+        return true;
+      });
+      return { ...menu, submenus };
+    }).filter(menu => menu.submenus.length > 0);
 
     let menuHTML = `
       <style>
@@ -149,7 +185,7 @@ class AppSidebar extends HTMLElement {
         </div>
     `;
 
-    menuStructure.forEach(menu => {
+    filteredStructure.forEach(menu => {
       menuHTML += `
         <div>
           <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-3">${menu.title}</h2>

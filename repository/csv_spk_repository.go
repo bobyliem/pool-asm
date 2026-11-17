@@ -63,6 +63,15 @@ func (r *csvSpkRepository) GetFilterOptions() (*models.CsvSpkFilterOptions, erro
 func (r *csvSpkRepository) GetSpkPerCust(area, customer, purpose, tglAwal, tglAkhir string) ([]models.CsvSpkPerCustItem, error) {
 	items := make([]models.CsvSpkPerCustItem, 0)
 
+	custCondition := "(? = '' OR ? = 'ALL' OR so.customer_code = ?)"
+	custArgs := []interface{}{customer, customer, customer}
+
+	trimmedUpperCust := strings.ToUpper(strings.TrimSpace(customer))
+	if trimmedUpperCust == "EXCLUDE_SAR" || trimmedUpperCust == "ALL (EXCLUDE SAR)" {
+		custCondition = "UPPER(TRIM(so.customer_code)) <> 'SAR'"
+		custArgs = []interface{}{}
+	}
+
 	query := `
 		SELECT MAX(site) AS site, MIN(mulai) AS tgl_masuk, MAX(selesai) AS close_spk
 			, MAX(raw_close_date) AS close_date
@@ -85,7 +94,7 @@ func (r *csvSpkRepository) GetSpkPerCust(area, customer, purpose, tglAwal, tglAk
 			WHERE 1 
 				AND so.statue <> 'Canceled'
 				AND (? = '' OR ? = 'ALL' OR so.site = ?)
-				AND (? = '' OR ? = 'ALL' OR so.customer_code = ?)
+				AND ` + custCondition + `
 				AND (? = '' OR ? = 'ALL' OR so.category = ?)
 				AND (
 					DATE(so.released_at) BETWEEN ? AND ?
@@ -98,14 +107,16 @@ func (r *csvSpkRepository) GetSpkPerCust(area, customer, purpose, tglAwal, tglAk
 		ORDER BY MIN(selesai), MAX(mulai)
 	`
 
-	err := r.db.Raw(query,
-		area, area, area,
-		customer, customer, customer,
+	args := []interface{}{area, area, area}
+	args = append(args, custArgs...)
+	args = append(args,
 		purpose, purpose, purpose,
 		tglAwal, tglAkhir,
 		tglAkhir,
 		tglAwal, tglAkhir,
-	).Scan(&items).Error
+	)
+
+	err := r.db.Raw(query, args...).Scan(&items).Error
 
 	return items, err
 }
@@ -671,6 +682,15 @@ func (r *csvSpkRepository) GetResumePerKategori(area, tglAwal, tglAkhir string) 
 func (r *csvSpkRepository) GetResumeKategoriDetail(area, customer, category, status, tglAwal, tglAkhir string) ([]models.CsvResumeKategoriDetailItem, error) {
 	var items []models.CsvResumeKategoriDetailItem
 
+	custCondition := "(? = '' OR ? = 'ALL' OR so.customer_code = ?)"
+	custArgs := []interface{}{customer, customer, customer}
+
+	trimmedUpperCust := strings.ToUpper(strings.TrimSpace(customer))
+	if trimmedUpperCust == "EXCLUDE_SAR" || trimmedUpperCust == "ALL (EXCLUDE SAR)" {
+		custCondition = "UPPER(TRIM(so.customer_code)) <> 'SAR'"
+		custArgs = []interface{}{}
+	}
+
 	query := `
 		SELECT nopol, COUNT(so) AS spk, cat AS kategori
 			, FLOOR(SUM(service)) AS service
@@ -702,7 +722,7 @@ func (r *csvSpkRepository) GetResumeKategoriDetail(area, customer, category, sta
 						OR (DATE(so.completed_at) IS NULL AND DATE(so.released_at) <= ?)
 						OR DATE(so.completed_at) BETWEEN ? AND ?
 					)
-					AND (? = '' OR ? = 'ALL' OR so.customer_code = ?)
+					AND ` + custCondition + `
 					AND (? = '' OR ? = 'ALL' OR so.category = ?)
 	`
 
@@ -711,9 +731,9 @@ func (r *csvSpkRepository) GetResumeKategoriDetail(area, customer, category, sta
 		tglAwal, tglAkhir,
 		tglAkhir,
 		tglAwal, tglAkhir,
-		customer, customer, customer,
-		category, category, category,
 	}
+	args = append(args, custArgs...)
+	args = append(args, category, category, category)
 
 	upperStatus := strings.ToUpper(strings.TrimSpace(status))
 	if upperStatus == "OPEN" {
