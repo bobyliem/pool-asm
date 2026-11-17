@@ -279,6 +279,12 @@ func (b *WhatsAppBot) SendMessage(recipientPhone, text string) error {
 	return err
 }
 
+// GetPendingHarianMessage menghasilkan pesan rekap pending harian yang sama persis dengan keyword /pendingharian
+func (b *WhatsAppBot) GetPendingHarianMessage() string {
+	b.autoTriggerSync()
+	return HandleCommandPendingHarian(b.dbCsv)
+}
+
 // eventHandler menangani semua event pesan masuk dari WhatsApp
 func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
