@@ -261,28 +261,28 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.GET("/auth/me", authHandler.GetMe)
 			api.POST("/auth/change-password", authHandler.RequireAuth(), authHandler.ChangePassword)
 
-			// Master User
-			api.GET("/admin/users", authHandler.RequireAuth(), authHandler.GetAllUsers)
-			api.POST("/admin/users", authHandler.RequireAuth(), authHandler.CreateUser)
-			api.PUT("/admin/users/:id", authHandler.RequireAuth(), authHandler.UpdateUser)
-			api.DELETE("/admin/users/:id", authHandler.RequireAuth(), authHandler.DeleteUser)
+			// Master User (Menu ID: 14)
+			api.GET("/admin/users", authHandler.RequireMenuAuth(14), authHandler.GetAllUsers)
+			api.POST("/admin/users", authHandler.RequireMenuAuth(14), authHandler.CreateUser)
+			api.PUT("/admin/users/:id", authHandler.RequireMenuAuth(14), authHandler.UpdateUser)
+			api.DELETE("/admin/users/:id", authHandler.RequireMenuAuth(14), authHandler.DeleteUser)
 
-			// Master Group & Setup Menu
-			api.GET("/admin/groups", authHandler.RequireAuth(), authHandler.GetAllGroups)
-			api.POST("/admin/groups", authHandler.RequireAuth(), authHandler.CreateGroup)
-			api.PUT("/admin/groups/:id", authHandler.RequireAuth(), authHandler.UpdateGroup)
-			api.DELETE("/admin/groups/:id", authHandler.RequireAuth(), authHandler.DeleteGroup)
-			api.GET("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.GetGroupMenus)
-			api.POST("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.SaveGroupMenus)
+			// Master Group & Setup Menu (Menu ID: 15)
+			api.GET("/admin/groups", authHandler.RequireMenuAuth(15), authHandler.GetAllGroups)
+			api.POST("/admin/groups", authHandler.RequireMenuAuth(15), authHandler.CreateGroup)
+			api.PUT("/admin/groups/:id", authHandler.RequireMenuAuth(15), authHandler.UpdateGroup)
+			api.DELETE("/admin/groups/:id", authHandler.RequireMenuAuth(15), authHandler.DeleteGroup)
+			api.GET("/admin/groups/:id/menus", authHandler.RequireMenuAuth(15), authHandler.GetGroupMenus)
+			api.POST("/admin/groups/:id/menus", authHandler.RequireMenuAuth(15), authHandler.SaveGroupMenus)
 		}
 
-		// Cron Job Endpoints
+		// Cron Job Endpoints (Menu ID: 18)
 		if cronHandler != nil {
-			api.GET("/admin/cron/jobs", cronHandler.GetJobs)
-			api.POST("/admin/cron/jobs/:id/toggle", cronHandler.ToggleJob)
-			api.POST("/admin/cron/jobs/:id/run", cronHandler.RunJob)
-			api.PUT("/admin/cron/jobs/:id", cronHandler.UpdateJob)
-			api.GET("/admin/cron/logs", cronHandler.GetLogs)
+			api.GET("/admin/cron/jobs", authHandler.RequireMenuAuth(18), cronHandler.GetJobs)
+			api.POST("/admin/cron/jobs/:id/toggle", authHandler.RequireMenuAuth(18), cronHandler.ToggleJob)
+			api.POST("/admin/cron/jobs/:id/run", authHandler.RequireMenuAuth(18), cronHandler.RunJob)
+			api.PUT("/admin/cron/jobs/:id", authHandler.RequireMenuAuth(18), cronHandler.UpdateJob)
+			api.GET("/admin/cron/logs", authHandler.RequireMenuAuth(18), cronHandler.GetLogs)
 		}
 
 		// CSV Background Sync Endpoints

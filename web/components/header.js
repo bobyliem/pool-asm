@@ -210,6 +210,7 @@ window.checkAuthSession = async function() {
     if (json.status === 'success' && json.data) {
       const u = json.data;
       sessionStorage.setItem('current_user', JSON.stringify(u));
+      window.dispatchEvent(new CustomEvent('auth-updated', { detail: u }));
 
       const nameEl = document.getElementById('navUserName');
       const groupEl = document.getElementById('navUserGroup');

@@ -16,6 +16,7 @@ import (
 // WhatsAppNotifier interface untuk mengirim pesan WhatsApp tanpa cycle import
 type WhatsAppNotifier interface {
 	SendMessage(recipientPhone, text string) error
+	GetPendingHarianMessage() string
 }
 
 type CronService interface {
@@ -98,6 +99,14 @@ func (s *cronService) seedDefaultJobs() {
 			Desc:     "Sinkronisasi data stockpile dari Metabase ke database lokal",
 			CronExpr: "0 6-23,0 * * *",
 			IsActive: 1,
+			NotifyWA: 1,
+		},
+		{
+			JobKey:   "wa_pending_harian",
+			Nama:     "CRON - Pending Harian WA",
+			Desc:     "Broadcast rekap SPK pending harian ke WhatsApp user divisi OPS",
+			CronExpr: "0 8,13,17 * * *",
+			IsActive: 0,
 			NotifyWA: 1,
 		},
 	}
@@ -309,6 +318,14 @@ func (s *cronService) executeJob(jobKey string) {
 			resultMsg = "StockpileSyncService belum diinisialisasi"
 		}
 
+	case "wa_pending_harian":
+		if s.waNotifier == nil {
+			success = false
+			resultMsg = "WhatsApp Bot belum diinisialisasi"
+		} else {
+			success, jml, resultMsg = s.executePendingHarianBroadcast()
+		}
+
 	default:
 		success = false
 		resultMsg = fmt.Sprintf("Handler untuk job key '%s' tidak ditemukan", jobKey)
@@ -404,6 +421,61 @@ func (s *cronService) waitForStockpileSync() (bool, int, string) {
 			}
 		}
 	}
+}
+
+func (s *cronService) executePendingHarianBroadcast() (bool, int, string) {
+	msgText := s.waNotifier.GetPendingHarianMessage()
+	if strings.TrimSpace(msgText) == "" {
+		return false, 0, "Gagal mendapatkan konten pending harian"
+	}
+
+	// Query nomor dari tabel users yang field divisinya mengandung 'OPS'
+	var targetUsers []struct {
+		Nama   string `gorm:"column:nama"`
+		NoHp   string `gorm:"column:no_hp"`
+		Divisi string `gorm:"column:divisi"`
+	}
+
+	err := s.db.Table("users").
+		Select("nama, no_hp, divisi").
+		Where("UPPER(divisi) LIKE ? AND no_hp IS NOT NULL AND no_hp != '' AND no_hp != '0'", "%OPS%").
+		Find(&targetUsers).Error
+
+	if err != nil {
+		return false, 0, fmt.Sprintf("Gagal query tabel users: %v", err)
+	}
+
+	if len(targetUsers) == 0 {
+		return true, 0, "Selesai: Tidak ada nomor user dengan divisi OPS ditemukan di tabel users"
+	}
+
+	sentCount := 0
+	var failedList []string
+
+	for _, u := range targetUsers {
+		phone := strings.TrimSpace(u.NoHp)
+		if phone == "" {
+			continue
+		}
+
+		if err := s.waNotifier.SendMessage(phone, msgText); err != nil {
+			log.Printf("[CronService] Gagal kirim WA pending harian ke %s (%s): %v", u.Nama, phone, err)
+			failedList = append(failedList, fmt.Sprintf("%s (%v)", phone, err))
+		} else {
+			sentCount++
+			log.Printf("[CronService] Berhasil kirim WA pending harian ke %s (%s)", u.Nama, phone)
+		}
+		time.Sleep(500 * time.Millisecond) // Jeda antar pesan untuk stabilitas
+	}
+
+	if len(failedList) > 0 {
+		if sentCount == 0 {
+			return false, 0, fmt.Sprintf("Gagal kirim ke semua nomor OPS: %s", strings.Join(failedList, ", "))
+		}
+		return true, sentCount, fmt.Sprintf("Terkirim ke %d/%d nomor OPS (Gagal: %s)", sentCount, len(targetUsers), strings.Join(failedList, ", "))
+	}
+
+	return true, sentCount, fmt.Sprintf("Sukses terkirim ke seluruh %d nomor user divisi OPS", sentCount)
 }
 
 func (s *cronService) sendWhatsAppReport(jobNama string, startTime, finishTime time.Time, durationSec int, status string, jml int, message string) {

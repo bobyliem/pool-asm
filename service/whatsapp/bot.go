@@ -279,6 +279,12 @@ func (b *WhatsAppBot) SendMessage(recipientPhone, text string) error {
 	return err
 }
 
+// GetPendingHarianMessage menghasilkan pesan rekap pending harian yang sama persis dengan keyword /pendingharian
+func (b *WhatsAppBot) GetPendingHarianMessage() string {
+	b.autoTriggerSync()
+	return HandleCommandPendingHarian(b.dbCsv)
+}
+
 // eventHandler menangani semua event pesan masuk dari WhatsApp
 func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
@@ -415,7 +421,7 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 	protectedCommands := map[string]bool{
 		"/spk": true, "/nopol": true, "/omsetclosing": true,
 		"/omset": true, "/omsetpending": true, "/infolelang": true,
-		"/updatelelang": true, "/tarikdata": true, "/sync": true,
+		"/updatelelang": true, "/pendingharian": true, "/tarikdata": true, "/sync": true,
 		"/help": true, "/bantuan": true, "/helpadmin": true, "/bantuanadmin": true,
 	}
 
@@ -454,6 +460,10 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 
 	case "/updatelelang":
 		reply = HandleCommandUpdateLelang(b.dbCsv, parameter)
+
+	case "/pendingharian":
+		b.autoTriggerSync()
+		reply = HandleCommandPendingHarian(b.dbCsv)
 
 	case "/registrasi":
 		reply = HandleCommandRegistrasi(b.dbCsv, b, senderJID, senderPhone, parameter)
