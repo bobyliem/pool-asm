@@ -88,7 +88,8 @@ type UserDetail struct {
 	Aktif     int        `json:"aktif"`
 	GrpID     int        `json:"grp_id"`
 	GroupName string     `json:"group_name"`
-	LastLogin *time.Time `json:"last_login"`
+	LastLogin      *time.Time `json:"last_login"`
+	AllowedMenuIDs []int      `json:"allowed_menu_ids"`
 }
 
 type ChangePasswordRequest struct {
