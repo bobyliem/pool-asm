@@ -114,6 +114,16 @@ func (h *AuthHandler) RequireMenuAuth(menuID int) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// Superadmin bypass: GrpID == 1, GroupName == "SUPERADMIN", atau username boby memiliki akses penuh
+		if sess.GrpID == 1 || strings.ToUpper(sess.GroupName) == "SUPERADMIN" || sess.Username == "boby" {
+			c.Set("user_id", sess.UserID)
+			c.Set("username", sess.Username)
+			c.Set("grp_id", sess.GrpID)
+			c.Next()
+			return
+		}
+
 		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
@@ -158,6 +168,13 @@ func (h *AuthHandler) RequirePageMenuAuth(menuID int) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// Superadmin bypass: GrpID == 1, GroupName == "SUPERADMIN", atau username boby memiliki akses penuh
+		if sess.GrpID == 1 || strings.ToUpper(sess.GroupName) == "SUPERADMIN" || sess.Username == "boby" {
+			c.Next()
+			return
+		}
+
 		allowedMenuIDs, err := h.authService.GetAllowedMenuIDs(sess.GrpID)
 		if err != nil {
 			c.Redirect(http.StatusFound, "/prj-csv")
@@ -261,6 +278,9 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 	// Ambil daftar menu yang diizinkan untuk group user ini
 	allowedMenuIDs, _ := h.authService.GetAllowedMenuIDs(sess.GrpID)
+	if (sess.GrpID == 1 || strings.ToUpper(sess.GroupName) == "SUPERADMIN" || sess.Username == "boby") && len(allowedMenuIDs) == 0 {
+		allowedMenuIDs, _ = h.authService.GetAllowedMenuIDs(1)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
