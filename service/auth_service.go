@@ -174,17 +174,20 @@ func (s *authService) Login(req models.LoginRequest) (*models.LoginResponse, err
 	now := time.Now()
 	user.LastLogin = &now
 
+	allowedMenuIDs, _ := s.repo.GetAllowedMenuIDs(user.GrpID)
+
 	return &models.LoginResponse{
 		Token:     token,
 		ExpiresAt: expiresAt,
 		User: models.UserDetail{
-			ID:        user.ID,
-			Username:  user.Usrn,
-			Nama:      user.Nama,
-			Aktif:     user.Aktif,
-			GrpID:     user.GrpID,
-			GroupName: user.GroupName,
-			LastLogin: user.LastLogin,
+			ID:             user.ID,
+			Username:       user.Usrn,
+			Nama:           user.Nama,
+			Aktif:          user.Aktif,
+			GrpID:          user.GrpID,
+			GroupName:      user.GroupName,
+			LastLogin:      user.LastLogin,
+			AllowedMenuIDs: allowedMenuIDs,
 		},
 	}, nil
 }
