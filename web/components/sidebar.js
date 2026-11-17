@@ -122,21 +122,16 @@ class AppSidebar extends HTMLElement {
 
     // Ambil daftar menu yang diizinkan untuk user saat ini dari session
     let allowedMenuIds = null;
-    let isSuperAdmin = false;
     try {
       const cu = JSON.parse(sessionStorage.getItem('current_user') || '{}');
-      if (cu && (cu.grp_id === 1 || (cu.group_name && cu.group_name.toUpperCase() === 'SUPERADMIN') || cu.username === 'boby')) {
-        isSuperAdmin = true;
-      }
       if (cu && Array.isArray(cu.allowed_menu_ids)) {
         allowedMenuIds = cu.allowed_menu_ids.map(Number);
       }
     } catch (e) {}
 
-    // Filter menu berdasarkan hak akses
+    // Filter menu murni berdasarkan checklist hak akses (allowed_menu_ids)
     const filteredStructure = menuStructure.map(menu => {
       const submenus = menu.submenus.filter(sub => {
-        if (isSuperAdmin) return true; // Superadmin selalu memiliki hak akses penuh ke SEMUA menu!
         if (!allowedMenuIds) return true; // Belum ter-fetch, biarkan tampil terlebih dahulu
         if (sub.menuId !== undefined) {
           return allowedMenuIds.includes(Number(sub.menuId));

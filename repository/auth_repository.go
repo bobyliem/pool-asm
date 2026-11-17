@@ -48,21 +48,23 @@ func (r *authRepository) seedDefaultMenus() {
 		return
 	}
 
-	// 1. Pastikan modul ADMINISTRATOR ada di menumaster
+	// 1. Pastikan modul ADMINISTRATOR ada di menumaster (modul PRJ-CSV)
 	var mm models.MenuMaster
-	if err := r.db.Where("id = 9 OR modul = 'ADMIN'").First(&mm).Error; err != nil {
+	if err := r.db.Where("id = 9 OR nama = 'ADMINISTRATOR'").First(&mm).Error; err != nil {
 		now := time.Now()
 		mm = models.MenuMaster{
 			ID:      9,
-			Modul:   "ADMIN",
+			Modul:   "PRJ-CSV",
 			Nama:    "ADMINISTRATOR",
 			Urut:    "90",
 			Created: &now,
 		}
 		_ = r.db.Create(&mm).Error
+	} else if mm.Modul != "PRJ-CSV" {
+		_ = r.db.Model(&models.MenuMaster{}).Where("id = ?", mm.ID).Update("modul", "PRJ-CSV").Error
 	}
 
-	// 2. Pastikan menu Master User (14), Master Group (15), Cron Jobs (18) ada di menu
+	// 2. Pastikan menu Master User (14), Master Group (15), Cron Jobs (18) ada di tabel menu agar muncul di checklist Master Group -> Setup Menu
 	defaultMenus := []models.Menu{
 		{ID: 14, MmID: 9, Nama: "Master User", Urut: "1", Aktif: 1},
 		{ID: 15, MmID: 9, Nama: "Master Group", Urut: "2", Aktif: 1},
@@ -77,15 +79,6 @@ func (r *authRepository) seedDefaultMenus() {
 			_ = r.db.Create(&dm).Error
 		}
 	}
-
-	// 3. Pastikan group 1 (Superadmin) memiliki seluruh menu aktif di menu_access
-	_ = r.db.Exec(`
-		INSERT INTO menu_access (grp_id, menu_id, created)
-		SELECT 1, m.id, NOW()
-		FROM menu m
-		WHERE m.aktif = 1
-		  AND m.id NOT IN (SELECT menu_id FROM menu_access WHERE grp_id = 1)
-	`).Error
 }
 
 func (r *authRepository) GetUserByUsername(usrn string) (*models.MenuLogin, error) {
@@ -283,11 +276,6 @@ func (r *authRepository) SaveGroupMenus(grpID int, menuIDs []int) error {
 
 func (r *authRepository) GetAllowedMenuIDs(grpID int) ([]int, error) {
 	var ids []int
-	if grpID == 1 {
-		// Superadmin selalu memiliki akses ke semua menu aktif
-		err := r.db.Model(&models.Menu{}).Where("aktif = 1").Pluck("id", &ids).Error
-		return ids, err
-	}
 	err := r.db.Model(&models.MenuAccess{}).Where("grp_id = ?", grpID).Pluck("menu_id", &ids).Error
 	return ids, err
 }
