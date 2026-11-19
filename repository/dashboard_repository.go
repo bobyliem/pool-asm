@@ -88,7 +88,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 	}
 
 	query := `
-		SELECT v.sitename, CONCAT(v.nopol, ' [', v.tipe, ']') AS nopol, v.cust_code
+		SELECT v.sitename, CONCAT(v.nopol, ' [', IFNULL(v.tipe, ''), ']') AS nopol, IFNULL(v.tipe, '') AS tipe, v.cust_code
 			, DATE(v.entrydate)AS tgl_masuk, v.nopol AS no_pol
 			, CASE
 				WHEN v.driver = v.curr_driver THEN v.driver
@@ -156,7 +156,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 
 	// Query Khusus Kategori Storing dari imp_service_order
 	queryStoring := `
-		SELECT sitename, nopol, nopol AS no_pol, cust_code, driver, category
+		SELECT sitename, nopol, nopol AS no_pol, tipe, cust_code, driver, category
 			, DATE_FORMAT(released_at_raw, '%d-%b-%y %H:%i') AS tglmasuk
 			, DATE_FORMAT(released_at_raw, '%Y-%m-%d') AS tgl_masuk
 			, '' AS information
@@ -175,6 +175,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 		FROM(
 			SELECT service_order AS spk, site AS sitename, plate_number AS nopol, customer_code AS cust_code
 				, '-' AS driver, category, released_at AS released_at_raw
+				, IFNULL(NULLIF(vehicle_type, ''), 'CDD') AS tipe
 				, 1 AS tkerja, CASE WHEN LENGTH(IFNULL(completed_at,'')) > 0 THEN 1 ELSE 0 END AS fkerja
 				, last_notes, completed_at AS exitdate_raw, 'Storing' AS purpose
 			FROM imp_service_order
@@ -188,7 +189,7 @@ func (r *csvDashboardRepository) GetCategoryDashboardData(area string) (*models.
 				AND (? = '' OR ? = 'ALL' OR ? = 'Semua Area' OR site = ?)
 			ORDER BY released_at DESC
 		) AS dt
-		GROUP BY spk, nopol, sitename, cust_code, driver, category, released_at_raw, exitdate_raw
+		GROUP BY spk, nopol, sitename, cust_code, driver, category, released_at_raw, exitdate_raw, tipe
 		ORDER BY DATE(exitdate_raw), note, released_at_raw ASC
 	`
 	var storingItems []models.CsvVisitorCategoryItem

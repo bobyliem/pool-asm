@@ -4,18 +4,19 @@ type CsvVisitorCategoryItem struct {
 	Sitename     string  `gorm:"column:sitename" json:"sitename"`
 	Nopol        string  `gorm:"column:nopol" json:"nopol"`
 	NoPol        string  `gorm:"column:no_pol" json:"no_pol"`
+	Tipe         string  `gorm:"column:tipe" json:"tipe"`
 	CustCode     string  `gorm:"column:cust_code" json:"cust_code"`
 	Driver       string  `gorm:"column:driver" json:"driver"`
 	Category     string  `gorm:"column:category" json:"category"`
 	TglMasuk     string  `gorm:"column:tglmasuk" json:"tglmasuk"`
 	TglMasukDate string  `gorm:"column:tgl_masuk" json:"tgl_masuk"`
 	Information  string  `gorm:"column:information" json:"information"`
-	Note     string  `gorm:"column:note" json:"note"`
-	NoteLate string  `gorm:"column:notelate" json:"notelate"`
-	Catt     string  `gorm:"column:catt" json:"catt"`
-	Exitdate   *string `gorm:"column:exitdate" json:"exitdate"`
-	Purpose    string  `gorm:"column:purpose" json:"purpose"`
-	IsNotToday int     `gorm:"column:is_not_today" json:"is_not_today"`
+	Note         string  `gorm:"column:note" json:"note"`
+	NoteLate     string  `gorm:"column:notelate" json:"notelate"`
+	Catt         string  `gorm:"column:catt" json:"catt"`
+	Exitdate     *string `gorm:"column:exitdate" json:"exitdate"`
+	Purpose      string  `gorm:"column:purpose" json:"purpose"`
+	IsNotToday   int     `gorm:"column:is_not_today" json:"is_not_today"`
 }
 
 type CsvCategoryStat struct {
