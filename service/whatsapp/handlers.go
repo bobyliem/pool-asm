@@ -583,36 +583,60 @@ func HandleCommandOmsetPendingCust(db *gorm.DB, custCode string) string {
 // HandleCommandPendingHarian: /pendingharian
 // Menampilkan rekap unit dengan SPK yang masih Open (belum close) untuk periode hari ini, dikelompokkan berdasarkan Area dan Kategori.
 func HandleCommandPendingHarian(db *gorm.DB) string {
-	type spkRow struct {
-		Site         string `gorm:"column:site"`
-		Category     string `gorm:"column:category"`
-		ServiceOrder string `gorm:"column:service_order"`
-		PlateNumber  string `gorm:"column:plate_number"`
-		BodyNumber   string `gorm:"column:body_number"`
-		LastNotes    string `gorm:"column:last_notes"`
-		Information  string `gorm:"column:information"`
-		ReleasedAt   string `gorm:"column:released_at"`
+	type pendingRow struct {
+		Sitename string `gorm:"column:sitename"`
+		Nopol    string `gorm:"column:nopol"`
+		Purpose  string `gorm:"column:purpose"`
 	}
 
 	query := `
-		SELECT 
-			site,
-			category,
-			service_order,
-			MAX(plate_number) AS plate_number,
-			MAX(body_number) AS body_number,
-			MAX(last_notes) AS last_notes,
-			MAX(information) AS information,
-			MIN(released_at) AS released_at
-		FROM imp_service_order
-		WHERE statue <> 'Canceled'
-		  AND completed_at IS NULL
-		  AND DATE(released_at) <= CURDATE()
-		GROUP BY site, category, service_order
-		ORDER BY site, category, released_at ASC
-	`
+SELECT 
+    v.sitename, 
+    v.nopol,
+    v.purpose
+FROM imp_visitor v
+LEFT JOIN (
+    SELECT visitor_id, MAX(last_notes) AS catt, SUM(IFNULL(completed_at,0)) AS krj, tkerja
+	, CASE 
+	    WHEN SUM(IFNULL(completed_at,0)) <> tkerja THEN 'OnProgress'
+	    WHEN SUM(IFNULL(completed_at,0)) = tkerja THEN 'Finished'
+	END AS note, MAX(so_cat)AS so_cat
+    FROM (
+	SELECT visitor_id, released_at, completed_at, 1 AS tkerja
+	    , CASE WHEN LENGTH(IFNULL(completed_at,'')) = 0 THEN 0 ELSE 1 END AS progress
+	    , last_notes, category AS so_cat
+	FROM imp_service_order
+    ) AS dt
+    GROUP BY visitor_id
+) AS wo ON v.visitor_id = wo.visitor_id
+WHERE (LENGTH(v.exitdate) = 0)
+  AND ('ALL' = 'ALL' OR v.sitename = 'ALL')
+  AND v.purpose IN ('Perbaikan', 'Asuransi')
 
-	var rows []spkRow
+UNION
+
+SELECT site AS sitename, nopol, MAX(cat) AS purpose
+FROM (
+    SELECT nopol, site, MAX(category) AS cat
+    FROM (
+	SELECT site, plate_number AS nopol, category
+	FROM imp_service_order so
+	WHERE (
+	    DATE(so.released_at) BETWEEN LAST_DAY(CURDATE() - INTERVAL 1 MONTH) + INTERVAL 1 DAY AND LAST_DAY(CURDATE())
+	    OR (DATE(so.completed_at) IS NULL AND DATE(so.released_at) < LAST_DAY(CURDATE() - INTERVAL 1 MONTH))
+	    OR DATE(so.completed_at) BETWEEN LAST_DAY(CURDATE() - INTERVAL 1 MONTH) + INTERVAL 1 DAY AND LAST_DAY(CURDATE())
+	)
+	AND DATE(completed_at) IS NULL
+	AND (category = 'Storing' OR category = 'Others')
+    ) AS dt
+    GROUP BY site, nopol
+) AS dt
+GROUP BY site, nopol
+
+ORDER BY sitename, purpose, nopol
+`
+
+	var rows []pendingRow
 	if err := db.Raw(query).Scan(&rows).Error; err != nil {
 		return "❌ Gagal mengambil data SPK pending: " + err.Error()
 	}
@@ -655,7 +679,7 @@ func HandleCommandPendingHarian(db *gorm.DB) string {
 	grandTotal := 0
 
 	for _, r := range rows {
-		siteName := strings.ToUpper(strings.TrimSpace(r.Site))
+		siteName := strings.ToUpper(strings.TrimSpace(r.Sitename))
 		if siteName == "" {
 			siteName = "LAIN-LAIN"
 		}
@@ -671,7 +695,7 @@ func HandleCommandPendingHarian(db *gorm.DB) string {
 			}
 		}
 
-		catName := strings.ToUpper(strings.TrimSpace(r.Category))
+		catName := strings.ToUpper(strings.TrimSpace(r.Purpose))
 		if catName == "" {
 			catName = "OTHERS"
 		}
@@ -682,21 +706,12 @@ func HandleCommandPendingHarian(db *gorm.DB) string {
 			sData.categories[catName] = make([]string, 0)
 		}
 
-		unitName := strings.TrimSpace(r.PlateNumber)
-		if unitName == "" || unitName == "-" {
-			unitName = strings.TrimSpace(r.BodyNumber)
-		}
-		if unitName == "" {
-			unitName = r.ServiceOrder
-		}
+		unitName := strings.TrimSpace(r.Nopol)
 		if strings.HasPrefix(strings.ToUpper(unitName), "KABIN LOHAN") {
 			unitName = "KABIN LOHAN"
 		}
 
-		isPending := strings.Contains(siteName, "SAR") ||
-			strings.Contains(strings.ToUpper(r.LastNotes), "PENDING") ||
-			strings.Contains(strings.ToUpper(r.Information), "PENDING")
-
+		isPending := strings.Contains(siteName, "SAR")
 		if isPending {
 			unitName += " (PENDING)"
 		}
