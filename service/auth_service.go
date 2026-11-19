@@ -129,6 +129,7 @@ type AuthService interface {
 	GetGroupMenus(grpID int) ([]models.GroupMenuItem, error)
 	SaveGroupMenus(grpID int, menuIDs []int) error
 	GetAllowedMenuIDs(grpID int) ([]int, error)
+	GetUserMenus(grpID int) ([]models.UserMenuItem, error)
 }
 
 type authService struct {
@@ -175,6 +176,7 @@ func (s *authService) Login(req models.LoginRequest) (*models.LoginResponse, err
 	user.LastLogin = &now
 
 	allowedMenuIDs, _ := s.repo.GetAllowedMenuIDs(user.GrpID)
+	userMenus, _ := s.repo.GetUserMenus(user.GrpID)
 
 	return &models.LoginResponse{
 		Token:     token,
@@ -188,6 +190,7 @@ func (s *authService) Login(req models.LoginRequest) (*models.LoginResponse, err
 			GroupName:      user.GroupName,
 			LastLogin:      user.LastLogin,
 			AllowedMenuIDs: allowedMenuIDs,
+			Menus:          userMenus,
 		},
 	}, nil
 }
@@ -324,4 +327,8 @@ func (s *authService) SaveGroupMenus(grpID int, menuIDs []int) error {
 
 func (s *authService) GetAllowedMenuIDs(grpID int) ([]int, error) {
 	return s.repo.GetAllowedMenuIDs(grpID)
+}
+
+func (s *authService) GetUserMenus(grpID int) ([]models.UserMenuItem, error) {
+	return s.repo.GetUserMenus(grpID)
 }

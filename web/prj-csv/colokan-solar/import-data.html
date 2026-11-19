@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import Data Solar (dt_solar) - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=20" defer></script>
+  <script src="/web/components/sidebar.js?v=20" defer></script>
+
+  <style>
+    /* Custom Scrollbar for dense tables */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Import Data"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header & KPI Summary Cards (Compact) -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        
+        <!-- Left: Title & Module Badge -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-file-import text-blue-600 text-sm"></i>
+            <h2 class="text-sm font-bold text-slate-800">Import Data Solar</h2>
+            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Tabel: dt_solar</span>
+          </div>
+
+          <!-- Divider -->
+          <span class="text-slate-300">|</span>
+
+          <!-- Mini KPI Badges -->
+          <div class="flex flex-wrap items-center gap-2 text-[11px]">
+            <div class="bg-blue-50 border border-blue-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-blue-900 shadow-2xs" title="Total Baris Data di dt_solar">
+              <i class="fa-solid fa-database text-[10px] text-blue-500"></i>
+              <span class="text-slate-600 font-medium">Total Rows:</span>
+              <span id="kpiTotalRows" class="font-bold text-blue-700">0</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-emerald-900 shadow-2xs" title="Total Pengisian Solar (Liter)">
+              <i class="fa-solid fa-oil-can text-[10px] text-emerald-500"></i>
+              <span class="text-slate-600 font-medium">Total Isi:</span>
+              <span id="kpiTotalIsi" class="font-bold text-emerald-700">0 Ltr</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-amber-900 shadow-2xs" title="Total Jumlah Unit Berbeda">
+              <i class="fa-solid fa-truck-pickup text-[10px] text-amber-500"></i>
+              <span class="text-slate-600 font-medium">Total Unit:</span>
+              <span id="kpiTotalUnit" class="font-bold text-amber-700">0 Unit</span>
+            </div>
+            <div class="bg-purple-50 border border-purple-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-purple-900 shadow-2xs" title="Rata-rata Hour Meter (HM)">
+              <i class="fa-solid fa-gauge text-[10px] text-purple-500"></i>
+              <span class="text-slate-600 font-medium">Avg HM:</span>
+              <span id="kpiAvgHm" class="font-bold text-purple-700">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+            <span>Refresh</span>
+          </button>
+
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Tabel ke Excel">
+            <i class="fa-solid fa-file-excel text-[11px]"></i>
+            <span>Export</span>
+          </button>
+
+          <button onclick="importSampleData()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Import langsung sample 75 baris yang telah disiapkan">
+            <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+            <span>Import Sample</span>
+          </button>
+
+          <button onclick="openUploadModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer font-medium" title="Upload File Excel/CSV">
+            <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i>
+            <span>Upload File</span>
+          </button>
+
+          <button onclick="confirmTruncate()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Kosongkan Tabel dt_solar">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
+            <span>Hapus Semua</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER BAR: tglAwal, tglAkhir, Unit, Jam -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          
+          <!-- Periode Tanggal -->
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
+            <span class="text-slate-500 font-medium text-[11px]">Tgl Awal:</span>
+            <input type="date" id="filterTglAwal" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+          </div>
+
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
+            <span class="text-slate-500 font-medium text-[11px]">Tgl Akhir:</span>
+            <input type="date" id="filterTglAkhir" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+          </div>
+
+          <!-- Unit Dropdown -->
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[140px]">
+            <i class="fa-solid fa-truck-pickup text-slate-400 text-[11px]"></i>
+            <select id="filterUnit" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+              <option value="">Semua Unit</option>
+            </select>
+          </div>
+
+          <!-- Jam Dropdown (7, 16, 17, 18, 22, 23) -->
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[150px]">
+            <i class="fa-solid fa-clock text-slate-400 text-[11px]"></i>
+            <select id="filterJam" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+              <option value="">Semua Jam (7, 16, 17, 18, 22, 23)</option>
+              <option value="7">Jam 07:00 (Shift Pagi Mulai)</option>
+              <option value="16">Jam 16:00 (Shift Pagi Selesai)</option>
+              <option value="17">Jam 17:00 (Pengisian Siang)</option>
+              <option value="18">Jam 18:00 (Shift Malam Mulai)</option>
+              <option value="22">Jam 22:00 (Shift Malam Selesai)</option>
+              <option value="23">Jam 23:00 (Pengisian Malam)</option>
+            </select>
+          </div>
+
+          <!-- Tombol Filter & Reset -->
+          <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
+            <i class="fa-solid fa-filter text-[10px]"></i>
+            <span>Filter</span>
+          </button>
+          
+          <button onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded border border-slate-200 transition cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>
+            <span>Reset</span>
+          </button>
+        </div>
+
+        <!-- Info aturan pemecahan 1 row -> 6 rows -->
+        <div class="text-[11px] text-slate-500 hidden xl:flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+          <i class="fa-solid fa-circle-info text-blue-500 text-xs"></i>
+          <span>Aturan: 1 baris excel dipecah jadi 6 baris (Jam 7, 12, 17, 18, 21, 23)</span>
+        </div>
+      </div>
+
+      <!-- DATA TABLE CONTAINER -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col min-h-0">
+        
+        <!-- Scrollable Table -->
+        <div class="flex-1 overflow-auto custom-scrollbar">
+          <table class="w-full border-collapse text-left">
+            <thead class="sticky top-0 bg-slate-100 text-slate-700 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200 z-10">
+              <tr>
+                <th class="py-1.5 px-2.5 text-center w-12 border-r border-slate-200">No</th>
+                <th class="py-1.5 px-3 border-r border-slate-200">Tanggal</th>
+                <th class="py-1.5 px-3 border-r border-slate-200">Unit / No Alat</th>
+                <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Jam</th>
+                <th class="py-1.5 px-3 text-right border-r border-slate-200">Hour Meter (HM)</th>
+                <th class="py-1.5 px-3 text-right border-r border-slate-200">Awal (cm)</th>
+                <th class="py-1.5 px-3 text-right border-r border-slate-200">Akhir (cm)</th>
+                <th class="py-1.5 px-3 text-right border-r border-slate-200">Isi Solar</th>
+                <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Satuan</th>
+                <th class="py-1.5 px-3 text-center">Waktu Input</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 text-[11px] text-slate-700 font-mono">
+              <!-- Loading Skeleton / Empty Row -->
+              <tr>
+                <td colspan="10" class="py-8 text-center text-slate-400 font-sans">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin text-xl text-blue-500"></i>
+                    <span>Memuat data dt_solar...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- FOOTER: Pagination & Summary Info -->
+        <div class="border-t border-slate-200 bg-slate-50 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+          <div class="flex items-center gap-2">
+            <span>Menampilkan <b id="pageStart">0</b> - <b id="pageEnd">0</b> dari <b id="totalCount">0</b> data</span>
+            <span class="text-slate-300">|</span>
+            <label class="flex items-center gap-1">
+              <span>Per baris:</span>
+              <select id="pageSize" onchange="changePageSize()" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs font-semibold cursor-pointer">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-1" id="paginationControls">
+            <!-- Buttons Prev, Page Numbers, Next dynamically generated -->
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL UPLOAD EXCEL / CSV -->
+  <div id="uploadModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 border border-slate-200 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-blue-400 text-sm"></i>
+          <h3 class="font-bold text-sm">Upload File Data Solar (.xlsx, .csv)</h3>
+        </div>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-3">
+        <div class="bg-blue-50 border border-blue-200 text-blue-900 p-2.5 rounded-lg text-[11px] flex gap-2.5 items-start">
+          <i class="fa-solid fa-circle-info text-blue-600 text-sm mt-0.5 shrink-0"></i>
+          <div>
+            <span class="font-bold">Format Pemrosesan Otomatis (1 baris &rarr; 6 baris):</span>
+            <p class="text-slate-600 mt-0.5 leading-relaxed">
+              Sistem akan memetakan setiap baris ke 6 waktu: 
+              <b>Jam 7</b> (Shift Pagi Mulai), <b>Jam 16</b> (Shift Pagi Selesai), <b>Jam 17</b> (Pengisian Siang), 
+              <b>Jam 18</b> (Shift Malam Mulai), <b>Jam 22</b> (Shift Malam Selesai), <b>Jam 23</b> (Pengisian Malam).
+              Unit dibaca dari kolom Z.
+            </p>
+          </div>
+        </div>
+
+        <!-- Optional Default Unit -->
+        <div>
+          <label class="block text-slate-700 font-semibold mb-1 text-[11px]">Unit Cadangan (Opsional):</label>
+          <input type="text" id="uploadDefaultUnit" placeholder="Contoh: SK330-8 (jika kolom Z kosong)" class="w-full border border-slate-300 rounded px-2.5 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-hidden" />
+          <span class="text-[10px] text-slate-400">Jika kolom Z dalam file memiliki nilai unit, kolom Z yang akan diprioritaskan.</span>
+        </div>
+
+        <!-- Drag & Drop Box -->
+        <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-6 text-center cursor-pointer transition bg-slate-50 hover:bg-blue-50/30">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)" />
+          <i class="fa-solid fa-file-excel text-3xl text-emerald-600 mb-2"></i>
+          <p class="font-semibold text-slate-700 text-xs">Klik untuk pilih file atau tarik & letakkan ke sini</p>
+          <p class="text-slate-400 text-[10px] mt-1">Mendukung format .xlsx, .xls, .csv</p>
+          <p id="selectedFileName" class="text-blue-600 font-bold text-xs mt-2 hidden"></p>
+        </div>
+
+        <!-- Progress Container -->
+        <div id="uploadProgressContainer" class="hidden space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span id="uploadStatusText" class="text-slate-600 font-medium">Sedang memproses...</span>
+            <span id="uploadPercentage" class="text-blue-600 font-bold">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+            <div id="uploadProgressBar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+        <button onclick="closeUploadModal()" class="px-3 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer">Batal</button>
+        <button id="btnSubmitUpload" onclick="submitUpload()" class="px-3.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer">
+          <i class="fa-solid fa-cloud-arrow-up text-[11px]"></i>
+          <span>Mulai Import</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalRows = 0;
+    let selectedFile = null;
+
+    // Dom Elements
+    const tableBody = document.getElementById("tableBody");
+    const kpiTotalRows = document.getElementById("kpiTotalRows");
+    const kpiTotalIsi = document.getElementById("kpiTotalIsi");
+    const kpiTotalUnit = document.getElementById("kpiTotalUnit");
+    const kpiAvgHm = document.getElementById("kpiAvgHm");
+    const filterTglAwal = document.getElementById("filterTglAwal");
+    const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterUnit = document.getElementById("filterUnit");
+    const filterJam = document.getElementById("filterJam");
+    const pageStart = document.getElementById("pageStart");
+    const pageEnd = document.getElementById("pageEnd");
+    const totalCount = document.getElementById("totalCount");
+    const paginationControls = document.getElementById("paginationControls");
+    const refreshIcon = document.getElementById("refreshIcon");
+
+    // Init Page
+    document.addEventListener("DOMContentLoaded", async () => {
+      await fetchFilterOptions();
+      await fetchData(1);
+      setupDragDrop();
+    });
+
+    // Fetch Filter Options (Unit dropdown & default dates if available)
+    async function fetchFilterOptions() {
+      try {
+        const res = await fetch("/api/v1/solar/dt-solar/filters");
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          const { units, min_tgl, max_tgl } = json.data;
+
+          // Populate unit dropdown
+          filterUnit.innerHTML = '<option value="">Semua Unit</option>';
+          if (Array.isArray(units)) {
+            units.forEach(u => {
+              if (u) {
+                const opt = document.createElement("option");
+                opt.value = u;
+                opt.textContent = u;
+                filterUnit.appendChild(opt);
+              }
+            });
+          }
+
+          // Set default dates if empty
+          if (min_tgl && min_tgl !== "0001-01-01" && (!filterTglAwal.value || filterTglAwal.value === "0001-01-01")) filterTglAwal.value = min_tgl;
+          if (max_tgl && max_tgl !== "0001-01-01" && (!filterTglAkhir.value || filterTglAkhir.value === "0001-01-01")) filterTglAkhir.value = max_tgl;
+        }
+      } catch (err) {
+        console.error("Gagal memuat filter options:", err);
+      }
+    }
+
+    // Fetch dt_solar data with filters & pagination
+    async function fetchData(page = 1) {
+      currentPage = page;
+      refreshIcon.classList.add("fa-spin");
+
+      const params = new URLSearchParams();
+      if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
+      if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterUnit.value) params.append("unit", filterUnit.value);
+      if (filterJam.value) params.append("jam", filterJam.value);
+      params.append("page", currentPage);
+      params.append("limit", pageSize);
+
+      try {
+        const res = await fetch(`/api/v1/solar/dt-solar?${params.toString()}`);
+        const result = await res.json();
+
+        if (result.status === "success") {
+          renderTable(result.data || []);
+          renderKPI(result.summary || {});
+          renderPagination(result.meta || { total_rows: 0, page: 1, limit: pageSize });
+        } else {
+          showEmptyTable("Gagal mengambil data: " + (result.message || "Error server"));
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        showEmptyTable("Terjadi kesalahan koneksi saat mengambil data.");
+      } finally {
+        setTimeout(() => refreshIcon.classList.remove("fa-spin"), 400);
+      }
+    }
+
+    // Render Table Rows
+    function renderTable(rows) {
+      if (!rows || rows.length === 0) {
+        showEmptyTable("Tidak ada data ditemukan untuk kriteria filter ini.");
+        return;
+      }
+
+      const startIndex = (currentPage - 1) * pageSize;
+      let html = "";
+
+      rows.forEach((row, idx) => {
+        const no = startIndex + idx + 1;
+        const tgl = row.tgl ? row.tgl.substring(0, 10) : "-";
+        const unit = row.unit || "-";
+        const jam = row.jam;
+        const hm = formatNumber(row.hm, 1);
+        const awal = formatNumber(row.awal, 1);
+        const akhir = formatNumber(row.akhir, 1);
+        const isi = formatNumber(row.isi, 1);
+        const satuan = row.satuan || "liter";
+        const created = row.created ? formatDateTime(row.created) : "-";
+
+        // Badges for jam
+        let jamBadge = "";
+        switch (jam) {
+          case 7:
+            jamBadge = '<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px]">07:00 Pagi Mulai</span>';
+            break;
+          case 16:
+            jamBadge = '<span class="bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">16:00 Pagi Selesai</span>';
+            break;
+          case 17:
+            jamBadge = '<span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">17:00 Pengisian Siang</span>';
+            break;
+          case 18:
+            jamBadge = '<span class="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded text-[10px]">18:00 Malam Mulai</span>';
+            break;
+          case 22:
+            jamBadge = '<span class="bg-slate-200 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">22:00 Malam Selesai</span>';
+            break;
+          case 23:
+            jamBadge = '<span class="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded text-[10px]">23:00 Pengisian Malam</span>';
+            break;
+          default:
+            jamBadge = `<span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">Jam ${jam}</span>`;
+        }
+
+        // Highlight for non-zero Isi
+        const isiClass = row.isi > 0 ? "font-bold text-emerald-700 bg-emerald-50/50" : "text-slate-400";
+
+        html += `
+          <tr class="hover:bg-blue-50/40 transition">
+            <td class="py-1.5 px-2.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            <td class="py-1.5 px-3 font-semibold text-slate-800 border-r border-slate-100">${tgl}</td>
+            <td class="py-1.5 px-3 font-bold text-slate-900 border-r border-slate-100">${unit}</td>
+            <td class="py-1.5 px-2.5 text-center border-r border-slate-100">${jamBadge}</td>
+            <td class="py-1.5 px-3 text-right font-medium text-slate-800 border-r border-slate-100">${hm}</td>
+            <td class="py-1.5 px-3 text-right text-slate-700 border-r border-slate-100">${awal}</td>
+            <td class="py-1.5 px-3 text-right text-slate-700 border-r border-slate-100">${akhir}</td>
+            <td class="py-1.5 px-3 text-right ${isiClass} border-r border-slate-100">${isi}</td>
+            <td class="py-1.5 px-2.5 text-center text-slate-500 border-r border-slate-100 lowercase">${satuan}</td>
+            <td class="py-1.5 px-3 text-center text-slate-400 text-[10px] font-sans">${created}</td>
+          </tr>
+        `;
+      });
+
+      tableBody.innerHTML = html;
+    }
+
+    // Show empty table message
+    function showEmptyTable(message) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="py-8 text-center text-slate-400 font-sans">
+            <div class="flex flex-col items-center justify-center gap-1.5">
+              <i class="fa-regular fa-folder-open text-2xl text-slate-300"></i>
+              <span>${message}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // Render KPI Cards
+    function renderKPI(summary) {
+      kpiTotalRows.textContent = (summary.total_rows || 0).toLocaleString("id-ID");
+      kpiTotalIsi.textContent = (summary.total_isi || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiTotalUnit.textContent = (summary.total_unit || 0).toLocaleString("id-ID") + " Unit";
+      kpiAvgHm.textContent = (summary.avg_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 });
+    }
+
+    // Render Pagination Controls
+    function renderPagination(meta) {
+      totalRows = meta.total_rows || 0;
+      const totalPages = Math.ceil(totalRows / pageSize) || 1;
+      
+      const start = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+      const end = Math.min(currentPage * pageSize, totalRows);
+
+      pageStart.textContent = start.toLocaleString("id-ID");
+      pageEnd.textContent = end.toLocaleString("id-ID");
+      totalCount.textContent = totalRows.toLocaleString("id-ID");
+
+      let html = "";
+
+      // Prev Button
+      html += `
+        <button onclick="fetchData(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
+      `;
+
+      // Page numbers around current page
+      const maxButtons = 5;
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+      }
+
+      if (startPage > 1) {
+        html += `<button onclick="fetchData(1)" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">1</button>`;
+        if (startPage > 2) html += `<span class="px-1 text-slate-400">...</span>`;
+      }
+
+      for (let p = startPage; p <= endPage; p++) {
+        const active = p === currentPage ? "bg-blue-600 text-white border-blue-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100";
+        html += `<button onclick="fetchData(${p})" class="px-2 py-0.5 rounded border ${active} text-xs transition cursor-pointer">${p}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="px-1 text-slate-400">...</span>`;
+        html += `<button onclick="fetchData(${totalPages})" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">${totalPages}</button>`;
+      }
+
+      // Next Button
+      html += `
+        <button onclick="fetchData(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      `;
+
+      paginationControls.innerHTML = html;
+    }
+
+    // Handlers
+    function applyFilter() {
+      fetchData(1);
+    }
+
+    function resetFilter() {
+      filterTglAwal.value = "";
+      filterTglAkhir.value = "";
+      filterUnit.value = "";
+      filterJam.value = "";
+      fetchFilterOptions();
+      fetchData(1);
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById("pageSize").value, 10);
+      fetchData(1);
+    }
+
+    // Modal Upload
+    function openUploadModal() {
+      document.getElementById("uploadModal").classList.remove("hidden");
+      resetUploadModal();
+    }
+
+    function closeUploadModal() {
+      document.getElementById("uploadModal").classList.add("hidden");
+      resetUploadModal();
+    }
+
+    function resetUploadModal() {
+      selectedFile = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("selectedFileName").classList.add("hidden");
+      document.getElementById("selectedFileName").textContent = "";
+      document.getElementById("uploadProgressContainer").classList.add("hidden");
+      document.getElementById("uploadProgressBar").style.width = "0%";
+      document.getElementById("uploadPercentage").textContent = "0%";
+      document.getElementById("btnSubmitUpload").disabled = false;
+    }
+
+    function setupDragDrop() {
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("fileInput");
+
+      dropZone.addEventListener("click", () => fileInput.click());
+
+      ["dragenter", "dragover"].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.add("border-blue-500", "bg-blue-50/50");
+        });
+      });
+
+      ["dragleave", "drop"].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove("border-blue-500", "bg-blue-50/50");
+        });
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          processSelectedFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function handleFileSelect(e) {
+      if (e.target.files && e.target.files.length > 0) {
+        processSelectedFile(e.target.files[0]);
+      }
+    }
+
+    function processSelectedFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+        alert("Format file tidak didukung! Harap unggah file .xlsx, .xls, atau .csv");
+        return;
+      }
+      selectedFile = file;
+      const fileNameEl = document.getElementById("selectedFileName");
+      fileNameEl.textContent = `File terpilih: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      fileNameEl.classList.remove("hidden");
+    }
+
+    // Submit Upload via AJAX XMLHttpRequest
+    function submitUpload() {
+      if (!selectedFile) {
+        alert("Silakan pilih file terlebih dahulu!");
+        return;
+      }
+
+      const defaultUnit = document.getElementById("uploadDefaultUnit").value.trim();
+      const progressContainer = document.getElementById("uploadProgressContainer");
+      const progressBar = document.getElementById("uploadProgressBar");
+      const percentageText = document.getElementById("uploadPercentage");
+      const statusText = document.getElementById("uploadStatusText");
+      const btnSubmit = document.getElementById("btnSubmitUpload");
+
+      progressContainer.classList.remove("hidden");
+      btnSubmit.disabled = true;
+      statusText.textContent = "Mengunggah file ke server...";
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      if (defaultUnit) formData.append("unit", defaultUnit);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/v1/solar/dt-solar/upload", true);
+
+      xhr.upload.onprogress = function (e) {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percent + "%";
+          percentageText.textContent = percent + "%";
+          if (percent >= 100) {
+            statusText.textContent = "Mengurai 1 baris -> 6 baris dan menyimpan ke database dt_solar...";
+          }
+        }
+      };
+
+      xhr.onload = async function () {
+        btnSubmit.disabled = false;
+        if (xhr.status === 200) {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            progressBar.style.width = "100%";
+            percentageText.textContent = "100%";
+            statusText.textContent = "Selesai!";
+            alert(resp.message || "Import berhasil!");
+            closeUploadModal();
+            filterTglAwal.value = "";
+            filterTglAkhir.value = "";
+            filterUnit.value = "";
+            filterJam.value = "";
+            await fetchFilterOptions();
+            fetchData(1);
+          } catch (e) {
+            alert("Upload selesai, merefresh data...");
+            closeUploadModal();
+            filterTglAwal.value = "";
+            filterTglAkhir.value = "";
+            filterUnit.value = "";
+            filterJam.value = "";
+            await fetchFilterOptions();
+            fetchData(1);
+          }
+        } else {
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            alert("Gagal mengimpor: " + (resp.message || xhr.statusText));
+          } catch (e) {
+            alert("Gagal mengimpor: Server error (" + xhr.status + ")");
+          }
+          statusText.textContent = "Gagal memproses file.";
+        }
+      };
+
+      xhr.onerror = function () {
+        btnSubmit.disabled = false;
+        alert("Terjadi kesalahan jaringan saat mengunggah file.");
+        statusText.textContent = "Kesalahan jaringan.";
+      };
+
+      xhr.send(formData);
+    }
+
+    // Direct Import Sample Data
+    async function importSampleData() {
+      if (!confirm("Import sample data (75 baris -> 450 data solar) sekarang?")) return;
+
+      try {
+        const res = await fetch("/api/v1/solar/dt-solar/import-sample", { method: "POST" });
+        const json = await res.json();
+        if (json.status === "success") {
+          alert(json.message);
+          filterTglAwal.value = "";
+          filterTglAkhir.value = "";
+          filterUnit.value = "";
+          filterJam.value = "";
+          await fetchFilterOptions();
+          await fetchData(1);
+        } else {
+          alert("Gagal import sample: " + json.message);
+        }
+      } catch (err) {
+        alert("Error jaringan: " + err.message);
+      }
+    }
+
+    // Truncate Confirmation
+    async function confirmTruncate() {
+      const confirmed = confirm("PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA di tabel dt_solar?\nTindakan ini tidak dapat dibatalkan!");
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch("/api/v1/solar/dt-solar/truncate", { method: "DELETE" });
+        const json = await res.json();
+        if (json.status === "success") {
+          alert(json.message);
+          filterTglAwal.value = "";
+          filterTglAkhir.value = "";
+          filterUnit.value = "";
+          filterJam.value = "";
+          await fetchFilterOptions();
+          await fetchData(1);
+        } else {
+          alert("Gagal mengosongkan data: " + json.message);
+        }
+      } catch (err) {
+        alert("Error jaringan: " + err.message);
+      }
+    }
+
+    // Export to Excel (Client-side SheetJS)
+    async function exportToExcel() {
+      try {
+        const params = new URLSearchParams();
+        if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
+        if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+        if (filterUnit.value) params.append("unit", filterUnit.value);
+        if (filterJam.value) params.append("jam", filterJam.value);
+        params.append("page", 1);
+        params.append("limit", 10000); // Ambil semua data sesuai filter
+
+        const res = await fetch(`/api/v1/solar/dt-solar?${params.toString()}`);
+        const result = await res.json();
+
+        if (result.status !== "success" || !result.data || result.data.length === 0) {
+          alert("Tidak ada data untuk diekspor!");
+          return;
+        }
+
+        const excelData = result.data.map((r, idx) => ({
+          "No": idx + 1,
+          "Tanggal": r.tgl ? r.tgl.substring(0, 10) : "",
+          "Unit / No Alat": r.unit,
+          "Jam": r.jam,
+          "HM": r.hm,
+          "Awal (cm)": r.awal,
+          "Akhir (cm)": r.akhir,
+          "Isi (Liter)": r.isi,
+          "Satuan": r.satuan,
+          "Waktu Input": r.created ? r.created.replace("T", " ").substring(0, 19) : ""
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "dt_solar");
+        XLSX.writeFile(wb, `dt_solar_export_${new Date().toISOString().substring(0, 10)}.xlsx`);
+      } catch (err) {
+        alert("Gagal export excel: " + err.message);
+      }
+    }
+
+    // Helpers
+    function formatNumber(val, decimals = 1) {
+      if (val === null || val === undefined || isNaN(val)) return "0";
+      return Number(val).toLocaleString("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+    }
+
+    function formatDateTime(dtStr) {
+      if (!dtStr) return "-";
+      return dtStr.replace("T", " ").substring(0, 19);
+    }
+  </script>
+</body>
+</html>
