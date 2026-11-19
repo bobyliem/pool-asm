@@ -281,14 +281,32 @@
       return 'fa-solid fa-truck-moving';
     }
 
+    function isItemSelesai(item) {
+      if (!item) return false;
+      // Jika exitdate terisi dan bukan 'Belum Keluar'
+      if (item.exitdate && typeof item.exitdate === 'string' && item.exitdate.trim().length > 0 && item.exitdate.trim().toLowerCase() !== 'belum keluar') {
+        return true;
+      }
+      // Jika note atau notelate mengandung kata 'selesai'
+      const note = (item.note || '').toLowerCase();
+      const notelate = (item.notelate || '').toLowerCase();
+      if (note.includes('selesai') || notelate.includes('selesai')) {
+        return true;
+      }
+      return false;
+    }
+
     function renderUnitTypeCards(key) {
       const purpose = TAB_PURPOSE_MAP[key];
       const items = currentCategoryData[purpose] || [];
       const container = document.getElementById('unitTypeContainer');
       if (!container) return;
 
+      // Filter hanya data yang statusnya BUKAN "Selesai" agar jumlahnya sama persis dengan card atas
+      const nonSelesaiItems = items.filter(item => !isItemSelesai(item));
+
       const typeCounts = {};
-      items.forEach(item => {
+      nonSelesaiItems.forEach(item => {
         const t = getUnitType(item);
         typeCounts[t] = (typeCounts[t] || 0) + 1;
       });
@@ -297,13 +315,15 @@
         activeUnitType = 'ALL';
       }
 
-      const totalCount = items.length;
+      const totalCount = nonSelesaiItems.length;
       if (totalCount === 0) {
         container.innerHTML = `
-          <div class="px-3 py-1.5 text-xs text-slate-400 italic flex items-center gap-2">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Tidak ada unit untuk kategori ${purpose}</span>
-          </div>
+          <button onclick="filterByUnitType('ALL')" 
+                  class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 transition cursor-pointer shrink-0 bg-blue-600 text-white shadow-xs">
+            <i class="${getUnitTypeIcon('all')} text-xs"></i>
+            <span>Semua Unit</span>
+            <span class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center">0</span>
+          </button>
         `;
         return;
       }
