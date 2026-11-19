@@ -324,6 +324,10 @@ window.toggleSidebar = function() {
       sidebar.classList.remove('-translate-x-full');
       sidebar.classList.add('translate-x-0');
       if (backdrop) backdrop.classList.remove('hidden');
+      const activeLink = sidebar.querySelector('a.border-blue-600') || sidebar.querySelector('a.text-blue-600');
+      if (activeLink) {
+        setTimeout(() => activeLink.scrollIntoView({ block: 'center', behavior: 'smooth' }), 150);
+      }
     } else {
       sidebar.classList.add('-translate-x-full');
       sidebar.classList.remove('translate-x-0');

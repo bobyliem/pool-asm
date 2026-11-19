@@ -282,6 +282,29 @@ class AppSidebar extends HTMLElement {
 
     menuHTML += `</aside>`;
     this.innerHTML = menuHTML;
+
+    // Otomatis scroll sidebar agar submenu yang aktif langsung terlihat di tengah layar
+    this.scrollToActiveMenu();
+  }
+
+  scrollToActiveMenu() {
+    const doScroll = () => {
+      const aside = this.querySelector('#sidebarNav');
+      const activeLink = this.querySelector('a.border-blue-600') || this.querySelector('a.text-blue-600');
+      if (aside && activeLink) {
+        const asideRect = aside.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        
+        // Cek jika link berada di luar area tengah yang nyaman dilihat (jarak 30px dari atas/bawah)
+        if (linkRect.bottom > asideRect.bottom - 30 || linkRect.top < asideRect.top + 30) {
+          activeLink.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+      }
+    };
+
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 100);
+    setTimeout(doScroll, 300);
   }
 }
 
