@@ -263,6 +263,7 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 	// Ambil daftar menu yang diizinkan untuk group user ini
 	allowedMenuIDs, _ := h.authService.GetAllowedMenuIDs(sess.GrpID)
+	userMenus, _ := h.authService.GetUserMenus(sess.GrpID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
@@ -275,6 +276,7 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 			"group_name":       sess.GroupName,
 			"expires_at":       sess.ExpiresAt,
 			"allowed_menu_ids": allowedMenuIDs,
+			"menus":            userMenus,
 		},
 	})
 }
@@ -587,5 +589,41 @@ func (h *AuthHandler) SaveGroupMenus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Hak akses menu group berhasil diperbarui",
+	})
+}
+
+
+// GET /api/v1/auth/user-menus
+func (h *AuthHandler) GetUserMenus(c *gin.Context) {
+	var grpID int
+	if val, exists := c.Get("grp_id"); exists {
+		if id, ok := val.(int); ok {
+			grpID = id
+		}
+	}
+
+	if grpID == 0 {
+		token := h.extractToken(c)
+		if token != "" {
+			if sess, valid := h.authService.ValidateToken(token); valid && sess != nil {
+				grpID = sess.GrpID
+			}
+		}
+	}
+
+	if grpID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Unauthorized"})
+		return
+	}
+
+	menus, err := h.authService.GetUserMenus(grpID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   menus,
 	})
 }
