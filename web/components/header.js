@@ -28,47 +28,66 @@ class AppHeader extends HTMLElement {
     const isCsv = window.location.pathname.includes('/prj-csv');
 
     this.innerHTML = `
-      <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-30">
-        <div class="flex items-center space-x-4">
-          <img src="/web/images/logo-sar.png" onerror="this.onerror=null;this.src='https://workshop.sampurna-group.com/images/logo-sar.png'" alt="SAR Logo" class="h-8 w-auto object-contain" />
-          <h1 class="text-lg font-bold text-gray-800 tracking-wide">${appTitle}</h1>
-          <button onclick="window.toggleSidebar()" class="text-gray-500 hover:text-gray-700 ml-4 focus:outline-none cursor-pointer">
+      <header class="bg-white border-b border-gray-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-xs sticky top-0 z-30">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Tombol Hamburger: Paling kiri sebelum logo agar mudah dijangkau jempol -->
+          <button onclick="window.toggleSidebar()" class="text-gray-600 hover:text-gray-900 p-1.5 -ml-1 rounded-lg hover:bg-gray-100 focus:outline-none cursor-pointer" title="Menu Navigasi">
             <i class="fa-solid fa-bars text-lg"></i>
           </button>
-        </div>
-        <div class="flex items-center space-x-3">
-          <!-- Tombol Sync CSV: HANYA MUNCUL DI PRJ-CSV, TIDAK MUNCUL DI PRJ-HO -->
-          ${isCsv ? `
-            <button id="navBtnSyncCsv" onclick="window.triggerNavCsvSync()" class="text-blue-600 hover:text-blue-800 text-xs font-semibold flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition cursor-pointer" title="Sinkronisasi Data CSV Terbaru dari Background">
-              <i id="navBtnSyncIcon" class="fa-solid fa-rotate"></i>
-              <span id="navBtnSyncText">Sync CSV</span>
-            </button>
-          ` : ''}
 
+          <!-- Logo SAR & Judul (Di mobile HANYA logo yang muncul agar space lega) -->
+          <a href="/prj-csv" class="flex items-center gap-2">
+            <img src="/web/images/logo-sar.png" onerror="this.onerror=null;this.src='https://workshop.sampurna-group.com/images/logo-sar.png'" alt="SAR Logo" class="h-7 sm:h-8 w-auto object-contain" />
+            <h1 class="hidden sm:block text-base sm:text-lg font-bold text-gray-800 tracking-wide">${appTitle}</h1>
+          </a>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <!-- WhatsApp Bot Status Indicator Pill (Badge Monitoring) -->
+          <a id="navWaStatusLink" href="/wa/qr" target="_blank" class="border border-slate-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none shadow-2xs text-slate-500" title="Memeriksa status WhatsApp Bot...">
+            <div class="relative flex items-center justify-center">
+              <i class="fa-brands fa-whatsapp text-sm sm:text-base text-slate-600" id="navWaStatusIcon"></i>
+              <span id="navWaStatusPing" class="hidden absolute -top-1 -right-1 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+            </div>
+            <span id="navWaStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span id="navWaStatusText" class="text-[11px] sm:text-xs font-bold text-slate-600 truncate max-w-[80px] sm:max-w-[120px]">WA: Cek...</span>
+          </a>
           <!-- User Profile Dropdown Button -->
           <div class="relative">
-            <div id="navUserProfileBtn" onclick="window.toggleUserMenu(event)" class="border border-blue-200/80 rounded-xl px-3 py-1 flex items-center gap-2.5 bg-blue-50/70 hover:bg-blue-100/80 cursor-pointer transition select-none shadow-2xs">
+            <div id="navUserProfileBtn" onclick="window.toggleUserMenu(event)" class="border border-blue-200/80 rounded-xl px-2.5 sm:px-3 py-1 flex items-center gap-2 sm:gap-2.5 bg-blue-50/70 hover:bg-blue-100/80 cursor-pointer transition select-none shadow-2xs">
               <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                 <i class="fa-regular fa-user text-xs"></i>
               </div>
               <div class="flex flex-col text-left leading-tight">
-                <span id="navUserName" class="text-xs font-bold text-slate-800 truncate max-w-[140px]">${initialName}</span>
-                <span id="navUserGroup" class="text-[10px] font-semibold text-blue-600 uppercase tracking-wider truncate max-w-[140px]">${initialGroup}</span>
+                <span id="navUserName" class="text-xs font-bold text-slate-800 truncate max-w-[85px] sm:max-w-[140px]">${initialName}</span>
+                <span id="navUserGroup" class="text-[9.5px] sm:text-[10px] font-semibold text-blue-600 uppercase tracking-wider truncate max-w-[85px] sm:max-w-[140px]">${initialGroup}</span>
               </div>
               <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 ml-0.5"></i>
             </div>
 
             <!-- Dropdown Menu -->
-            <div id="navUserDropdown" class="hidden absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 text-xs">
-              <div class="px-3.5 py-2 border-b border-slate-100 text-[11px]">
+            <div id="navUserDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 text-xs">
+              <div class="px-3.5 py-2 border-b border-slate-100 text-[11px] bg-slate-50/60 rounded-t-xl">
                 <div class="font-bold text-slate-800 truncate" id="dropdownUserNama">${userName}</div>
-                <div class="text-blue-600 text-[10px] font-semibold uppercase tracking-wider truncate" id="dropdownUserGroup">Role</div>
+                <div class="text-blue-600 text-[10px] font-semibold uppercase tracking-wider truncate" id="dropdownUserGroup">${initialGroup}</div>
               </div>
-              <button onclick="window.openChangePasswordModal()" class="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2.5 transition cursor-pointer">
+
+              <!-- Tombol Sync CSV: Ditaruh di bawah nama user di kanan atas! Hemat space & rapi! -->
+              ${isCsv ? `
+                <button id="navBtnSyncCsv" onclick="window.triggerNavCsvSync(); window.closeUserMenu();" class="w-full text-left px-3.5 py-2.5 text-blue-600 hover:bg-blue-50 font-semibold flex items-center gap-2.5 transition cursor-pointer border-b border-slate-100" title="Sinkronisasi Data CSV Terbaru dari Background">
+                  <i id="navBtnSyncIcon" class="fa-solid fa-rotate text-xs text-blue-500"></i>
+                  <span id="navBtnSyncText">Sync CSV</span>
+                </button>
+              ` : ''}
+
+              <button onclick="window.openChangePasswordModal()" class="w-full text-left px-3.5 py-2.5 text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2.5 transition cursor-pointer">
                 <i class="fa-solid fa-key text-xs text-blue-500"></i>
                 <span>Change Pass</span>
               </button>
-              <button onclick="window.handleUserLogout()" class="w-full text-left px-3.5 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition cursor-pointer border-t border-slate-100">
+              <button onclick="window.handleUserLogout()" class="w-full text-left px-3.5 py-2.5 text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition cursor-pointer border-t border-slate-100">
                 <i class="fa-solid fa-right-from-bracket text-xs text-rose-500"></i>
                 <span>Logout</span>
               </button>
@@ -148,11 +167,10 @@ class AppHeader extends HTMLElement {
     if (isCsv) {
       window.checkNavSyncStatus();
     }
-  }
-}
 
-if (!customElements.get('app-header')) {
-  customElements.define('app-header', AppHeader);
+    // Inisialisasi Monitoring Status WhatsApp
+    window.initNavWhatsAppStatus();
+  }
 }
 
 // ==========================================
@@ -192,6 +210,7 @@ window.checkAuthSession = async function() {
     if (json.status === 'success' && json.data) {
       const u = json.data;
       sessionStorage.setItem('current_user', JSON.stringify(u));
+      window.dispatchEvent(new CustomEvent('auth-updated', { detail: u }));
 
       const nameEl = document.getElementById('navUserName');
       const groupEl = document.getElementById('navUserGroup');
@@ -213,6 +232,13 @@ window.toggleUserMenu = function(e) {
   const dropdown = document.getElementById('navUserDropdown');
   if (dropdown) {
     dropdown.classList.toggle('hidden');
+  }
+};
+
+window.closeUserMenu = function() {
+  const dropdown = document.getElementById('navUserDropdown');
+  if (dropdown) {
+    dropdown.classList.add('hidden');
   }
 };
 
@@ -288,8 +314,23 @@ window.submitChangePassword = async function(e) {
 
 window.toggleSidebar = function() {
   const sidebar = document.getElementById('sidebarNav');
-  if (sidebar) {
-    sidebar.classList.toggle('hidden');
+  const backdrop = document.getElementById('sidebarBackdrop');
+  if (!sidebar) return;
+
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    const isClosed = sidebar.classList.contains('-translate-x-full');
+    if (isClosed) {
+      sidebar.classList.remove('-translate-x-full');
+      sidebar.classList.add('translate-x-0');
+      if (backdrop) backdrop.classList.remove('hidden');
+    } else {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+  } else {
+    sidebar.classList.toggle('md:hidden');
   }
 };
 
@@ -483,3 +524,86 @@ window.dismissNavSyncBanner = function() {
   const banner = document.getElementById('navSyncBanner');
   if (banner) banner.classList.add('hidden');
 };
+
+
+// Monitoring Status Realtime WhatsApp Bot
+window.initNavWhatsAppStatus = function() {
+  const checkStatus = async () => {
+    try {
+      const res = await fetch('/wa/status');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const data = json.data || {};
+      const isLoggedIn = data.is_logged_in === true;
+      const isConnected = data.status === 'CONNECTED';
+      const phone = data.phone && data.phone !== '-' ? data.phone : '';
+
+      const link = document.getElementById('navWaStatusLink');
+      const icon = document.getElementById('navWaStatusIcon');
+      const ping = document.getElementById('navWaStatusPing');
+      const dot = document.getElementById('navWaStatusDot');
+      const text = document.getElementById('navWaStatusText');
+
+      if (!link) return;
+
+      if (isLoggedIn && isConnected) {
+        // ONLINE (Hijau)
+        link.className = 'border border-emerald-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-emerald-50/80 hover:bg-emerald-100 cursor-pointer transition select-none shadow-2xs text-emerald-700';
+        link.title = `WhatsApp Bot: ONLINE\nNomor: ${phone || 'Terhubung'}\nKlik untuk melihat status`;
+        link.href = '/wa/qr';
+        if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-emerald-600';
+        if (ping) ping.classList.add('hidden');
+        if (dot) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+          dot.classList.remove('hidden');
+        }
+        if (text) {
+          text.className = 'text-[11px] sm:text-xs font-bold text-emerald-800 truncate max-w-[80px] sm:max-w-[120px]';
+          text.innerText = phone ? `WA: ${phone}` : 'WA: Online';
+        }
+      } else {
+        // OFFLINE / Perlu Scan (Merah) -> Klik langsung ke /wa/qr untuk scan!
+        link.className = 'border border-rose-300 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-rose-50 hover:bg-rose-100 cursor-pointer transition select-none shadow-2xs text-rose-700 animate-pulse sm:animate-none';
+        link.title = 'WhatsApp Bot OFFLINE / Belum Login!\nKlik di sini untuk langsung Scan QR Code WhatsApp';
+        link.href = '/wa/qr';
+        if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-rose-600';
+        if (dot) dot.classList.add('hidden');
+        if (ping) ping.classList.remove('hidden');
+        if (text) {
+          text.className = 'text-[11px] sm:text-xs font-black text-rose-700 truncate max-w-[80px] sm:max-w-[120px]';
+          text.innerText = 'Scan WA';
+        }
+      }
+    } catch (err) {
+      const link = document.getElementById('navWaStatusLink');
+      const icon = document.getElementById('navWaStatusIcon');
+      const ping = document.getElementById('navWaStatusPing');
+      const dot = document.getElementById('navWaStatusDot');
+      const text = document.getElementById('navWaStatusText');
+      if (link) {
+        link.className = 'border border-rose-200 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-rose-50 text-rose-700 cursor-pointer shadow-2xs';
+        link.title = 'WhatsApp Bot OFFLINE. Klik untuk Scan QR.';
+        link.href = '/wa/qr';
+      }
+      if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-rose-600';
+      if (dot) dot.classList.add('hidden');
+      if (ping) ping.classList.remove('hidden');
+      if (text) {
+        text.className = 'text-[11px] sm:text-xs font-bold text-rose-700';
+        text.innerText = 'Scan WA';
+      }
+    }
+  };
+
+  // Cek segera saat pertama kali dimuat
+  checkStatus();
+
+  // Polling berkala setiap 15 detik
+  if (!window._navWaStatusInterval) {
+    window._navWaStatusInterval = setInterval(checkStatus, 15000);
+  }
+};
+
+if (!customElements.get('app-header')) {
+  customElements.define('app-header', AppHeader);
+}

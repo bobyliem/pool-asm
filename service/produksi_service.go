@@ -9,6 +9,8 @@ type ProduksiService interface {
 	GetResumePerHari(tglAwal, tglAkhir string) (*models.ResumePerHariResponse, error)
 	GetSummaryPerDriver(tglAwal, tglAkhir string) (*models.SummaryPerDriverResponse, error)
 	GetMonitoringRitase(tglAwal, tglAkhir string) (*models.MonitoringRitaseResponse, error)
+	GetTransferOut(filter models.TransferOutFilter) (*models.TransferOutResponse, error)
+	GetTransferOutFilterOptions() (*models.TransferOutFilterOptions, error)
 }
 
 type produksiService struct {
@@ -29,4 +31,12 @@ func (s *produksiService) GetSummaryPerDriver(tglAwal, tglAkhir string) (*models
 
 func (s *produksiService) GetMonitoringRitase(tglAwal, tglAkhir string) (*models.MonitoringRitaseResponse, error) {
 	return s.repo.GetMonitoringRitase(tglAwal, tglAkhir)
+}
+
+func (s *produksiService) GetTransferOut(filter models.TransferOutFilter) (*models.TransferOutResponse, error) {
+	return s.repo.GetTransferOut(filter)
+}
+
+func (s *produksiService) GetTransferOutFilterOptions() (*models.TransferOutFilterOptions, error) {
+	return s.repo.GetTransferOutFilterOptions()
 }

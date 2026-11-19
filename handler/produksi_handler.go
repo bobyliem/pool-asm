@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"asm/models"
 	"asm/service"
 
 	"github.com/gin-gonic/gin"
@@ -98,5 +99,48 @@ func (h *ProduksiHandler) GetMonitoringRitase(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   res,
+	})
+}
+
+func (h *ProduksiHandler) GetTransferOut(c *gin.Context) {
+	var filter models.TransferOutFilter
+	_ = c.ShouldBindQuery(&filter)
+
+	now := time.Now()
+	if filter.TglAwal == "" {
+		filter.TglAwal = now.Format("2006-01-02")
+	}
+	if filter.TglAkhir == "" {
+		filter.TglAkhir = now.Format("2006-01-02")
+	}
+
+	res, err := h.produksiSvc.GetTransferOut(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal mengambil data transfer out: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   res,
+	})
+}
+
+func (h *ProduksiHandler) GetTransferOutFilterOptions(c *gin.Context) {
+	opts, err := h.produksiSvc.GetTransferOutFilterOptions()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal mengambil opsi filter transfer out: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   opts,
 	})
 }

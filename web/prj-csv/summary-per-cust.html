@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -17,8 +17,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Modul Komponen Header & Sidebar -->
-  <script src="/web/components/header.js?v=8" defer></script>
-  <script src="/web/components/sidebar.js?v=8" defer></script>
+  <script src="/web/components/header.js?v=11" defer></script>
+  <script src="/web/components/sidebar.js?v=11" defer></script>
 
   <style>
     /* Custom scrollbar */
@@ -125,6 +125,7 @@
             <select id="filterCustomer"
               class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
               <option value="ALL">ALL (Semua Customer)</option>
+              <option value="EXCLUDE_SAR">All (Exclude SAR)</option>
             </select>
           </div>
 
@@ -443,7 +444,10 @@
       }
       if (!area) area = 'ALL';
 
-      const c = encodeURIComponent(cust || 'ALL');
+      let selectedCust = document.getElementById('filterCustomer') ? document.getElementById('filterCustomer').value : 'ALL';
+      let effectiveCust = cust || 'ALL';
+      if (effectiveCust === 'ALL' && selectedCust && selectedCust !== 'ALL') { effectiveCust = selectedCust; }
+      const c = encodeURIComponent(effectiveCust);
       const s = encodeURIComponent(status || 'ALL');
       const k = encodeURIComponent(cat || 'ALL');
       const a = encodeURIComponent(area);

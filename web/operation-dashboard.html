@@ -1,15 +1,16 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sampurna Workshop - Operation Dashboard (Compact 6 Columns)</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Modul Komponen Header & Sidebar -->
-    <script src="/web/components/header.js?v=8" defer></script>
-    <script src="/web/components/sidebar.js?v=8" defer></script>
+    <script src="/web/components/header.js?v=11" defer></script>
+    <script src="/web/components/sidebar.js?v=11" defer></script>
 
     <style>
         /* Custom scrollbar tipis agar hemat space */
@@ -112,7 +113,7 @@
           <div class="lg:col-span-4 grid grid-cols-2 gap-3">
               
               <!-- Service & Filter Reminder -->
-              <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between">
+              <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between h-full">
                   <div class="font-bold text-slate-800 text-xs mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
                       <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Reminder
                   </div>
@@ -128,20 +129,32 @@
                   </div>
               </div>
 
-              <!-- Visitor -->
-              <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between">
-                  <div class="font-bold text-slate-800 text-xs mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
-                      <i class="fa-solid fa-users text-indigo-600"></i> Visitor
+              <!-- Visitor + Filter Area (Di kanan atas, bawahnya header) -->
+              <div class="flex flex-col gap-2 justify-between">
+                  <!-- Visitor Card -->
+                  <div class="bg-white border border-slate-300 rounded p-2.5 shadow-xs flex flex-col justify-between flex-1">
+                      <div class="font-bold text-slate-800 text-xs mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                          <i class="fa-solid fa-users text-indigo-600"></i> Visitor
+                      </div>
+                      <div class="space-y-1.5 text-[10px]">
+                          <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                              <span class="font-medium text-slate-600"><i class="fa-solid fa-right-to-bracket mr-1 text-emerald-600"></i> Outside</span>
+                              <span class="font-bold text-slate-800 text-xs">0</span>
+                          </div>
+                          <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
+                              <span class="font-medium text-slate-600"><i class="fa-solid fa-user-secret mr-1 text-rose-600"></i> Intruder</span>
+                              <span class="font-bold text-rose-600 text-xs">0</span>
+                          </div>
+                      </div>
                   </div>
-                  <div class="space-y-1.5 text-[10px]">
-                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
-                          <span class="font-medium text-slate-600"><i class="fa-solid fa-right-to-bracket mr-1 text-emerald-600"></i> Outside</span>
-                          <span class="font-bold text-slate-800 text-xs">0</span>
-                      </div>
-                      <div class="flex justify-between items-center bg-slate-50 p-1 rounded border border-slate-200">
-                          <span class="font-medium text-slate-600"><i class="fa-solid fa-user-secret mr-1 text-rose-600"></i> Intruder</span>
-                          <span class="font-bold text-rose-600 text-xs">0</span>
-                      </div>
+
+                  <!-- Filter Area Dropdown (Di bawahnya Card Visitor) -->
+                  <div class="flex items-center gap-1.5 bg-white border border-slate-300 rounded px-2.5 py-1.5 shadow-xs">
+                      <i class="fa-solid fa-location-dot text-blue-600 text-xs shrink-0"></i>
+                      <span class="text-[11px] font-semibold text-slate-600 shrink-0">Area:</span>
+                      <select id="filterArea" onchange="onAreaChange(this.value)" class="text-[11px] font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer w-full truncate">
+                          <option value="ALL">All Area</option>
+                      </select>
                   </div>
               </div>
 
@@ -344,9 +357,37 @@
   </div>
 
   <script>
+    let currentAreaFilter = 'ALL';
+
+    async function fetchSites() {
+      try {
+        const response = await fetch('/api/v1/dashboard/operation/sites');
+        const res = await response.json();
+        if (res.status === 'success' && Array.isArray(res.data)) {
+          const select = document.getElementById('filterArea');
+          if (!select) return;
+          
+          let html = '<option value="ALL">All Area</option>';
+          res.data.forEach(s => {
+            html += `<option value="${s.id}">${s.name}</option>`;
+          });
+          select.innerHTML = html;
+          select.value = currentAreaFilter;
+        }
+      } catch (err) {
+        console.error('Error fetching sites:', err);
+      }
+    }
+
+    function onAreaChange(val) {
+      currentAreaFilter = val || 'ALL';
+      fetchOperationData();
+    }
+
     async function fetchOperationData() {
       try {
-        const response = await fetch('/api/v1/dashboard/operation');
+        const url = `/api/v1/dashboard/operation?site_id=${encodeURIComponent(currentAreaFilter)}`;
+        const response = await fetch(url);
         const res = await response.json();
         if (res.status === 'success') {
           const data = res.data;
@@ -436,6 +477,10 @@
               return foundKey ? data.unit_cards[foundKey] : [];
             };
 
+            // Aturan filter: kalo "All", Baris kedua pada header card menampilkan nama Area terkait.
+            // Jika filter Area dipilih ke Area spesifik: Informasi area pada baris kedua card tidak dimunculkan (header card tetap ringkas 1 baris).
+            const showAreaInCard = (currentAreaFilter === 'ALL' || !currentAreaFilter);
+
             categories.forEach(cat => {
               const container = document.getElementById(`col_${cat.id}_cards`);
               if (!container) return;
@@ -449,22 +494,29 @@
               container.innerHTML = cards.map((item, idx) => {
                 const theme = getTheme(item.statue);
                 const truckIconColor = item.is_overdue === 1 ? 'text-rose-600' : 'text-slate-700';
-                const isAsuransiCard = col.id === 'Asuransi' || (item.kategori || '').toLowerCase().includes('asuransi');
+                const isLightBg = (item.statue || '').trim().toLowerCase() === 'antrian';
+                const areaTextColor = isLightBg ? 'text-slate-800 border-slate-700/20' : 'text-slate-100 border-white/20';
+
                 return `
                   <div class="border border-slate-300 rounded bg-white text-[11px] overflow-hidden shadow-2xs shrink-0">
-                      <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex justify-between items-center">
-                          <span>${idx + 1}. ${item.statue || '-'}</span>
-                          <span class="font-normal text-[9px]">${item.entry_date || '-'}</span>
+                      <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex flex-col justify-center">
+                          <div class="flex justify-between items-center">
+                              <span>${idx + 1}. ${item.statue || '-'}</span>
+                              <span class="font-normal text-[9px]">${item.entry_date || '-'}</span>
+                          </div>
+                          ${showAreaInCard && item.area_name ? `
+                              <div class="text-[9px] font-semibold ${areaTextColor} flex items-center gap-1 border-t pt-0.5 mt-0.5">
+                                  <i class="fa-solid fa-location-dot text-[8px] opacity-80"></i>
+                                  <span class="truncate">${item.area_name}</span>
+                              </div>
+                          ` : ''}
                       </div>
                       <div class="px-2 pt-1.5 pb-3 flex gap-2 items-center">
                           <i class="fa-solid fa-truck ${truckIconColor} text-lg shrink-0"></i>
                           <div class="leading-tight w-full min-w-0">
                               <div class="font-bold text-slate-900 truncate text-[11px]">${item.driver || '-'}</div>
                               <div class="flex justify-between text-[10px] text-slate-600 mt-0.5">
-                                  <span class="font-semibold truncate flex items-center gap-0.5">
-                                    <span class="truncate">${item.nopol || '-'}</span>
-                                    ${isAsuransiCard ? '<i class="fa-solid fa-shield-halved text-blue-600 ml-1 text-[10px]" title="Kategori Asuransi"></i>' : ''}
-                                  </span>
+                                  <span class="font-semibold truncate">${item.nopol || '-'}</span>
                                   <span class="font-bold text-slate-600 shrink-0 ml-1">${item.cust_code || '-'}</span>
                               </div>
                               <div class="text-[9px] ${theme.label} font-medium mt-1 pt-1 border-t border-slate-200 flex justify-between items-center">
@@ -484,7 +536,10 @@
       }
     }
 
-    window.onload = fetchOperationData;
+    window.onload = async function() {
+      await fetchSites();
+      await fetchOperationData();
+    };
   </script>
 </body>
 </html>

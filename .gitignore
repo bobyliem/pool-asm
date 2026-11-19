@@ -5,3 +5,24 @@ MyWork/
 # File sistem atau sampah OS
 .DS_Store
 Thumbs.db
+
+# Additional file types to ignore
+*.xlsx
+*.csv
+*.exe
+
+# Abaikan semua file environment
+.env
+.env.*
+!.env.example
+
+# WhatsApp session & SQLite
+data/
+*.db
+*.db-*
+
+pool-dashboard/
+
+
+*.exe~
+scratch/
