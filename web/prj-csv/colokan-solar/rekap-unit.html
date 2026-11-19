@@ -262,16 +262,13 @@
                 </th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Selisih Netto = Pengisian - Pemakaian">Netto (Ltr)</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Rata-rata Pemakaian Solar per Hari Kerja">Avg Ltr/Hari</th>
-                <th class="py-2 px-3 text-center border-r border-slate-200 bg-purple-50/50 cursor-pointer hover:bg-purple-100/60" onclick="sortTable('ltr_per_hm')">
-                  Rasio (L/HM) <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
-                </th>
                 <th class="py-2 px-2.5 text-center w-20">Status</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
               <!-- Loading State -->
               <tr>
-                <td colspan="15" class="py-12 text-center text-slate-400">
+                <td colspan="14" class="py-12 text-center text-slate-400">
                   <div class="flex flex-col items-center justify-center gap-2">
                     <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
                     <span>Memuat summary operasional per unit...</span>
@@ -536,9 +533,6 @@
             <td class="py-2 px-3 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.total_isi_liter, 1)}</td>
             <td class="py-2 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
             <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.avg_pakai_per_hari, 1)}</td>
-            <td class="py-2 px-3 text-center border-r border-slate-100 bg-purple-50/20 font-bold ${row.ltr_per_hm > 40 ? 'text-rose-700' : 'text-purple-800'}">
-              ${row.total_hm > 0 ? formatNum(row.ltr_per_hm, 2) : '-'}
-            </td>
             <td class="py-2 px-2.5 text-center">${statusBadge}</td>
           </tr>
         `;
@@ -550,7 +544,7 @@
     function showEmptyTable(message) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="15" class="py-12 text-center text-slate-400">
+          <td colspan="14" class="py-12 text-center text-slate-400">
             <div class="flex flex-col items-center justify-center gap-2">
               <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
               <span>${message}</span>
