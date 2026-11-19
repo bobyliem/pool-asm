@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -298,10 +299,11 @@ func (s *solarService) ImportDtSolarFromReader(r io.Reader, filename string, def
 			}
 
 			fRows, dRows, err := s.ImportDtSolarFromRows(rows, unitName)
-			if err == nil {
-				totalFileRows += fRows
-				totalDtRows += dRows
+			if err != nil {
+				return 0, 0, fmt.Errorf("gagal import sheet '%s': %w", sheetName, err)
 			}
+			totalFileRows += fRows
+			totalDtRows += dRows
 		}
 
 		if totalDtRows > 0 {
@@ -313,23 +315,46 @@ func (s *solarService) ImportDtSolarFromReader(r io.Reader, filename string, def
 		return totalFileRows, totalDtRows, nil
 	}
 
-	// CSV Reader
-	csvReader := csv.NewReader(r)
+	// CSV Reader with automatic delimiter detection & BOM handling
+	content, err := io.ReadAll(r)
+	if err != nil {
+		return 0, 0, fmt.Errorf("gagal membaca file CSV: %w", err)
+	}
+
+	// Strip UTF-8 BOM if present
+	content = bytes.TrimPrefix(content, []byte("\xef\xbb\xbf"))
+
+	comma := ','
+	firstLine := ""
+	if idx := bytes.IndexByte(content, '\n'); idx != -1 {
+		firstLine = string(content[:idx])
+	} else {
+		firstLine = string(content)
+	}
+	if strings.Count(firstLine, ";") > strings.Count(firstLine, ",") {
+		comma = ';'
+	}
+
+	csvReader := csv.NewReader(bytes.NewReader(content))
+	csvReader.Comma = comma
 	csvReader.LazyQuotes = true
 	csvReader.FieldsPerRecord = -1 // Allow variable number of fields
 
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		return 0, 0, fmt.Errorf("gagal membaca file CSV: %w", err)
+		return 0, 0, fmt.Errorf("gagal membaca format CSV: %w", err)
 	}
 
 	fRows, dRows, err := s.ImportDtSolarFromRows(records, defaultUnit)
-	if err == nil && dRows > 0 {
+	if err != nil {
+		return 0, 0, err
+	}
+	if dRows > 0 {
 		if syncErr := s.PostImportSync(); syncErr != nil {
 			log.Printf("[SolarService] Warning PostImportSync error: %v", syncErr)
 		}
 	}
-	return fRows, dRows, err
+	return fRows, dRows, nil
 }
 
 // PostImportSync runs Query 1 and Query 2 after import data
@@ -398,11 +423,12 @@ func (s *solarService) GetDetailPoints(tgl string, unit string) ([]models.DtSola
 
 // GetLaporanFilterOptions retrieves filter options
 func (s *solarService) GetLaporanFilterOptions() (map[string]interface{}, error) {
-	units, minTgl, maxTgl, err := s.repo.GetLaporanFilterOptions()
+	areas, units, minTgl, maxTgl, err := s.repo.GetLaporanFilterOptions()
 	if err != nil {
 		return nil, err
 	}
 	return map[string]interface{}{
+		"areas":   areas,
 		"units":   units,
 		"min_tgl": minTgl,
 		"max_tgl": maxTgl,
