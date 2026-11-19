@@ -520,13 +520,37 @@ func parseDate(val string) (time.Time, error) {
 		"2/1/2006",
 		"2-1-2006",
 		"2.1.2006",
+		"02/01/06",
+		"2/1/06",
+		"02-01-06",
+		"2-1-06",
+		"02.01.06",
+		"2.1.06",
 		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
 		"2006-01-02T15:04:05",
+		"02/01/2006 15:04:05",
+		"02/01/2006 15:04",
+		"02-01-2006 15:04:05",
+		"02-01-2006 15:04",
+		"2006/01/02 15:04:05",
+		"2006/01/02 15:04",
+		"02/01/06 15:04",
+		"02/01/06 15:04:05",
 	}
 
 	for _, fmtStr := range formats {
 		if t, err := time.ParseInLocation(fmtStr, sNorm, time.Local); err == nil {
 			return t, nil
+		}
+	}
+
+	// Coba ambil hanya bagian tanggal sebelum spasi jika ada format tanggal + jam
+	if parts := strings.Fields(sNorm); len(parts) > 1 {
+		for _, fmtStr := range formats {
+			if t, err := time.ParseInLocation(fmtStr, parts[0], time.Local); err == nil {
+				return t, nil
+			}
 		}
 	}
 

@@ -29,7 +29,7 @@ type SolarRepository interface {
 	GetLaporanRekapUnit(filter models.LaporanRekapUnitFilter) ([]models.LaporanRekapUnitItem, models.LaporanRekapUnitSummary, error)
 	GetLaporanRekonsiliasi(filter models.LaporanRekonsiliasiFilter) ([]models.LaporanRekonsiliasiItem, int64, models.LaporanRekonsiliasiSummary, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
-	GetLaporanFilterOptions() ([]string, string, string, error)
+	GetLaporanFilterOptions() ([]string, []string, string, string, error)
 }
 
 type solarRepository struct {
@@ -375,6 +375,11 @@ func (r *solarRepository) GetLaporanDetailHarian(filter models.LaporanDetailHari
 		baseWhere += " AND s.tgl <= ?"
 		args = append(args, filter.TglAkhir)
 	}
+	cleanArea := strings.TrimSpace(filter.Area)
+	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
+		baseWhere += " AND u.area = ?"
+		args = append(args, cleanArea)
+	}
 	cleanUnit := strings.TrimSpace(filter.Unit)
 	if cleanUnit != "" && !strings.EqualFold(cleanUnit, "all") && !strings.EqualFold(cleanUnit, "Semua Unit") {
 		baseWhere += " AND s.unit = ?"
@@ -425,14 +430,17 @@ LEFT JOIN dt_solar_unit u ON s.unit = u.unit
 SELECT 
     s.id,
     DATE_FORMAT(s.tgl, '%%Y-%%m-%%d') AS tgl,
+    COALESCE(u.area, '-') AS area,
     s.unit,
     s.hm_awal,
     s.hm_akhir,
     ROUND(s.hm_akhir - s.hm_awal, 2) AS total_hm,
+    COALESCE(s.saldoawal, 0) AS saldo_awal,
     s.pakai AS pakai_cm,
     COALESCE(u.konsumsi, 0) AS konsumsi,
     ROUND(s.pakai * COALESCE(u.konsumsi, 0), 2) AS pakai_liter,
     s.isi AS isi_liter,
+    COALESCE(s.saldoakhir, 0) AS saldo_akhir,
     CASE 
         WHEN (s.hm_akhir - s.hm_awal) > 0 THEN ROUND((s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal), 2)
         ELSE 0
@@ -470,26 +478,41 @@ func (r *solarRepository) GetLaporanRekapUnit(filter models.LaporanRekapUnitFilt
 		baseWhere += " AND s.tgl <= ?"
 		args = append(args, filter.TglAkhir)
 	}
+	cleanArea := strings.TrimSpace(filter.Area)
+	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
+		baseWhere += " AND u.area = ?"
+		args = append(args, cleanArea)
+	}
 	cleanUnit := strings.TrimSpace(filter.Unit)
 	if cleanUnit != "" && !strings.EqualFold(cleanUnit, "all") && !strings.EqualFold(cleanUnit, "Semua Unit") {
 		baseWhere += " AND s.unit = ?"
 		args = append(args, cleanUnit)
 	}
 
+	statusOrderCase := `
+    CASE 
+        WHEN SUM(s.hm_akhir - s.hm_awal) <= 0 THEN 4
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 20 
+             AND (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 1
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 40 THEN 2
+        ELSE 3
+    END ASC`
+
 	var groupByClause, periodSelect, orderByClause string
 	if filter.GroupBy == "month_unit" {
 		periodSelect = "DATE_FORMAT(s.tgl, '%Y-%m') AS period"
-		groupByClause = "GROUP BY DATE_FORMAT(s.tgl, '%Y-%m'), s.unit, u.konsumsi"
-		orderByClause = "ORDER BY period DESC, s.unit ASC"
+		groupByClause = "GROUP BY DATE_FORMAT(s.tgl, '%Y-%m'), s.unit, u.konsumsi, u.area"
+		orderByClause = fmt.Sprintf("ORDER BY period DESC, COALESCE(u.area, '-') ASC, %s, s.unit ASC", statusOrderCase)
 	} else {
 		periodSelect = "'Semua Periode' AS period"
-		groupByClause = "GROUP BY s.unit, u.konsumsi"
-		orderByClause = "ORDER BY s.unit ASC"
+		groupByClause = "GROUP BY s.unit, u.konsumsi, u.area"
+		orderByClause = fmt.Sprintf("ORDER BY COALESCE(u.area, '-') ASC, %s, s.unit ASC", statusOrderCase)
 	}
 
 	querySQL := fmt.Sprintf(`
 SELECT 
     %s,
+    COALESCE(u.area, '-') AS area,
     s.unit,
     COUNT(DISTINCT s.tgl) AS hari_kerja,
     MIN(s.hm_awal) AS min_hm_awal,
@@ -507,6 +530,7 @@ SELECT
         ELSE 0
     END AS ltr_per_hm,
     CASE
+        WHEN SUM(s.hm_akhir - s.hm_awal) <= 0 THEN 'Idle'
         WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 20 THEN 'Efisien'
         WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 'Moderat'
         ELSE 'Tinggi'
@@ -564,6 +588,11 @@ func (r *solarRepository) GetLaporanRekonsiliasi(filter models.LaporanRekonsilia
 		baseWhere += " AND s.tgl <= ?"
 		args = append(args, filter.TglAkhir)
 	}
+	cleanArea := strings.TrimSpace(filter.Area)
+	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
+		baseWhere += " AND u.area = ?"
+		args = append(args, cleanArea)
+	}
 	cleanUnit := strings.TrimSpace(filter.Unit)
 	if cleanUnit != "" && !strings.EqualFold(cleanUnit, "all") && !strings.EqualFold(cleanUnit, "Semua Unit") {
 		baseWhere += " AND s.unit = ?"
@@ -574,6 +603,7 @@ func (r *solarRepository) GetLaporanRekonsiliasi(filter models.LaporanRekonsilia
 SELECT 
     s.id,
     DATE_FORMAT(s.tgl, '%%Y-%%m-%%d') AS tgl,
+    COALESCE(u.area, '-') AS area,
     s.unit,
     s.hm_awal,
     s.hm_akhir,
@@ -697,8 +727,11 @@ func (r *solarRepository) GetDetailPoints(tgl string, unit string) ([]models.DtS
 	return points, nil
 }
 
-// GetLaporanFilterOptions retrieves distinct units and min/max dates
-func (r *solarRepository) GetLaporanFilterOptions() ([]string, string, string, error) {
+// GetLaporanFilterOptions retrieves distinct areas, distinct units and min/max dates
+func (r *solarRepository) GetLaporanFilterOptions() ([]string, []string, string, string, error) {
+	var areas []string
+	r.db.Table("dt_solar_unit").Where("area != '' AND area IS NOT NULL").Distinct("area").Order("area ASC").Pluck("area", &areas)
+
 	var units []string
 	r.db.Table("dt_solar_summary").Distinct("unit").Order("unit ASC").Pluck("unit", &units)
 
@@ -726,5 +759,5 @@ func (r *solarRepository) GetLaporanFilterOptions() ([]string, string, string, e
 	var minTgl, maxTgl string
 	_ = r.db.Raw("SELECT COALESCE(DATE_FORMAT(MIN(tgl), '%Y-%m-%d'), ''), COALESCE(DATE_FORMAT(MAX(tgl), '%Y-%m-%d'), '') FROM dt_solar_summary").Row().Scan(&minTgl, &maxTgl)
 
-	return finalUnits, minTgl, maxTgl, nil
+	return areas, finalUnits, minTgl, maxTgl, nil
 }

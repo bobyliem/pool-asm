@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laporan Rekap Bulanan/Periode per Unit - Colokan Solar - ASM Workshop</title>
+  <title>Summary Per Unit - Colokan Solar - ASM Workshop</title>
   <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
 
   <!-- Tailwind CSS CDN -->
@@ -45,126 +45,180 @@
   <div class="flex flex-1 overflow-hidden">
 
     <!-- MODUL NAVIGATION SIDEBAR -->
-    <app-sidebar active-menu="Laporan Rekap Bulanan"></app-sidebar>
+    <app-sidebar active-menu="Summary Per Unit"></app-sidebar>
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
 
-      <!-- TOP BAR: Header & KPI Summary Cards -->
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+      <!-- TOP BAR: Header & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5 bg-white border border-slate-300 rounded-xl px-4 py-2.5 shadow-xs">
         
         <!-- Left: Title & Subtitle -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-1.5">
-            <i class="fa-solid fa-chart-column text-blue-600 text-sm"></i>
-            <div>
-              <h2 class="text-sm font-bold text-slate-800 leading-none">Laporan Rekap Bulanan / Periode per Unit</h2>
-              <span class="text-[10px] text-slate-500 font-medium">Evaluasi Operasional, Hari Kerja, Total Jam HM & Efisiensi Konsumsi Solar</span>
-            </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-chart-column text-base"></i>
           </div>
-
-          <!-- Divider -->
-          <span class="text-slate-300 hidden sm:inline">|</span>
-
-          <!-- Mini KPI Badges -->
-          <div class="flex flex-wrap items-center gap-2 text-[11px]">
-            <div class="bg-slate-50 border border-slate-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-slate-800 shadow-2xs" title="Jumlah Unit Aktif">
-              <i class="fa-solid fa-truck-pickup text-[10px] text-blue-500"></i>
-              <span class="text-slate-500">Unit:</span>
-              <span id="kpiTotalUnit" class="font-bold text-slate-800">0</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800 leading-none">Summary Per Unit</h2>
+              <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Evaluasi Operasional</span>
             </div>
-            <div class="bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-amber-900 shadow-2xs" title="Total Akumulasi Jam Kerja HM">
-              <i class="fa-solid fa-clock text-[10px] text-amber-600"></i>
-              <span class="text-slate-500">Total HM:</span>
-              <span id="kpiTotalHm" class="font-bold text-amber-700">0 Jam</span>
-            </div>
-            <div class="bg-rose-50 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-rose-900 shadow-2xs" title="Total Pemakaian Solar = Pakai (cm) * Konsumsi (L/cm)">
-              <i class="fa-solid fa-gas-pump text-[10px] text-rose-600"></i>
-              <span class="text-slate-500">Pemakaian:</span>
-              <span id="kpiTotalPakaiLiter" class="font-bold text-rose-700">0 Ltr</span>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-emerald-900 shadow-2xs" title="Total Pengisian Solar Resmi (Liter)">
-              <i class="fa-solid fa-oil-can text-[10px] text-emerald-600"></i>
-              <span class="text-slate-500">Pengisian:</span>
-              <span id="kpiTotalIsiLiter" class="font-bold text-emerald-700">0 Ltr</span>
-            </div>
-            <div class="bg-purple-50 border border-purple-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-purple-900 shadow-2xs" title="Rata-rata Konsumsi Armada (Liter/HM)">
-              <i class="fa-solid fa-gauge-high text-[10px] text-purple-600"></i>
-              <span class="text-slate-500">Rasio:</span>
-              <span id="kpiAvgLtrPerHm" class="font-bold text-purple-700">0 L/HM</span>
-            </div>
+            <span class="text-[11px] text-slate-500 font-medium">Hari Kerja, Total Jam HM & Efisiensi Konsumsi Solar per Unit Alat</span>
           </div>
         </div>
 
         <!-- Right: Action Buttons -->
-        <div class="flex items-center gap-1.5">
-          <button onclick="toggleChart()" id="btnToggleChart" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Tampilkan/Sembunyikan Grafik">
+        <div class="flex items-center gap-2">
+          <button onclick="toggleChart()" id="btnToggleChart" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Tampilkan/Sembunyikan Grafik">
             <i class="fa-solid fa-chart-simple text-indigo-600 text-[11px]"></i>
             <span id="chartToggleText">Grafik Efisiensi</span>
           </button>
 
-          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
             <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
             <span>Refresh</span>
           </button>
 
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Tabel ke Excel">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
             <i class="fa-solid fa-file-excel text-[11px]"></i>
             <span>Export Excel</span>
           </button>
         </div>
       </div>
 
-      <!-- FILTER BAR -->
-      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2">
-          
-          <!-- Periode Tanggal -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
-            <span class="text-slate-500 font-medium text-[11px]">Periode:</span>
-            <input type="date" id="filterTglAwal" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
-            <span class="text-slate-400">s/d</span>
-            <input type="date" id="filterTglAkhir" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+      <!-- KPI SUMMARY CARDS (HEIGHT 3X) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-2.5">
+        <!-- 1. Total Unit Aktif -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-blue-400 transition min-h-[72px]" title="Jumlah Unit Aktif Beroperasi">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Unit Aktif</span>
+            <span id="kpiTotalUnit" class="text-lg font-extrabold text-slate-800 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Unit Beroperasi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-truck-pickup text-base"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total HM -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-amber-400 transition min-h-[72px]" title="Total Akumulasi Jam Kerja HM">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
+            <span id="kpiTotalHm" class="text-lg font-extrabold text-amber-700 leading-tight">0 Jam</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Akumulasi Jam Kerja</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
+            <i class="fa-solid fa-clock text-base"></i>
+          </div>
+        </div>
+
+        <!-- 3. Total Pemakaian -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-rose-400 transition min-h-[72px]" title="Total Pemakaian Solar = Pakai (cm) * Konsumsi (L/cm)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
+            <span id="kpiTotalPakaiLiter" class="text-lg font-extrabold text-rose-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Pakai (cm) &times; L/cm</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-gas-pump text-base"></i>
+          </div>
+        </div>
+
+        <!-- 4. Total Pengisian -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-emerald-400 transition min-h-[72px]" title="Total Pengisian Solar Resmi (Liter)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
+            <span id="kpiTotalIsiLiter" class="text-lg font-extrabold text-emerald-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Total Pengisian Resmi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+            <i class="fa-solid fa-oil-can text-base"></i>
+          </div>
+        </div>
+
+        <!-- 5. Rasio Efisiensi -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-purple-400 transition min-h-[72px] col-span-2 sm:col-span-1" title="Rata-rata Konsumsi Armada (Liter/HM)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
+            <span id="kpiAvgLtrPerHm" class="text-lg font-extrabold text-purple-700 leading-tight">0 L/HM</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Rata-rata Liter / HM</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs">
+            <i class="fa-solid fa-gauge-high text-base"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FRAME BESAR SEPERTI SUMMARY-PER-DRIVER) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 mb-2.5 shadow-xs">
+        <div class="flex items-center justify-between font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-filter text-blue-600"></i>
+            <span>Filter Parameter Summary Per Unit</span>
+          </div>
+          <!-- Legend Efisiensi -->
+          <div class="text-[11px] text-slate-500 font-normal hidden lg:flex items-center gap-2.5">
+            <span>Tingkat Rasio:</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> 20-40 L/HM (Moderat)</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> &le; 20 L/HM (Efisien)</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> &gt; 40 L/HM (Tinggi)</span>
+          </div>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); fetchData();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+            </div>
+          </div>
+
+          <!-- Area Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Area Kerja</label>
+            <select id="filterArea" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[140px] cursor-pointer font-medium">
+              <option value="">Semua Area</option>
+            </select>
           </div>
 
           <!-- Unit Dropdown -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[150px]">
-            <i class="fa-solid fa-truck-pickup text-slate-400 text-[11px]"></i>
-            <select id="filterUnit" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Unit Alat</label>
+            <select id="filterUnit" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[160px] cursor-pointer font-medium">
               <option value="">Semua Unit</option>
             </select>
           </div>
 
           <!-- Mode Pengelompokan: Akumulasi Unit vs Bulanan -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-            <i class="fa-solid fa-layer-group text-slate-400 text-[11px]"></i>
-            <span class="text-slate-500 font-medium text-[11px]">Tampilan:</span>
-            <select id="filterGroupBy" onchange="fetchData()" class="bg-transparent text-xs text-slate-700 focus:outline-hidden cursor-pointer font-semibold">
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Mode Tampilan</label>
+            <select id="filterGroupBy" onchange="fetchData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[190px] cursor-pointer font-semibold">
               <option value="unit" selected>Total Per Unit (Akumulasi)</option>
               <option value="month_unit">Breakdown Bulanan per Unit</option>
             </select>
           </div>
 
-          <!-- Tombol Filter & Reset -->
-          <button onclick="fetchData()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
-            <i class="fa-solid fa-filter text-[10px]"></i>
-            <span>Terapkan</span>
-          </button>
-
-          <button onclick="resetFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Reset Filter">
-            <i class="fa-solid fa-rotate-left text-[10px]"></i>
-            <span>Reset</span>
-          </button>
-        </div>
-
-        <!-- Legend Efisiensi -->
-        <div class="text-[10px] text-slate-500 flex items-center gap-2">
-          <span>Tingkat Rasio:</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> &le; 20 L/HM (Efisien)</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> 20-40 L/HM (Moderat)</span>
-          <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> &gt; 40 L/HM (Tinggi)</span>
-        </div>
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </form>
       </div>
 
       <!-- VISUAL CHART CONTAINER (Collapsible) -->
@@ -192,6 +246,7 @@
                 <th class="py-2 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('unit')">
                   Unit Alat <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
                 </th>
+                <th class="py-2 px-2.5 text-center border-r border-slate-200">Area</th>
                 <th class="py-2 px-2.5 text-center border-r border-slate-200" title="Jumlah Hari Beroperasi">Hari Kerja</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="HM Awal Minimum di Periode">HM Awal</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="HM Akhir Maksimum di Periode">HM Akhir</th>
@@ -199,8 +254,6 @@
                   Total HM <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
                 </th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Rata-rata Jam Operasi per Hari Kerja">Avg HM/Hari</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Total Penurunan Colokan dalam cm">Total Pakai (cm)</th>
-                <th class="py-2 px-2 text-center border-r border-slate-200 text-slate-500 font-semibold" title="Faktor Konversi Liter per cm dari dt_solar_unit">Ltr/cm</th>
                 <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800 cursor-pointer hover:bg-rose-100/60" onclick="sortTable('total_pakai_liter')">
                   Pemakaian (Ltr) <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
                 </th>
@@ -218,10 +271,10 @@
             <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
               <!-- Loading State -->
               <tr>
-                <td colspan="16" class="py-12 text-center text-slate-400">
+                <td colspan="15" class="py-12 text-center text-slate-400">
                   <div class="flex flex-col items-center justify-center gap-2">
                     <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
-                    <span>Memuat rekap evaluasi per unit...</span>
+                    <span>Memuat summary operasional per unit...</span>
                   </div>
                 </td>
               </tr>
@@ -264,6 +317,7 @@
 
     const filterTglAwal = document.getElementById("filterTglAwal");
     const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
     const filterUnit = document.getElementById("filterUnit");
     const filterGroupBy = document.getElementById("filterGroupBy");
     const thPeriod = document.getElementById("thPeriod");
@@ -278,8 +332,72 @@
     const chartContainer = document.getElementById("chartContainer");
     const chartToggleText = document.getElementById("chartToggleText");
 
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Ambil tanggal dari session, jika belum ada set ke hari ini
+    function initDateFilters() {
+      const today = getTodayString();
+      let tglAwal = sessionStorage.getItem('asm_tgl_awal') || sessionStorage.getItem('csv_spk_tglawal');
+      let tglAkhir = sessionStorage.getItem('asm_tgl_akhir') || sessionStorage.getItem('csv_spk_tglakhir');
+
+      if (!tglAwal) {
+        tglAwal = today;
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      }
+      if (!tglAkhir) {
+        tglAkhir = today;
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+
+      filterTglAwal.value = tglAwal;
+      filterTglAkhir.value = tglAkhir;
+    }
+
+    function saveDateSession() {
+      const tglAwal = filterTglAwal.value || getTodayString();
+      const tglAkhir = filterTglAkhir.value || getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+    }
+
+    // Urutan Status: Moderat paling atas, idle paling bawah
+    function getStatusPriority(row) {
+      if (row.total_hm <= 0) return 4; // Idle paling bawah
+      if (row.ltr_per_hm > 20 && row.ltr_per_hm <= 40) return 1; // Moderat paling atas
+      if (row.ltr_per_hm > 40) return 2; // Tinggi
+      return 3; // Efisien
+    }
+
+    function applyDefaultSort(data) {
+      data.sort((a, b) => {
+        // 1. Area ASC
+        const areaA = (a.area || "-").toLowerCase();
+        const areaB = (b.area || "-").toLowerCase();
+        if (areaA !== areaB) return areaA.localeCompare(areaB);
+
+        // 2. Status Priority (Moderat = 1, Tinggi = 2, Efisien = 3, Idle = 4)
+        const pA = getStatusPriority(a);
+        const pB = getStatusPriority(b);
+        if (pA !== pB) return pA - pB;
+
+        // 3. Unit ASC
+        return (a.unit || "").localeCompare(b.unit || "");
+      });
+    }
+
     // On Load
     document.addEventListener("DOMContentLoaded", async () => {
+      initDateFilters();
       await loadFilterOptions();
       fetchData();
     });
@@ -289,13 +407,15 @@
         const res = await fetch("/api/v1/solar/laporan/filters");
         const json = await res.json();
         if (json.status === "success" && json.data) {
-          const { units, min_tgl, max_tgl } = json.data;
+          const { areas, units } = json.data;
+          if (Array.isArray(areas)) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
           if (Array.isArray(units)) {
             filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
               units.map(u => `<option value="${u}">${u}</option>`).join("");
           }
-          if (min_tgl && !filterTglAwal.value) filterTglAwal.value = min_tgl;
-          if (max_tgl && !filterTglAkhir.value) filterTglAkhir.value = max_tgl;
         }
       } catch (err) {
         console.error("Gagal load filter options:", err);
@@ -303,6 +423,7 @@
     }
 
     async function fetchData() {
+      saveDateSession();
       refreshIcon.classList.add("fa-spin");
 
       const params = new URLSearchParams({
@@ -311,6 +432,7 @@
 
       if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
       if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
       if (filterUnit.value) params.append("unit", filterUnit.value);
 
       // Show/Hide Period column
@@ -326,13 +448,14 @@
 
         if (json.status === "success") {
           tableData = json.data || [];
+          applyDefaultSort(tableData);
           renderKPI(json.summary || {});
           renderTable(tableData);
           if (isChartVisible) {
             renderChart(tableData);
           }
         } else {
-          showEmptyTable(json.message || "Gagal memuat data rekap");
+          showEmptyTable(json.message || "Gagal memuat data");
         }
       } catch (err) {
         console.error("Fetch data error:", err);
@@ -401,13 +524,14 @@
               <i class="fa-solid fa-truck-pickup text-slate-400 text-[10px]"></i>
               <span>${row.unit}</span>
             </td>
+            <td class="py-2 px-2.5 text-center border-r border-slate-100 font-sans">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${row.area || '-'}</span>
+            </td>
             <td class="py-2 px-2.5 text-center font-medium text-slate-700 border-r border-slate-100">${row.hari_kerja} hari</td>
             <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.min_hm_awal, 1)}</td>
             <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.max_hm_akhir, 1)}</td>
             <td class="py-2 px-2.5 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
             <td class="py-2 px-2.5 text-right font-medium text-slate-600 border-r border-slate-100">${formatNum(row.avg_hm_per_hari, 1)}</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.total_pakai_cm, 1)}</td>
-            <td class="py-2 px-2 text-center text-slate-500 border-r border-slate-100">${formatNum(row.konsumsi, 3)}</td>
             <td class="py-2 px-3 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.total_pakai_liter, 1)}</td>
             <td class="py-2 px-3 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.total_isi_liter, 1)}</td>
             <td class="py-2 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
@@ -426,7 +550,7 @@
     function showEmptyTable(message) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="16" class="py-12 text-center text-slate-400">
+          <td colspan="15" class="py-12 text-center text-slate-400">
             <div class="flex flex-col items-center justify-center gap-2">
               <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
               <span>${message}</span>
@@ -529,9 +653,30 @@
     }
 
     function resetFilter() {
+      filterArea.value = "";
       filterUnit.value = "";
       filterGroupBy.value = "unit";
-      loadFilterOptions().then(() => fetchData());
+      initDateFilters();
+      fetchData();
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData();
     }
 
     function exportToExcel() {
@@ -547,13 +692,12 @@
         };
         if (isMonthly) item["Periode"] = r.period;
         item["Unit Alat"] = r.unit;
+        item["Area"] = r.area || "-";
         item["Hari Kerja"] = r.hari_kerja;
         item["HM Awal Min"] = r.min_hm_awal;
         item["HM Akhir Max"] = r.max_hm_akhir;
         item["Total Jam HM"] = r.total_hm;
         item["Avg HM/Hari"] = r.avg_hm_per_hari;
-        item["Total Pakai (cm)"] = r.total_pakai_cm;
-        item["Faktor Konversi (L/cm)"] = r.konsumsi;
         item["Total Pemakaian (Liter)"] = r.total_pakai_liter;
         item["Total Pengisian (Liter)"] = r.total_isi_liter;
         item["Netto Tangki (Liter)"] = r.netto_liter;
@@ -565,8 +709,8 @@
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap_Unit_Solar");
-      XLSX.writeFile(workbook, `Laporan_Rekap_Unit_Solar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Summary_Per_Unit");
+      XLSX.writeFile(workbook, `Summary_Per_Unit_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
     function formatNum(val, dec = 1) {
