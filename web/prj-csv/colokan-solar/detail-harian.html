@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laporan Detail Harian - Colokan Solar - ASM Workshop</title>
+  <title>Resume Harian - Colokan Solar - ASM Workshop</title>
   <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
 
   <!-- Tailwind CSS CDN -->
@@ -14,8 +14,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Modul Komponen Header & Sidebar -->
-  <script src="/web/components/header.js?v=20" defer></script>
-  <script src="/web/components/sidebar.js?v=20" defer></script>
+  <script src="/web/components/header.js?v=21" defer></script>
+  <script src="/web/components/sidebar.js?v=21" defer></script>
 
   <style>
     .custom-scrollbar::-webkit-scrollbar {
@@ -43,121 +43,171 @@
   <div class="flex flex-1 overflow-hidden">
 
     <!-- MODUL NAVIGATION SIDEBAR -->
-    <app-sidebar active-menu="Laporan Detail Harian"></app-sidebar>
+    <app-sidebar active-menu="Resume Harian"></app-sidebar>
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
 
-      <!-- TOP BAR: Header & KPI Summary Cards (Compact) -->
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
-        
+      <!-- TOP BAR: Header & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5 bg-white border border-slate-300 rounded-xl px-4 py-2.5 shadow-xs">
         <!-- Left: Title & Subtitle -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-1.5">
-            <i class="fa-solid fa-calendar-day text-blue-600 text-sm"></i>
-            <div>
-              <h2 class="text-sm font-bold text-slate-800 leading-none">Laporan Detail Harian</h2>
-              <span class="text-[10px] text-slate-500 font-medium">Crosscheck Input Colokan, Jam Kerja HM & Pengisian Solar</span>
-            </div>
-            <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">dt_solar_summary</span>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-calendar-day text-base"></i>
           </div>
-
-          <!-- Divider -->
-          <span class="text-slate-300 hidden sm:inline">|</span>
-
-          <!-- Mini KPI Badges -->
-          <div class="flex flex-wrap items-center gap-2 text-[11px]">
-            <div class="bg-slate-50 border border-slate-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-slate-800 shadow-2xs" title="Total Catatan Harian">
-              <i class="fa-solid fa-list-check text-[10px] text-blue-500"></i>
-              <span class="text-slate-500">Records:</span>
-              <span id="kpiTotalRecords" class="font-bold text-slate-800">0</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800 leading-none">Resume Harian</h2>
+              <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">dt_solar_summary</span>
             </div>
-            <div class="bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-amber-900 shadow-2xs" title="Total Jam Kerja (HM Akhir - HM Awal)">
-              <i class="fa-solid fa-clock text-[10px] text-amber-600"></i>
-              <span class="text-slate-500">Total HM:</span>
-              <span id="kpiTotalHm" class="font-bold text-amber-700">0 Jam</span>
-            </div>
-            <div class="bg-rose-50 border border-rose-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-rose-900 shadow-2xs" title="Total Pemakaian Solar = Pakai (cm) * Konsumsi (L/cm)">
-              <i class="fa-solid fa-gas-pump text-[10px] text-rose-600"></i>
-              <span class="text-slate-500">Pemakaian:</span>
-              <span id="kpiTotalPakaiLiter" class="font-bold text-rose-700">0 Ltr</span>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-emerald-900 shadow-2xs" title="Total Pengisian Solar Resmi (Liter)">
-              <i class="fa-solid fa-oil-can text-[10px] text-emerald-600"></i>
-              <span class="text-slate-500">Pengisian:</span>
-              <span id="kpiTotalIsiLiter" class="font-bold text-emerald-700">0 Ltr</span>
-            </div>
-            <div class="bg-purple-50 border border-purple-300 px-2 py-0.5 rounded flex items-center gap-1.5 text-purple-900 shadow-2xs" title="Rata-rata Rasio Konsumsi (Liter/HM)">
-              <i class="fa-solid fa-chart-line text-[10px] text-purple-600"></i>
-              <span class="text-slate-500">Rasio:</span>
-              <span id="kpiAvgLtrPerHm" class="font-bold text-purple-700">0 L/HM</span>
-            </div>
+            <span class="text-[11px] text-slate-500 font-medium">Crosscheck Input Colokan, Saldo Awal/Akhir, Jam Kerja HM & Pengisian Solar</span>
           </div>
         </div>
 
         <!-- Right: Action Buttons -->
-        <div class="flex items-center gap-1.5">
-          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+        <div class="flex items-center gap-2">
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
             <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
             <span>Refresh</span>
           </button>
 
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Tabel ke Excel">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
             <i class="fa-solid fa-file-excel text-[11px]"></i>
             <span>Export Excel</span>
           </button>
         </div>
       </div>
 
-      <!-- FILTER BAR: Tgl Awal, Tgl Akhir, Unit, Search -->
-      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2">
-          
-          <!-- Periode Tanggal -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
-            <span class="text-slate-500 font-medium text-[11px]">Tgl Awal:</span>
-            <input type="date" id="filterTglAwal" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+      <!-- KPI SUMMARY CARDS (HEIGHT 3X) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-2.5">
+        <!-- 1. Total Records -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-blue-400 transition min-h-[72px]" title="Total Catatan Harian Terfilter">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total Records</span>
+            <span id="kpiTotalRecords" class="text-lg font-extrabold text-slate-800 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Baris Catatan Harian</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-list-check text-base"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total HM -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-amber-400 transition min-h-[72px]" title="Total Jam Kerja (HM Akhir - HM Awal)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
+            <span id="kpiTotalHm" class="text-lg font-extrabold text-amber-700 leading-tight">0 Jam</span>
+            <span class="block text-[10px] text-slate-400 font-medium">HM Akhir - HM Awal</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
+            <i class="fa-solid fa-clock text-base"></i>
+          </div>
+        </div>
+
+        <!-- 3. Total Pemakaian -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-rose-400 transition min-h-[72px]" title="Total Pemakaian Solar = Pakai (cm) * Konsumsi (L/cm)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
+            <span id="kpiTotalPakaiLiter" class="text-lg font-extrabold text-rose-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Pakai (cm) &times; L/cm</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-gas-pump text-base"></i>
+          </div>
+        </div>
+
+        <!-- 4. Total Pengisian -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-emerald-400 transition min-h-[72px]" title="Total Pengisian Solar Resmi (Liter)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
+            <span id="kpiTotalIsiLiter" class="text-lg font-extrabold text-emerald-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Total Pengisian Resmi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+            <i class="fa-solid fa-oil-can text-base"></i>
+          </div>
+        </div>
+
+        <!-- 5. Rasio Efisiensi -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-purple-400 transition min-h-[72px] col-span-2 sm:col-span-1" title="Rata-rata Rasio Konsumsi (Liter/HM)">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
+            <span id="kpiAvgLtrPerHm" class="text-lg font-extrabold text-purple-700 leading-tight">0 L/HM</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Rata-rata Liter / HM</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs">
+            <i class="fa-solid fa-chart-line text-base"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FRAME BESAR SEPERTI SUMMARY-PER-DRIVER) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 mb-2.5 shadow-xs">
+        <div class="flex items-center justify-between font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-filter text-blue-600"></i>
+            <span>Filter Parameter Resume Harian</span>
+          </div>
+          <!-- Formula Helper Hint -->
+          <div class="text-[11px] text-slate-500 font-normal hidden lg:flex items-center gap-2">
+            <span><i class="fa-solid fa-calculator text-blue-500 mr-1"></i>Rasio = <b>Pemakaian (Ltr) / Total HM</b></span>
+          </div>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+            </div>
           </div>
 
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
-            <span class="text-slate-500 font-medium text-[11px]">Tgl Akhir:</span>
-            <input type="date" id="filterTglAkhir" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+          <!-- Area Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Area</label>
+            <select id="filterArea" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[140px] cursor-pointer font-medium">
+              <option value="">Semua Area</option>
+            </select>
           </div>
 
           <!-- Unit Dropdown -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[150px]">
-            <i class="fa-solid fa-truck-pickup text-slate-400 text-[11px]"></i>
-            <select id="filterUnit" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Unit Alat</label>
+            <select id="filterUnit" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[160px] cursor-pointer font-medium">
               <option value="">Semua Unit</option>
             </select>
           </div>
 
           <!-- Quick Search -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[160px]">
-            <i class="fa-solid fa-magnifying-glass text-slate-400 text-[11px]"></i>
-            <input type="text" id="filterSearch" placeholder="Cari unit / tanggal..." class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full" onkeydown="if(event.key==='Enter') applyFilter()" />
+          <div class="space-y-1 w-full sm:w-auto flex-1 min-w-[200px]">
+            <label class="block font-semibold text-slate-600 text-[11px]">Cari Cepat</label>
+            <div class="relative">
+              <input type="text" id="filterSearch" placeholder="Cari unit / tanggal..." class="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white" onkeydown="if(event.key==='Enter') applyFilter()" />
+              <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-2.5 top-2.5"></i>
+            </div>
           </div>
 
-          <!-- Tombol Filter & Reset -->
-          <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
-            <i class="fa-solid fa-filter text-[10px]"></i>
-            <span>Filter</span>
-          </button>
-
-          <button onclick="resetFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Reset Filter">
-            <i class="fa-solid fa-rotate-left text-[10px]"></i>
-            <span>Reset</span>
-          </button>
-        </div>
-
-        <!-- Formula Helper Hint -->
-        <div class="text-[10px] text-slate-400 hidden xl:flex items-center gap-2">
-          <span><i class="fa-solid fa-calculator text-blue-500 mr-1"></i>Pakai (Liter) = <b>Pakai (cm)</b> &times; <b>Konsumsi (L/cm)</b></span>
-          <span>&bull;</span>
-          <span>Rasio = <b>Pakai (Ltr) / Total HM</b></span>
-        </div>
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </form>
       </div>
 
       <!-- TABLE CONTAINER -->
@@ -173,21 +223,21 @@
                 <th class="py-2 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('unit')">
                   Unit Alat <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
                 </th>
+                <th class="py-2 px-2.5 text-center border-r border-slate-200">Area</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Hour Meter Awal Hari">HM Awal</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Hour Meter Akhir Hari">HM Akhir</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-amber-50/50" title="Total Jam Kerja = HM Akhir - HM Awal">Total HM</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Penurunan Colokan Solar dalam cm">Pakai (cm)</th>
-                <th class="py-2 px-2 text-center border-r border-slate-200 text-slate-500 font-semibold" title="Faktor Konversi Liter per cm dari dt_solar_unit">Ltr/cm</th>
-                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800" title="Total Pemakaian Solar = Pakai (cm) * Konsumsi (L/cm)">
+                <th class="py-2 px-2.5 text-right border-r border-slate-200 font-semibold" title="Saldo Awal">Saldo Awal</th>
+                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800" title="Total Pemakaian Solar (Liter)">
                   Pemakaian (Ltr)
                 </th>
                 <th class="py-2 px-3 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800" title="Total Pengisian Solar Resmi (Liter)">
                   Pengisian (Ltr)
                 </th>
+                <th class="py-2 px-2.5 text-right border-r border-slate-200 font-semibold" title="Saldo Akhir">Saldo Akhir</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-purple-50/50" title="Rasio Pemakaian per Jam Kerja (Liter / HM)">
                   Rasio (L/HM)
                 </th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Selisih Netto = Pengisian - Pemakaian">Netto (Ltr)</th>
                 <th class="py-2 px-2.5 text-center w-24">6 Titik Jam</th>
               </tr>
             </thead>
@@ -197,7 +247,7 @@
                 <td colspan="13" class="py-12 text-center text-slate-400">
                   <div class="flex flex-col items-center justify-center gap-2">
                     <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
-                    <span>Memuat data laporan detail harian...</span>
+                    <span>Memuat data resume harian...</span>
                   </div>
                 </td>
               </tr>
@@ -319,6 +369,7 @@
 
     const filterTglAwal = document.getElementById("filterTglAwal");
     const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
     const filterUnit = document.getElementById("filterUnit");
     const filterSearch = document.getElementById("filterSearch");
 
@@ -336,8 +387,47 @@
     const modalContent = document.getElementById("modalContent");
     const modalTableBody = document.getElementById("modalTableBody");
 
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Ambil tanggal dari session, jika belum ada set ke hari ini
+    function initDateFilters() {
+      const today = getTodayString();
+      let tglAwal = sessionStorage.getItem('asm_tgl_awal') || sessionStorage.getItem('csv_spk_tglawal');
+      let tglAkhir = sessionStorage.getItem('asm_tgl_akhir') || sessionStorage.getItem('csv_spk_tglakhir');
+
+      if (!tglAwal) {
+        tglAwal = today;
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      }
+      if (!tglAkhir) {
+        tglAkhir = today;
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+
+      filterTglAwal.value = tglAwal;
+      filterTglAkhir.value = tglAkhir;
+    }
+
+    function saveDateSession() {
+      const tglAwal = filterTglAwal.value || getTodayString();
+      const tglAkhir = filterTglAkhir.value || getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+    }
+
     // On Load
     document.addEventListener("DOMContentLoaded", async () => {
+      initDateFilters();
       await loadFilterOptions();
       fetchData(1);
     });
@@ -348,17 +438,19 @@
         const res = await fetch("/api/v1/solar/laporan/filters");
         const json = await res.json();
         if (json.status === "success" && json.data) {
-          const { units, min_tgl, max_tgl } = json.data;
+          const { areas, units } = json.data;
+
+          // Populate areas
+          if (Array.isArray(areas)) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
 
           // Populate units
           if (Array.isArray(units)) {
             filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
               units.map(u => `<option value="${u}">${u}</option>`).join("");
           }
-
-          // Set default dates if available
-          if (min_tgl && !filterTglAwal.value) filterTglAwal.value = min_tgl;
-          if (max_tgl && !filterTglAkhir.value) filterTglAkhir.value = max_tgl;
         }
       } catch (err) {
         console.error("Gagal load filter options:", err);
@@ -377,6 +469,7 @@
 
       if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
       if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
       if (filterUnit.value) params.append("unit", filterUnit.value);
       if (filterSearch.value.trim()) params.append("search", filterSearch.value.trim());
 
@@ -455,15 +548,17 @@
               <i class="fa-solid fa-truck-pickup text-slate-400 text-[10px]"></i>
               <span>${row.unit}</span>
             </td>
+            <td class="py-1.5 px-2.5 text-center border-r border-slate-100 font-sans">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${row.area || '-'}</span>
+            </td>
             <td class="py-1.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_awal, 1)}</td>
             <td class="py-1.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_akhir, 1)}</td>
             <td class="py-1.5 px-2.5 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
-            <td class="py-1.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.pakai_cm, 1)}</td>
-            <td class="py-1.5 px-2 text-center text-slate-500 border-r border-slate-100">${formatNum(row.konsumsi, 3)}</td>
+            <td class="py-1.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.saldo_awal, 1)}</td>
             <td class="py-1.5 px-3 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.pakai_liter, 1)}</td>
             <td class="py-1.5 px-3 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.isi_liter, 1)}</td>
+            <td class="py-1.5 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.saldo_akhir, 1)}</td>
             <td class="py-1.5 px-2.5 text-right border-r border-slate-100 bg-purple-50/20">${rasioBadge}</td>
-            <td class="py-1.5 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
             <td class="py-1.5 px-2.5 text-center">
               <button onclick="viewPoints('${row.tgl}', '${row.unit}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-blue-200 shadow-2xs text-[10px] flex items-center justify-center gap-1 mx-auto transition cursor-pointer" title="Lihat 6 Titik Jam Colokan">
                 <i class="fa-solid fa-eye text-[9px]"></i>
@@ -613,13 +708,35 @@
     }
 
     function applyFilter() {
+      saveDateSession();
       fetchData(1);
     }
 
     function resetFilter() {
       filterSearch.value = "";
+      filterArea.value = "";
       filterUnit.value = "";
-      loadFilterOptions().then(() => fetchData(1));
+      initDateFilters();
+      fetchData(1);
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData(1);
     }
 
     // Sort Table Client Side
@@ -655,21 +772,21 @@
         "No": i + 1,
         "Tanggal": r.tgl,
         "Unit Alat": r.unit,
+        "Area": r.area || "-",
         "HM Awal": r.hm_awal,
         "HM Akhir": r.hm_akhir,
         "Total Jam HM": r.total_hm,
-        "Colokan Pakai (cm)": r.pakai_cm,
-        "Faktor Konversi (L/cm)": r.konsumsi,
+        "Saldo Awal": r.saldo_awal,
         "Pemakaian (Liter)": r.pakai_liter,
         "Pengisian (Liter)": r.isi_liter,
-        "Rasio (Liter/HM)": r.ltr_per_hm,
-        "Netto Tangki (Liter)": r.netto_liter,
+        "Saldo Akhir": r.saldo_akhir,
+        "Rasio (Liter/HM)": r.total_hm > 0 ? r.ltr_per_hm : 0,
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Detail_Harian_Solar");
-      XLSX.writeFile(workbook, `Laporan_Detail_Harian_Solar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Resume_Harian_Solar");
+      XLSX.writeFile(workbook, `Resume_Harian_Solar_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
     function formatNum(val, dec = 1) {

@@ -143,8 +143,8 @@ class AppSidebar extends HTMLElement {
             submenus: [
               { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar", menuId: 8 },
               { id: "import-data", label: "Import Data", icon: "fa-file-import", href: "/prj-csv/colokan-solar/import-data", menuId: 19 },
-              { id: "detail-harian", label: "Laporan Detail Harian", icon: "fa-calendar-day", href: "/prj-csv/colokan-solar/detail-harian", menuId: 20 },
-              { id: "rekap-unit", label: "Laporan Rekap Bulanan", icon: "fa-chart-column", href: "/prj-csv/colokan-solar/rekap-unit", menuId: 21 },
+              { id: "detail-harian", label: "Resume Harian", icon: "fa-calendar-day", href: "/prj-csv/colokan-solar/detail-harian", menuId: 20 },
+              { id: "rekap-unit", label: "Summary Per Unit", icon: "fa-chart-column", href: "/prj-csv/colokan-solar/rekap-unit", menuId: 21 },
               { id: "rekonsiliasi-anomali", label: "Laporan Rekonsiliasi & Anomali", icon: "fa-shield-halved", href: "/prj-csv/colokan-solar/rekonsiliasi-anomali", menuId: 22 }
             ]
           },
@@ -282,6 +282,29 @@ class AppSidebar extends HTMLElement {
 
     menuHTML += `</aside>`;
     this.innerHTML = menuHTML;
+
+    // Otomatis scroll sidebar agar submenu yang aktif langsung terlihat di tengah layar
+    this.scrollToActiveMenu();
+  }
+
+  scrollToActiveMenu() {
+    const doScroll = () => {
+      const aside = this.querySelector('#sidebarNav');
+      const activeLink = this.querySelector('a.border-blue-600') || this.querySelector('a.text-blue-600');
+      if (aside && activeLink) {
+        const asideRect = aside.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        
+        // Cek jika link berada di luar area tengah yang nyaman dilihat (jarak 30px dari atas/bawah)
+        if (linkRect.bottom > asideRect.bottom - 30 || linkRect.top < asideRect.top + 30) {
+          activeLink.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+      }
+    };
+
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 100);
+    setTimeout(doScroll, 300);
   }
 }
 

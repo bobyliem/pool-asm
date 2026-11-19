@@ -107,6 +107,7 @@ type DtSolarSummary struct {
 type LaporanDetailHarianFilter struct {
 	TglAwal  string `form:"tglAwal"`
 	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
 	Unit     string `form:"unit"`
 	Search   string `form:"search"`
 	Page     int    `form:"page,default=1"`
@@ -116,14 +117,17 @@ type LaporanDetailHarianFilter struct {
 type LaporanDetailHarianItem struct {
 	ID          int     `json:"id"`
 	Tgl         string  `json:"tgl"`
+	Area        string  `json:"area"`
 	Unit        string  `json:"unit"`
 	HmAwal      float64 `json:"hm_awal"`
 	HmAkhir     float64 `json:"hm_akhir"`
 	TotalHm     float64 `json:"total_hm"`
+	SaldoAwal   float64 `json:"saldo_awal"`
 	PakaiCm     float64 `json:"pakai_cm"`
 	Konsumsi    float64 `json:"konsumsi"`
 	PakaiLiter  float64 `json:"pakai_liter"`
 	IsiLiter    float64 `json:"isi_liter"`
+	SaldoAkhir  float64 `json:"saldo_akhir"`
 	LtrPerHm    float64 `json:"ltr_per_hm"`
 	NettoLiter  float64 `json:"netto_liter"`
 	Created     string  `json:"created"`
@@ -144,12 +148,14 @@ type LaporanDetailHarianSummary struct {
 type LaporanRekapUnitFilter struct {
 	TglAwal  string `form:"tglAwal"`
 	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
 	Unit     string `form:"unit"`
 	GroupBy  string `form:"groupBy,default=unit"` // "unit" or "month_unit"
 }
 
 type LaporanRekapUnitItem struct {
 	Period          string  `json:"period"`
+	Area            string  `json:"area"`
 	Unit            string  `json:"unit"`
 	HariKerja       int64   `json:"hari_kerja"`
 	MinHmAwal       float64 `json:"min_hm_awal"`
@@ -180,6 +186,7 @@ type LaporanRekapUnitSummary struct {
 type LaporanRekonsiliasiFilter struct {
 	TglAwal          string `form:"tglAwal"`
 	TglAkhir         string `form:"tglAkhir"`
+	Area             string `form:"area"`
 	Unit             string `form:"unit"`
 	KategoriAnomali  string `form:"kategoriAnomali"`
 	OnlyAnomali      bool   `form:"onlyAnomali"`
@@ -190,6 +197,7 @@ type LaporanRekonsiliasiFilter struct {
 type LaporanRekonsiliasiItem struct {
 	ID              int     `json:"id"`
 	Tgl             string  `json:"tgl"`
+	Area            string  `json:"area"`
 	Unit            string  `json:"unit"`
 	HmAwal          float64 `json:"hm_awal"`
 	HmAkhir         float64 `json:"hm_akhir"`
