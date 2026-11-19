@@ -1,4 +1,5 @@
 // Modul Component Sidebar Navigation (<app-sidebar></app-sidebar>)
+// 100% DINAMIS: Mengambil data menu dari database (table menu, menumaster, menu_access)
 class AppSidebar extends HTMLElement {
   connectedCallback() {
     this.className = 'flex flex-col h-full max-h-full shrink-0';
@@ -11,6 +12,9 @@ class AppSidebar extends HTMLElement {
     };
     window.addEventListener('auth-updated', this._onAuthUpdated);
 
+    // Jika menus belum tersimpan di sessionStorage, fetch dari backend API
+    this.ensureMenusLoaded();
+
     this.render();
   }
 
@@ -20,126 +24,181 @@ class AppSidebar extends HTMLElement {
     }
   }
 
+  async ensureMenusLoaded() {
+    try {
+      const cu = JSON.parse(sessionStorage.getItem('current_user') || '{}');
+      if (Array.isArray(cu.menus) && cu.menus.length > 0) {
+        return; // Sudah ada di cache session
+      }
+    } catch (e) {}
+
+    if (this._fetchingMenus) return;
+    this._fetchingMenus = true;
+
+    try {
+      const res = await fetch('/api/v1/auth/user-menus');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && Array.isArray(json.data)) {
+          let cu = {};
+          try {
+            cu = JSON.parse(sessionStorage.getItem('current_user') || '{}');
+          } catch (e) {}
+          cu.menus = json.data;
+          sessionStorage.setItem('current_user', JSON.stringify(cu));
+          this.render();
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch dynamic menus:', err);
+    } finally {
+      this._fetchingMenus = false;
+    }
+  }
+
   render() {
-    const activeMenu = this.getAttribute('active-menu') || 'Dashboard';
+    const activeMenu = (this.getAttribute('active-menu') || 'Dashboard').trim();
     
-    // Determine current project context
+    // Tentukan konteks project saat ini (PRJ-HO vs PRJ-CSV)
     const path = window.location.pathname;
-    let basePrefix = '';
-    let isCsv = false;
+    let basePrefix = '/prj-csv';
+    let isCsv = true;
     let isHo = false;
 
-    if (path.includes('/prj-csv') || path.includes('/colokan-solar')) {
-      basePrefix = '/prj-csv';
-      isCsv = true;
-    } else if (path.includes('/prj-ho')) {
+    if (path.includes('/prj-ho')) {
       basePrefix = '/prj-ho';
       isHo = true;
+      isCsv = false;
     }
 
-    let menuStructure = [];
-
-    if (isCsv) {
-      // Menu khusus PRJ-CSV
-      menuStructure = [
-        {
-          title: "HOME",
-          submenus: [
-            { id: "dashboard", label: "Dashboard", icon: "fa-chart-line", href: "/prj-csv/dashboard", menuId: 1 }
-          ]
-        },
-        {
-          title: "SPK Harian",
-          submenus: [
-            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-csv/spk-per-cust", menuId: 2 },
-            { id: "spk-slash-cust", label: "SPK /Cust", icon: "fa-file-invoice-dollar", href: "/prj-csv/spk-slash-cust", menuId: 17 },
-            { id: "summary-per-cust", label: "Summary Per Cust", icon: "fa-table-cells-large", href: "/prj-csv/summary-per-cust", menuId: 3 },
-            { id: "resume-per-kategori", label: "Resume Per Kategori", icon: "fa-border-all", href: "/prj-csv/resume-per-kategori", menuId: 4 }
-          ]
-        },
-        {
-          title: "PRODUKSI",
-          submenus: [
-            { id: "resume-per-hari", label: "Resume Per Hari", icon: "fa-calendar-day", href: "/prj-csv/produksi/resume-per-hari", menuId: 5 },
-            { id: "summary-per-driver", label: "Summary Per Driver", icon: "fa-user-tie", href: "/prj-csv/produksi/summary-per-driver", menuId: 6 },
-            { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase", menuId: 7 },
-            { id: "transfer-out", label: "Transfer Out", icon: "fa-truck-arrow-right", href: "/prj-csv/produksi/transfer-out", menuId: 16 }
-          ]
-        },
-        {
-          title: "COLOKAN SOLAR",
-          submenus: [
-            { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar", menuId: 8 }
-          ]
-        },
-        {
-          title: "MASTER DATA",
-          submenus: [
-            { id: "prior-unit", label: "Prior Unit", icon: "fa-truck-fast", href: "/prj-csv/prior-unit", menuId: 9 },
-            { id: "closing-finance", label: "Closing Finance", icon: "fa-file-invoice-dollar", href: "/prj-csv/closing-finance", menuId: 10 }
-          ]
-        },
-        {
-          title: "ADMINISTRATOR",
-          submenus: [
-            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users", menuId: 14 },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups", menuId: 15 },
-            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs", menuId: 18 }
-          ]
-        }
-      ];
-    } else {
-      // Menu default / PRJ-HO: Hanya Operation Dashboard, SPK Per Cust, dan Warehouse -> Critical Inventory
-      menuStructure = [
-        {
-          title: "OPERATION",
-          submenus: [
-            { id: "op-dashboard", label: "Operation Dashboard", icon: "fa-gauge-high", href: basePrefix ? basePrefix + "/operation-dashboard" : "/operation-dashboard", menuId: 11 }
-          ]
-        },
-        {
-          title: "SPK HARIAN",
-          submenus: [
-            { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: basePrefix ? basePrefix + "/spk-per-cust" : "/spk-per-cust", menuId: 12 }
-          ]
-        },
-        {
-          title: "WAREHOUSE",
-          submenus: [
-            { id: "critical-inventory", label: "Critical Inventory", icon: "fa-boxes-stacked", href: basePrefix ? basePrefix + "/warehouse/critical-inventory" : "/prj-ho/warehouse/critical-inventory", menuId: 13 }
-          ]
-        },
-        {
-          title: "ADMINISTRATOR",
-          submenus: [
-            { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users", menuId: 14 },
-            { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups", menuId: 15 },
-            { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs", menuId: 18 }
-          ]
-        }
-      ];
-    }
-
-    // Ambil daftar menu yang diizinkan untuk user saat ini dari session
+    // 1. Ambil menus dinamis dari session user
+    let userMenus = [];
     let allowedMenuIds = null;
     try {
       const cu = JSON.parse(sessionStorage.getItem('current_user') || '{}');
-      if (cu && Array.isArray(cu.allowed_menu_ids)) {
+      if (Array.isArray(cu.menus) && cu.menus.length > 0) {
+        userMenus = cu.menus;
+      }
+      if (Array.isArray(cu.allowed_menu_ids)) {
         allowedMenuIds = cu.allowed_menu_ids.map(Number);
       }
     } catch (e) {}
 
-    // Filter menu murni berdasarkan checklist hak akses (allowed_menu_ids)
-    const filteredStructure = menuStructure.map(menu => {
-      const submenus = menu.submenus.filter(sub => {
-        if (!allowedMenuIds) return true; // Belum ter-fetch, biarkan tampil terlebih dahulu
-        if (sub.menuId !== undefined) {
-          return allowedMenuIds.includes(Number(sub.menuId));
+    let menuStructure = [];
+
+    if (userMenus && userMenus.length > 0) {
+      // BUILD STRUKTUR 100% DINAMIS DARI DATABASE
+      const targetModul = isHo ? 'PRJ-HO' : 'PRJ-CSV';
+      const relevantMenus = userMenus.filter(m => (m.modul || '').toUpperCase() === targetModul);
+
+      const groupMap = new Map();
+      relevantMenus.forEach(m => {
+        const title = m.modul_nama || 'MENU';
+        if (!groupMap.has(title)) {
+          const group = { title: title, submenus: [] };
+          groupMap.set(title, group);
+          menuStructure.push(group);
         }
-        return true;
+
+        groupMap.get(title).submenus.push({
+          id: (m.menu_nama || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          label: m.menu_nama,
+          icon: m.icon || 'fa-circle-dot',
+          href: m.url || '#',
+          menuId: m.menu_id
+        });
       });
-      return { ...menu, submenus };
-    }).filter(menu => menu.submenus.length > 0);
+    }
+
+    // Fallback jika database menus belum tersedia di cache session
+    if (menuStructure.length === 0) {
+      if (isCsv) {
+        menuStructure = [
+          {
+            title: "HOME",
+            submenus: [
+              { id: "dashboard", label: "Dashboard", icon: "fa-chart-line", href: "/prj-csv/dashboard", menuId: 1 }
+            ]
+          },
+          {
+            title: "SPK HARIAN",
+            submenus: [
+              { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-csv/spk-per-cust", menuId: 2 },
+              { id: "spk-slash-cust", label: "SPK /Cust", icon: "fa-file-invoice-dollar", href: "/prj-csv/spk-slash-cust", menuId: 17 },
+              { id: "summary-per-cust", label: "Summary Per Cust", icon: "fa-table-cells-large", href: "/prj-csv/summary-per-cust", menuId: 3 },
+              { id: "resume-per-kategori", label: "Resume Per Kategori", icon: "fa-border-all", href: "/prj-csv/resume-per-kategori", menuId: 4 }
+            ]
+          },
+          {
+            title: "PRODUKSI",
+            submenus: [
+              { id: "resume-per-hari", label: "Resume Per Hari", icon: "fa-calendar-day", href: "/prj-csv/produksi/resume-per-hari", menuId: 5 },
+              { id: "summary-per-driver", label: "Summary Per Driver", icon: "fa-user-tie", href: "/prj-csv/produksi/summary-per-driver", menuId: 6 },
+              { id: "monitoring-ritase", label: "Monitoring Ritase", icon: "fa-table-columns", href: "/prj-csv/produksi/monitoring-ritase", menuId: 7 },
+              { id: "transfer-out", label: "Transfer Out", icon: "fa-truck-arrow-right", href: "/prj-csv/produksi/transfer-out", menuId: 16 }
+            ]
+          },
+          {
+            title: "COLOKAN SOLAR",
+            submenus: [
+              { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar", menuId: 8 },
+              { id: "import-data", label: "Import Data", icon: "fa-file-import", href: "/prj-csv/colokan-solar/import-data", menuId: 19 },
+              { id: "detail-harian", label: "Laporan Detail Harian", icon: "fa-calendar-day", href: "/prj-csv/colokan-solar/detail-harian", menuId: 20 },
+              { id: "rekap-unit", label: "Laporan Rekap Bulanan", icon: "fa-chart-column", href: "/prj-csv/colokan-solar/rekap-unit", menuId: 21 },
+              { id: "rekonsiliasi-anomali", label: "Laporan Rekonsiliasi & Anomali", icon: "fa-shield-halved", href: "/prj-csv/colokan-solar/rekonsiliasi-anomali", menuId: 22 }
+            ]
+          },
+          {
+            title: "MASTER DATA",
+            submenus: [
+              { id: "prior-unit", label: "Prior Unit", icon: "fa-truck-fast", href: "/prj-csv/prior-unit", menuId: 9 },
+              { id: "closing-finance", label: "Closing Finance", icon: "fa-file-invoice-dollar", href: "/prj-csv/closing-finance", menuId: 10 }
+            ]
+          },
+          {
+            title: "ADMINISTRATOR",
+            submenus: [
+              { id: "master-user", label: "Master User", icon: "fa-users-gear", href: "/admin/users", menuId: 14 },
+              { id: "master-group", label: "Master Group", icon: "fa-users-rectangle", href: "/admin/groups", menuId: 15 },
+              { id: "cron-jobs", label: "Cron Jobs", icon: "fa-clock", href: "/admin/cron-jobs", menuId: 18 }
+            ]
+          }
+        ];
+      } else {
+        menuStructure = [
+          {
+            title: "OPERATION",
+            submenus: [
+              { id: "op-dashboard", label: "Operation Dashboard", icon: "fa-gauge-high", href: "/prj-ho/operation-dashboard", menuId: 11 }
+            ]
+          },
+          {
+            title: "SPK HARIAN",
+            submenus: [
+              { id: "spk-per-cust", label: "SPK Per Cust", icon: "fa-file-invoice", href: "/prj-ho/spk-per-cust", menuId: 12 }
+            ]
+          },
+          {
+            title: "WAREHOUSE",
+            submenus: [
+              { id: "critical-inventory", label: "Critical Inventory", icon: "fa-boxes-stacked", href: "/prj-ho/warehouse/critical-inventory", menuId: 13 }
+            ]
+          }
+        ];
+      }
+
+      // Filter fallback berdasarkan allowedMenuIds
+      menuStructure = menuStructure.map(menu => {
+        const submenus = menu.submenus.filter(sub => {
+          if (!allowedMenuIds) return true;
+          if (sub.menuId !== undefined) {
+            return allowedMenuIds.includes(Number(sub.menuId));
+          }
+          return true;
+        });
+        return { ...menu, submenus };
+      }).filter(menu => menu.submenus.length > 0);
+    }
 
     let menuHTML = `
       <style>
@@ -176,7 +235,7 @@ class AppSidebar extends HTMLElement {
 
         <!-- Project Switcher Pill -->
         <div class="bg-slate-100 p-1.5 rounded-lg flex items-center justify-between text-xs font-medium">
-          <a href="/prj-ho" class="flex-1 text-center py-1.5 rounded-md transition ${isHo || (!isCsv && !isHo) ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-gray-500 hover:text-gray-800'}">
+          <a href="/prj-ho" class="flex-1 text-center py-1.5 rounded-md transition ${isHo ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-gray-500 hover:text-gray-800'}">
             PRJ-HO
           </a>
           <a href="/prj-csv" class="flex-1 text-center py-1.5 rounded-md transition ${isCsv ? 'bg-white text-blue-600 font-bold shadow-sm' : 'text-gray-500 hover:text-gray-800'}">
@@ -185,7 +244,7 @@ class AppSidebar extends HTMLElement {
         </div>
     `;
 
-    filteredStructure.forEach(menu => {
+    menuStructure.forEach(menu => {
       menuHTML += `
         <div>
           <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-3">${menu.title}</h2>
@@ -193,7 +252,11 @@ class AppSidebar extends HTMLElement {
       `;
 
       menu.submenus.forEach(sub => {
-        const isActive = sub.label.toLowerCase() === activeMenu.toLowerCase() || sub.id === activeMenu.toLowerCase();
+        const isExactMatch = sub.href && sub.href !== '#' && (path === sub.href || path === sub.href + '.html');
+        const isPrefixMatch = sub.href && sub.href !== '#' && sub.href !== '/prj-csv' && sub.href !== '/prj-ho' && path.startsWith(sub.href + '/');
+        const isLabelMatch = sub.label.toLowerCase() === activeMenu.toLowerCase() || sub.id === activeMenu.toLowerCase();
+        
+        const isActive = isExactMatch || isPrefixMatch || isLabelMatch;
         
         const activeClass = isActive 
           ? "text-blue-600 font-semibold bg-blue-50 border-r-4 border-blue-600" 

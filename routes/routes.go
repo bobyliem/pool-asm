@@ -97,6 +97,22 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 		pages.StaticFile("/prj-csv/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
 		pages.StaticFile("/prj-csv/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
 		pages.StaticFile("/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/prj-csv/colokan-solar/import-data", "./web/prj-csv/colokan-solar/import-data.html")
+		pages.StaticFile("/prj-csv/import-data", "./web/prj-csv/colokan-solar/import-data.html")
+		pages.StaticFile("/colokan-solar/import-data", "./web/prj-csv/colokan-solar/import-data.html")
+
+		// Laporan Colokan Solar
+		pages.StaticFile("/prj-csv/colokan-solar/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+		pages.StaticFile("/prj-csv/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+		pages.StaticFile("/colokan-solar/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+		pages.StaticFile("/prj-csv/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+		pages.StaticFile("/colokan-solar/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
+		pages.StaticFile("/prj-csv/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
+		pages.StaticFile("/colokan-solar/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
 
 		// Administrator Routes
 		pages.StaticFile("/admin/users", "./web/admin/users.html")
@@ -252,6 +268,20 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.GET("/solar/filter-options", solarHandler.GetFilterOptions)
 			api.POST("/solar/sync", solarHandler.TriggerSync)
 			api.GET("/solar/sync/status", solarHandler.GetSyncStatus)
+
+			// dt_solar Endpoints
+			api.GET("/solar/dt-solar", solarHandler.GetDtSolar)
+			api.GET("/solar/dt-solar/filters", solarHandler.GetDtSolarFilterOptions)
+			api.POST("/solar/dt-solar/upload", solarHandler.UploadDtSolar)
+			api.POST("/solar/dt-solar/import-sample", solarHandler.ImportSampleDtSolar)
+			api.DELETE("/solar/dt-solar/truncate", solarHandler.TruncateDtSolar)
+
+			// Laporan Colokan Solar Endpoints
+			api.GET("/solar/laporan/detail-harian", solarHandler.GetLaporanDetailHarian)
+			api.GET("/solar/laporan/rekap-unit", solarHandler.GetLaporanRekapUnit)
+			api.GET("/solar/laporan/rekonsiliasi", solarHandler.GetLaporanRekonsiliasi)
+			api.GET("/solar/laporan/detail-points", solarHandler.GetDetailPoints)
+			api.GET("/solar/laporan/filters", solarHandler.GetLaporanFilterOptions)
 		}
 
 		// Auth & Administrator Endpoints
@@ -259,6 +289,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.POST("/auth/login", authHandler.Login)
 			api.POST("/auth/logout", authHandler.Logout)
 			api.GET("/auth/me", authHandler.GetMe)
+			api.GET("/auth/user-menus", authHandler.GetUserMenus)
 			api.POST("/auth/change-password", authHandler.RequireAuth(), authHandler.ChangePassword)
 
 			// Master User (Menu ID: 14)
