@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"context"
+	"asm/repository"
 	"sort"
 	"database/sql"
 	"fmt"
@@ -581,63 +582,13 @@ func HandleCommandOmsetPendingCust(db *gorm.DB, custCode string) string {
 }
 
 // HandleCommandPendingHarian: /pendingharian
-// Menampilkan rekap unit dengan SPK yang masih Open (belum close) untuk periode hari ini, dikelompokkan berdasarkan Area dan Kategori.
+// Menampilkan rekap unit dari data row http://localhost:8080/prj-csv/spk-per-cust yang berwarna kuning (SPK Belum Close)
 func HandleCommandPendingHarian(db *gorm.DB) string {
-	type pendingRow struct {
-		Sitename string `gorm:"column:sitename"`
-		Nopol    string `gorm:"column:nopol"`
-		Purpose  string `gorm:"column:purpose"`
-	}
+	repo := repository.NewCsvSpkRepository(db)
+	today := time.Now().Format("2006-01-02")
 
-	query := `
-SELECT 
-    v.sitename, 
-    v.nopol,
-    v.purpose
-FROM imp_visitor v
-LEFT JOIN (
-    SELECT visitor_id, MAX(last_notes) AS catt, SUM(IFNULL(completed_at,0)) AS krj, tkerja
-	, CASE 
-	    WHEN SUM(IFNULL(completed_at,0)) <> tkerja THEN 'OnProgress'
-	    WHEN SUM(IFNULL(completed_at,0)) = tkerja THEN 'Finished'
-	END AS note, MAX(so_cat)AS so_cat
-    FROM (
-	SELECT visitor_id, released_at, completed_at, 1 AS tkerja
-	    , CASE WHEN LENGTH(IFNULL(completed_at,'')) = 0 THEN 0 ELSE 1 END AS progress
-	    , last_notes, category AS so_cat
-	FROM imp_service_order
-    ) AS dt
-    GROUP BY visitor_id
-) AS wo ON v.visitor_id = wo.visitor_id
-WHERE (LENGTH(v.exitdate) = 0)
-  AND ('ALL' = 'ALL' OR v.sitename = 'ALL')
-  AND v.purpose IN ('Perbaikan', 'Asuransi')
-
-UNION
-
-SELECT site AS sitename, nopol, MAX(cat) AS purpose
-FROM (
-    SELECT nopol, site, MAX(category) AS cat
-    FROM (
-	SELECT site, plate_number AS nopol, category
-	FROM imp_service_order so
-	WHERE (
-	    DATE(so.released_at) BETWEEN LAST_DAY(CURDATE() - INTERVAL 1 MONTH) + INTERVAL 1 DAY AND LAST_DAY(CURDATE())
-	    OR (DATE(so.completed_at) IS NULL AND DATE(so.released_at) < LAST_DAY(CURDATE() - INTERVAL 1 MONTH))
-	    OR DATE(so.completed_at) BETWEEN LAST_DAY(CURDATE() - INTERVAL 1 MONTH) + INTERVAL 1 DAY AND LAST_DAY(CURDATE())
-	)
-	AND DATE(completed_at) IS NULL
-	AND (category = 'Storing' OR category = 'Others')
-    ) AS dt
-    GROUP BY site, nopol
-) AS dt
-GROUP BY site, nopol
-
-ORDER BY sitename, purpose, nopol
-`
-
-	var rows []pendingRow
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+	items, err := repo.GetSpkPerCust("ALL", "ALL", "ALL", today, today)
+	if err != nil {
 		return "❌ Gagal mengambil data SPK pending: " + err.Error()
 	}
 
@@ -678,8 +629,14 @@ ORDER BY sitename, purpose, nopol
 
 	grandTotal := 0
 
-	for _, r := range rows {
-		siteName := strings.ToUpper(strings.TrimSpace(r.Sitename))
+	for _, item := range items {
+		// Filter HANYA baris warna KUNING di http://localhost:8080/prj-csv/spk-per-cust (!isClosed)
+		isClosed := item.CloseSpk != nil && *item.CloseSpk != "" && *item.CloseSpk != "-"
+		if isClosed {
+			continue
+		}
+
+		siteName := strings.ToUpper(strings.TrimSpace(item.Site))
 		if siteName == "" {
 			siteName = "LAIN-LAIN"
 		}
@@ -695,7 +652,7 @@ ORDER BY sitename, purpose, nopol
 			}
 		}
 
-		catName := strings.ToUpper(strings.TrimSpace(r.Purpose))
+		catName := strings.ToUpper(strings.TrimSpace(item.Kategori))
 		if catName == "" {
 			catName = "OTHERS"
 		}
@@ -706,12 +663,25 @@ ORDER BY sitename, purpose, nopol
 			sData.categories[catName] = make([]string, 0)
 		}
 
-		unitName := strings.TrimSpace(r.Nopol)
+		unitName := strings.TrimSpace(item.Nopol)
+		if unitName == "" || unitName == "-" {
+			unitName = strings.TrimSpace(item.Cabin)
+		}
+		if unitName == "" {
+			unitName = item.Spk
+		}
 		if strings.HasPrefix(strings.ToUpper(unitName), "KABIN LOHAN") {
 			unitName = "KABIN LOHAN"
 		}
 
-		isPending := strings.Contains(siteName, "SAR")
+		catatan := ""
+		if item.Catatan != nil {
+			catatan = *item.Catatan
+		}
+
+		isPending := strings.Contains(siteName, "SAR") ||
+			strings.Contains(strings.ToUpper(catatan), "PENDING")
+
 		if isPending {
 			unitName += " (PENDING)"
 		}
