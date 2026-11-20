@@ -48,127 +48,184 @@
     <!-- MAIN CONTENT -->
     <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
 
-      <!-- TOP BAR: Header & Audit Risk KPI Cards (Compact) -->
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+      <!-- TOP BAR: Header & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-2 shadow-2xs">
         
         <!-- Left: Title & Subtitle -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-rose-600 text-sm"></i>
-            <div>
-              <h2 class="text-sm font-bold text-slate-800 leading-none">Laporan Rekonsiliasi & Anomali Solar</h2>
-              <span class="text-[10px] text-slate-500 font-medium">Audit & Finance: Deteksi Kebocoran, Kesalahan Input Colokan & Odometer HM</span>
-            </div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-shield-halved text-sm"></i>
           </div>
-
-          <!-- Divider -->
-          <span class="text-slate-300 hidden sm:inline">|</span>
-
-          <!-- Mini KPI Badges (Audit Risk Perspective) -->
-          <div class="flex flex-wrap items-center gap-2 text-[11px]">
-            <div class="bg-rose-50 border border-rose-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-rose-900 shadow-2xs" title="Jumlah Kasus Anomali Kritis yang Perlu Investigasi Segera">
-              <i class="fa-solid fa-triangle-exclamation text-[10px] text-rose-600"></i>
-              <span class="text-slate-600 font-medium">Anomali:</span>
-              <span id="kpiTotalAnomali" class="font-bold text-rose-700">0</span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800 leading-none">Laporan Rekonsiliasi & Anomali Solar</h2>
+              <span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Audit & Finance</span>
             </div>
-            <div class="bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-amber-900 shadow-2xs" title="Jumlah Kasus Peringatan / Konsumsi Di Atas Rata-rata">
-              <i class="fa-solid fa-circle-exclamation text-[10px] text-amber-600"></i>
-              <span class="text-slate-600 font-medium">Peringatan:</span>
-              <span id="kpiTotalPeringatan" class="font-bold text-amber-700">0</span>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-emerald-900 shadow-2xs" title="Jumlah Kasus Operasional Normal">
-              <i class="fa-solid fa-circle-check text-[10px] text-emerald-600"></i>
-              <span class="text-slate-600 font-medium">Normal:</span>
-              <span id="kpiTotalNormal" class="font-bold text-emerald-700">0</span>
-            </div>
-            <div class="bg-red-50 border border-red-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-red-900 shadow-2xs" title="Total Volume Pemakaian Solar yang Mengandung Anomali / Peringatan">
-              <i class="fa-solid fa-gas-pump text-[10px] text-red-600"></i>
-              <span class="text-slate-600 font-medium">BBM Terindikasi:</span>
-              <span id="kpiPakaiAnomaliLiter" class="font-bold text-red-700">0 Ltr</span>
-            </div>
-            <div class="bg-purple-50 border border-purple-300 px-2.5 py-0.5 rounded flex items-center gap-1.5 text-purple-900 shadow-2xs" title="Total Selisih Netto (Pengisian - Pemakaian) Keseluruhan Armada">
-              <i class="fa-solid fa-scale-balanced text-[10px] text-purple-600"></i>
-              <span class="text-slate-500">Netto Total:</span>
-              <span id="kpiSelisihNettoLiter" class="font-bold text-purple-700">0 Ltr</span>
-            </div>
+            <span class="text-[11px] text-slate-500 font-medium">Deteksi Kebocoran, Jam Kerja & Evaluasi Rasio Konsumsi Solar</span>
           </div>
         </div>
 
         <!-- Right: Action Buttons -->
-        <div class="flex items-center gap-1.5">
-          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Refresh Data">
+        <div class="flex items-center gap-2">
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
             <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
             <span>Refresh</span>
           </button>
 
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Export Temuan Audit ke Excel">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Temuan Audit ke Excel">
             <i class="fa-solid fa-file-excel text-[11px]"></i>
             <span>Export Audit (.xlsx)</span>
           </button>
         </div>
       </div>
 
-      <!-- FILTER BAR -->
-      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
-        <div class="flex flex-wrap items-center gap-2">
-          
-          <!-- Periode Tanggal -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
-            <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
-            <span class="text-slate-500 font-medium text-[11px]">Periode:</span>
-            <input type="date" id="filterTglAwal" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
-            <span class="text-slate-400">s/d</span>
-            <input type="date" id="filterTglAkhir" class="bg-transparent text-xs text-slate-700 focus:outline-hidden font-medium cursor-pointer" />
+      <!-- KPI SUMMARY CARDS (HEIGHT 3X) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-2.5">
+        <!-- 1. Total Anomali -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-rose-400 transition min-h-[72px]" title="Jumlah Kasus Anomali Kritis yang Perlu Investigasi Segera">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-rose-700 tracking-wider">Kasus Anomali</span>
+            <span id="kpiTotalAnomali" class="text-lg font-extrabold text-rose-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Perlu Investigasi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-triangle-exclamation text-base"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total Peringatan -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-amber-400 transition min-h-[72px]" title="Jumlah Kasus Peringatan / Konsumsi Di Atas Rata-rata">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-amber-700 tracking-wider">Peringatan</span>
+            <span id="kpiTotalPeringatan" class="text-lg font-extrabold text-amber-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Di Atas Toleransi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+          </div>
+        </div>
+
+        <!-- 3. Operasional Normal -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-emerald-400 transition min-h-[72px]" title="Jumlah Kasus Operasional Normal Sesuai Parameter">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Normal</span>
+            <span id="kpiTotalNormal" class="text-lg font-extrabold text-emerald-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Operasional Terkendali</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+            <i class="fa-solid fa-circle-check text-base"></i>
+          </div>
+        </div>
+
+        <!-- 4. BBM Terindikasi -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-red-400 transition min-h-[72px]" title="Total Volume Pemakaian Solar yang Mengandung Anomali / Peringatan">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-red-700 tracking-wider">BBM Terindikasi</span>
+            <span id="kpiPakaiAnomaliLiter" class="text-lg font-extrabold text-red-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Volume Anomali</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-2xs">
+            <i class="fa-solid fa-gas-pump text-base"></i>
+          </div>
+        </div>
+
+        <!-- 5. Netto Total -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-purple-400 transition min-h-[72px] col-span-2 sm:col-span-1" title="Total Selisih Netto (Pengisian - Pemakaian) Keseluruhan Armada">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-purple-700 tracking-wider">Netto Total</span>
+            <span id="kpiSelisihNettoLiter" class="text-lg font-extrabold text-purple-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Pengisian - Pemakaian</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs">
+            <i class="fa-solid fa-scale-balanced text-base"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FRAME BESAR SEPERTI SUMMARY-PER-DRIVER) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 mb-2.5 shadow-xs">
+        <div class="flex items-center justify-between font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-filter text-blue-600"></i>
+            <span>Filter Parameter Rekonsiliasi & Anomali</span>
+          </div>
+          <!-- Audit Alert Callout -->
+          <div class="text-[11px] text-slate-500 font-normal hidden xl:flex items-center gap-2">
+            <span><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i>Kriteria:</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM=0 tp Pakai BBM</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">Rasio &gt; 50 L/HM</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM Mundur / &gt; 24 Jam</span>
+          </div>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+            </div>
+          </div>
+
+          <!-- Area Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Area</label>
+            <select id="filterArea" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[140px] cursor-pointer font-medium">
+              <option value="">Semua Area</option>
+            </select>
           </div>
 
           <!-- Unit Dropdown -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[140px]">
-            <i class="fa-solid fa-truck-pickup text-slate-400 text-[11px]"></i>
-            <select id="filterUnit" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Unit Alat</label>
+            <select id="filterUnit" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[150px] cursor-pointer font-medium">
               <option value="">Semua Unit</option>
             </select>
           </div>
 
-          <!-- Kategori Anomali Dropdown -->
-          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded min-w-[170px]">
-            <i class="fa-solid fa-filter text-slate-400 text-[11px]"></i>
-            <select id="filterKategori" class="bg-transparent text-xs text-slate-700 focus:outline-hidden w-full cursor-pointer">
+          <!-- Kategori Temuan Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto flex-1 min-w-[200px]">
+            <label class="block font-semibold text-slate-600 text-[11px]">Kategori Temuan</label>
+            <select id="filterKategori" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white cursor-pointer font-medium">
               <option value="">Semua Kategori Temuan</option>
-              <option value="Konsumsi Ekstrem">Konsumsi Ekstrem (>50 L/HM)</option>
+              <option value="Konsumsi Ekstrem">Konsumsi Ekstrem (&gt;50 L/HM)</option>
               <option value="Pemakaian Solar Tanpa Jam Kerja">Pakai Solar Tanpa HM (HM=0)</option>
-              <option value="Colokan Negatif">Colokan Negatif (Sore > Pagi)</option>
-              <option value="Jam Kerja > 24 Jam">Jam Kerja > 24 Jam/Hari</option>
-              <option value="HM Mundur">HM Mundur (Akhir < Awal)</option>
-              <option value="Konsumsi Tinggi">Konsumsi Tinggi (>35 L/HM)</option>
+              <option value="Pemakaian Negatif">Pemakaian Negatif</option>
+              <option value="Jam Kerja > 24 Jam">Jam Kerja &gt; 24 Jam/Hari</option>
+              <option value="HM Mundur">HM Mundur (Akhir &lt; Awal)</option>
+              <option value="Konsumsi Tinggi">Konsumsi Tinggi (&gt;35 L/HM)</option>
               <option value="Konsumsi Besar Tanpa Pengisian">Pakai Besar Tanpa Pengisian</option>
             </select>
           </div>
 
           <!-- Checkbox: Hanya Tampilkan Anomali & Peringatan -->
-          <label class="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded cursor-pointer select-none text-rose-900">
-            <input type="checkbox" id="filterOnlyAnomali" checked onchange="fetchData(1)" class="cursor-pointer text-rose-600 rounded" />
-            <span class="font-bold text-[11px]">Hanya Anomali & Peringatan</span>
-          </label>
+          <div class="flex items-center h-[34px]">
+            <label class="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg cursor-pointer select-none text-rose-900 font-bold text-[11px]">
+              <input type="checkbox" id="filterOnlyAnomali" checked onchange="fetchData(1)" class="cursor-pointer text-rose-600 rounded" />
+              <span>Hanya Anomali & Peringatan</span>
+            </label>
+          </div>
 
-          <!-- Tombol Filter & Reset -->
-          <button onclick="applyFilter()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer">
-            <i class="fa-solid fa-filter text-[10px]"></i>
-            <span>Terapkan</span>
-          </button>
-
-          <button onclick="resetFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Reset Filter">
-            <i class="fa-solid fa-rotate-left text-[10px]"></i>
-            <span>Reset</span>
-          </button>
-        </div>
-
-        <!-- Audit Alert Callout -->
-        <div class="text-[10px] text-slate-500 hidden xl:flex items-center gap-2">
-          <span><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i>Kriteria Anomali:</span>
-          <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM=0 tp Pakai BBM</span>
-          <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">Rasio &gt; 50 L/HM</span>
-          <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM Mundur / &gt; 24 Jam</span>
-        </div>
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </form>
       </div>
 
       <!-- TABLE CONTAINER -->
@@ -184,13 +241,13 @@
                 <th class="py-2 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('unit')">
                   Unit Alat <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
                 </th>
+                <th class="py-2 px-2.5 text-center border-r border-slate-200">Area</th>
                 <th class="py-2 px-2.5 text-center border-r border-slate-200 w-24">Status Audit</th>
                 <th class="py-2 px-3 border-r border-slate-200" style="min-width: 180px;">Jenis Temuan Anomali</th>
                 <th class="py-2 px-2 text-right border-r border-slate-200" title="HM Awal">HM Awal</th>
                 <th class="py-2 px-2 text-right border-r border-slate-200" title="HM Akhir">HM Akhir</th>
                 <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-amber-50/50" title="Total Jam Kerja HM">Total HM</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Penurunan Colokan (cm)">Pakai (cm)</th>
-                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800" title="Pemakaian Solar = cm * L/cm">
+                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800" title="Total Pemakaian Solar (Liter)">
                   Pemakaian (Ltr)
                 </th>
                 <th class="py-2 px-3 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800" title="Total Pengisian Solar Resmi (Liter)">
@@ -263,6 +320,7 @@
 
     const filterTglAwal = document.getElementById("filterTglAwal");
     const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
     const filterUnit = document.getElementById("filterUnit");
     const filterKategori = document.getElementById("filterKategori");
     const filterOnlyAnomali = document.getElementById("filterOnlyAnomali");
@@ -273,8 +331,38 @@
     const paginationControls = document.getElementById("paginationControls");
     const refreshIcon = document.getElementById("refreshIcon");
 
+    // Helper functions for Session Date
+    function getTodayString() {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    function initDateSession() {
+      const today = getTodayString();
+      const savedAwal = sessionStorage.getItem("asm_tgl_awal");
+      const savedAkhir = sessionStorage.getItem("asm_tgl_akhir");
+
+      if (savedAwal) {
+        filterTglAwal.value = savedAwal;
+      } else {
+        filterTglAwal.value = today;
+      }
+
+      if (savedAkhir) {
+        filterTglAkhir.value = savedAkhir;
+      } else {
+        filterTglAkhir.value = today;
+      }
+    }
+
+    function saveDateSession() {
+      if (filterTglAwal.value) sessionStorage.setItem("asm_tgl_awal", filterTglAwal.value);
+      if (filterTglAkhir.value) sessionStorage.setItem("asm_tgl_akhir", filterTglAkhir.value);
+    }
+
     // On Load
     document.addEventListener("DOMContentLoaded", async () => {
+      initDateSession();
       await loadFilterOptions();
       fetchData(1);
     });
@@ -284,13 +372,15 @@
         const res = await fetch("/api/v1/solar/laporan/filters");
         const json = await res.json();
         if (json.status === "success" && json.data) {
-          const { units, min_tgl, max_tgl } = json.data;
-          if (Array.isArray(units)) {
+          const { areas, units } = json.data;
+          if (Array.isArray(areas) && filterArea) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
+          if (Array.isArray(units) && filterUnit) {
             filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
               units.map(u => `<option value="${u}">${u}</option>`).join("");
           }
-          if (min_tgl && !filterTglAwal.value) filterTglAwal.value = min_tgl;
-          if (max_tgl && !filterTglAkhir.value) filterTglAkhir.value = max_tgl;
         }
       } catch (err) {
         console.error("Gagal load filter options:", err);
@@ -300,6 +390,7 @@
     async function fetchData(page = 1) {
       currentPage = page;
       refreshIcon.classList.add("fa-spin");
+      saveDateSession();
 
       const params = new URLSearchParams({
         page: currentPage,
@@ -309,6 +400,7 @@
 
       if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
       if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
       if (filterUnit.value) params.append("unit", filterUnit.value);
       if (filterKategori.value) params.append("kategoriAnomali", filterKategori.value);
 
@@ -388,16 +480,18 @@
               <i class="fa-solid fa-truck-pickup text-slate-400 text-[10px]"></i>
               <span>${row.unit}</span>
             </td>
+            <td class="py-2 px-2.5 text-center border-r border-slate-100 font-sans">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${row.area || '-'}</span>
+            </td>
             <td class="py-2 px-2.5 text-center border-r border-slate-100">${statusBadge}</td>
             <td class="py-2 px-3 border-r border-slate-100 ${temuanColor}">${row.jenis_anomali}</td>
             <td class="py-2 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_awal, 1)}</td>
             <td class="py-2 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_akhir, 1)}</td>
             <td class="py-2 px-2.5 text-right font-bold text-amber-700 bg-amber-50/40 border-r border-slate-100">${formatNum(row.total_hm, 1)}</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.pakai_cm, 1)}</td>
             <td class="py-2 px-3 text-right font-bold text-rose-700 bg-rose-50/40 border-r border-slate-100">${formatNum(row.pakai_liter, 1)}</td>
             <td class="py-2 px-3 text-right font-bold text-emerald-700 bg-emerald-50/40 border-r border-slate-100">${formatNum(row.isi_liter, 1)}</td>
             <td class="py-2 px-2.5 text-right font-bold text-purple-800 bg-purple-50/20 border-r border-slate-100">
-              ${row.total_hm > 0 ? formatNum(row.ltr_per_hm, 1) : '-'}
+              ${row.total_hm > 0 ? formatNum(row.ltr_per_hm, 2) : '-'}
             </td>
             <td class="py-2 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
             <td class="py-2 px-3 text-slate-600 text-[11px] leading-relaxed border-r border-slate-100">
@@ -450,19 +544,13 @@
         startPage = Math.max(1, endPage - maxButtons + 1);
       }
 
-      if (startPage > 1) {
-        html += `<button onclick="fetchData(1)" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">1</button>`;
-        if (startPage > 2) html += `<span class="px-1 text-slate-400">...</span>`;
-      }
-
-      for (let p = startPage; p <= endPage; p++) {
-        const active = p === currentPage ? "bg-rose-600 text-white border-rose-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100";
-        html += `<button onclick="fetchData(${p})" class="px-2 py-0.5 rounded border ${active} text-xs transition cursor-pointer">${p}</button>`;
-      }
-
-      if (endPage < totalPages) {
-        if (endPage < totalPages - 1) html += `<span class="px-1 text-slate-400">...</span>`;
-        html += `<button onclick="fetchData(${totalPages})" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">${totalPages}</button>`;
+      for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === currentPage ? "bg-blue-600 text-white font-bold" : "bg-white text-slate-700 hover:bg-slate-100";
+        html += `
+          <button onclick="fetchData(${i})" class="px-2 py-0.5 rounded border border-slate-300 ${activeClass} text-xs transition cursor-pointer">
+            ${i}
+          </button>
+        `;
       }
 
       html += `
@@ -476,7 +564,7 @@
     }
 
     function changePageSize() {
-      pageSize = parseInt(document.getElementById("pageSize").value);
+      pageSize = parseInt(document.getElementById("pageSize").value) || 50;
       fetchData(1);
     }
 
@@ -485,10 +573,31 @@
     }
 
     function resetFilter() {
-      filterUnit.value = "";
-      filterKategori.value = "";
-      filterOnlyAnomali.checked = true;
-      loadFilterOptions().then(() => fetchData(1));
+      initDateSession();
+      if (filterArea) filterArea.value = "";
+      if (filterUnit) filterUnit.value = "";
+      if (filterKategori) filterKategori.value = "";
+      if (filterOnlyAnomali) filterOnlyAnomali.checked = true;
+      fetchData(1);
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData(1);
     }
 
     function sortTable(column) {
@@ -522,16 +631,15 @@
         "No": i + 1,
         "Tanggal": r.tgl,
         "Unit Alat": r.unit,
+        "Area": r.area || "-",
         "Status Audit": r.status_audit,
         "Jenis Temuan": r.jenis_anomali,
         "HM Awal": r.hm_awal,
         "HM Akhir": r.hm_akhir,
         "Total Jam HM": r.total_hm,
-        "Colokan Pakai (cm)": r.pakai_cm,
-        "Faktor Konversi (L/cm)": r.konsumsi,
         "Pemakaian (Liter)": r.pakai_liter,
         "Pengisian (Liter)": r.isi_liter,
-        "Rasio (Liter/HM)": r.ltr_per_hm,
+        "Rasio (Liter/HM)": r.total_hm > 0 ? r.ltr_per_hm : 0,
         "Netto Tangki (Liter)": r.netto_liter,
         "Keterangan / Analisis Audit": r.keterangan_audit,
       }));
