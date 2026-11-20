@@ -114,6 +114,10 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 		pages.StaticFile("/prj-csv/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
 		pages.StaticFile("/colokan-solar/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
 
+		pages.StaticFile("/prj-csv/colokan-solar/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+		pages.StaticFile("/prj-csv/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+		pages.StaticFile("/colokan-solar/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+
 		// Administrator Routes
 		pages.StaticFile("/admin/users", "./web/admin/users.html")
 		pages.StaticFile("/admin/groups", "./web/admin/groups.html")
@@ -280,6 +284,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.GET("/solar/laporan/detail-harian", solarHandler.GetLaporanDetailHarian)
 			api.GET("/solar/laporan/rekap-unit", solarHandler.GetLaporanRekapUnit)
 			api.GET("/solar/laporan/rekonsiliasi", solarHandler.GetLaporanRekonsiliasi)
+			api.GET("/solar/laporan/monitoring-tangki", solarHandler.GetLaporanMonitoringTangki)
 			api.GET("/solar/laporan/detail-points", solarHandler.GetDetailPoints)
 			api.GET("/solar/laporan/filters", solarHandler.GetLaporanFilterOptions)
 		}
