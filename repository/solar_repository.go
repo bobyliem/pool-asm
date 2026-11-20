@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ type SolarRepository interface {
 	GetLaporanDetailHarian(filter models.LaporanDetailHarianFilter) ([]models.LaporanDetailHarianItem, int64, models.LaporanDetailHarianSummary, error)
 	GetLaporanRekapUnit(filter models.LaporanRekapUnitFilter) ([]models.LaporanRekapUnitItem, models.LaporanRekapUnitSummary, error)
 	GetLaporanRekonsiliasi(filter models.LaporanRekonsiliasiFilter) ([]models.LaporanRekonsiliasiItem, int64, models.LaporanRekonsiliasiSummary, error)
+	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
 	GetLaporanFilterOptions() ([]string, []string, string, string, error)
 }
@@ -753,4 +755,244 @@ func (r *solarRepository) GetLaporanFilterOptions() ([]string, []string, string,
 	_ = r.db.Raw("SELECT COALESCE(DATE_FORMAT(MIN(tgl), '%Y-%m-%d'), ''), COALESCE(DATE_FORMAT(MAX(tgl), '%Y-%m-%d'), '') FROM dt_solar_summary").Row().Scan(&minTgl, &maxTgl)
 
 	return areas, finalUnits, minTgl, maxTgl, nil
+}
+
+// GetLaporanMonitoringTangki retrieves tank status overview, daily ledger, and forward projections
+func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, error) {
+	// 1. Ambil list tangki (u.tangki = 'Yes')
+	tankQuery := r.db.Table("dt_solar_unit").Where("tangki = ?", "Yes")
+	if filter.Area != "" {
+		tankQuery = tankQuery.Where("area = ?", filter.Area)
+	}
+	if filter.Tangki != "" {
+		tankQuery = tankQuery.Where("unit = ?", filter.Tangki)
+	}
+
+	type TankRow struct {
+		Unit string
+		Area string
+	}
+	var tankRows []TankRow
+	if err := tankQuery.Select("unit, area").Order("area ASC, unit ASC").Scan(&tankRows).Error; err != nil {
+		return nil, nil, 0, nil, err
+	}
+
+	now := time.Now()
+	var tankSummaries []models.TangkiStatusSummary
+	var projections []models.TangkiProjectionItem
+
+	// 2. Evaluasi status & ketahanan stok tiap tangki
+	for _, tr := range tankRows {
+		summary := models.TangkiStatusSummary{
+			Unit: tr.Unit,
+			Area: tr.Area,
+		}
+
+		// Ambil saldo terakhir dari dt_solar_summary
+		var latestStock float64
+		var lastDate string
+		err := r.db.Raw(`
+			SELECT saldoakhir, COALESCE(DATE_FORMAT(tgl, '%Y-%m-%d'), '')
+			FROM dt_solar_summary
+			WHERE unit = ?
+			ORDER BY tgl DESC
+			LIMIT 1
+		`, tr.Unit).Row().Scan(&latestStock, &lastDate)
+		if err == nil {
+			summary.CurrentStock = latestStock
+			summary.LastDate = lastDate
+		}
+
+		// Jumlah unit alat di area ini (tangki = 'No')
+		var unitCount int
+		_ = r.db.Raw("SELECT COUNT(*) FROM dt_solar_unit WHERE area = ? AND tangki = 'No'", tr.Area).Row().Scan(&unitCount)
+		summary.UnitCount = unitCount
+
+		// Pengisian/Refill terakhir tangki dari supplier
+		var lastRefillDate string
+		var lastRefillQty float64
+		err = r.db.Raw(`
+			SELECT COALESCE(DATE_FORMAT(tgl, '%Y-%m-%d'), ''), isi
+			FROM dt_solar_tangki
+			WHERE unit = ? AND isi > 0
+			ORDER BY tgl DESC
+			LIMIT 1
+		`, tr.Unit).Row().Scan(&lastRefillDate, &lastRefillQty)
+		if err != nil || lastRefillQty == 0 {
+			// fallback ke dt_solar_summary
+			_ = r.db.Raw(`
+				SELECT COALESCE(DATE_FORMAT(tgl, '%Y-%m-%d'), ''), isi
+				FROM dt_solar_summary
+				WHERE unit = ? AND isi > 0
+				ORDER BY tgl DESC
+				LIMIT 1
+			`, tr.Unit).Row().Scan(&lastRefillDate, &lastRefillQty)
+		}
+		summary.LastRefillDate = lastRefillDate
+		summary.LastRefillQty = lastRefillQty
+
+		// Hitung burn rate rata-rata (pemakaian harian tangki ke unit)
+		// Mengambil 30 hari data terakhir yang aktif (pakai > 0)
+		var totalPakai float64
+		var activeDays int
+		_ = r.db.Raw(`
+			SELECT COALESCE(SUM(pakai), 0), COUNT(CASE WHEN pakai > 0 THEN 1 END)
+			FROM dt_solar_summary
+			WHERE unit = ? AND tgl >= DATE_SUB(COALESCE((SELECT MAX(tgl) FROM dt_solar_summary WHERE unit = ?), CURDATE()), INTERVAL 30 DAY)
+		`, tr.Unit, tr.Unit).Row().Scan(&totalPakai, &activeDays)
+
+		if activeDays > 0 && totalPakai > 0 {
+			summary.ActiveDays = activeDays
+			summary.AvgDailyBurn = math.Round((totalPakai/float64(activeDays))*10) / 10
+		} else {
+			summary.AvgDailyBurn = 0
+		}
+
+		// Hitung Ketahanan Stok (Days of Supply)
+		if summary.AvgDailyBurn > 0 && summary.CurrentStock > 0 {
+			summary.DaysOfSupply = math.Round((summary.CurrentStock/summary.AvgDailyBurn)*10) / 10
+			daysToAdd := int(summary.DaysOfSupply)
+			summary.RunOutDate = now.AddDate(0, 0, daysToAdd).Format("2006-01-02")
+		} else if summary.CurrentStock <= 0 {
+			summary.DaysOfSupply = 0
+			summary.RunOutDate = now.Format("2006-01-02")
+		} else {
+			summary.DaysOfSupply = 999
+			summary.RunOutDate = "-"
+		}
+
+		// Status alert
+		if summary.DaysOfSupply <= 2 {
+			summary.Status = "KRITIS"
+			summary.StatusColor = "rose"
+		} else if summary.DaysOfSupply <= 5 {
+			summary.Status = "WASPADA"
+			summary.StatusColor = "amber"
+		} else {
+			summary.Status = "AMAN"
+			summary.StatusColor = "emerald"
+		}
+
+		tankSummaries = append(tankSummaries, summary)
+
+		// 3. Proyeksi 14 hari ke depan untuk tangki ini
+		curSaldo := summary.CurrentStock
+		burnRate := summary.AvgDailyBurn
+		for d := 1; d <= 14; d++ {
+			pDate := now.AddDate(0, 0, d).Format("2006-01-02")
+			nextSaldo := curSaldo - burnRate
+			if nextSaldo < 0 {
+				nextSaldo = 0
+			}
+
+			sisaHari := 0.0
+			if burnRate > 0 {
+				sisaHari = math.Round((nextSaldo/burnRate)*10) / 10
+			}
+
+			pStatus := "AMAN"
+			pColor := "emerald"
+			if nextSaldo <= 0 {
+				pStatus = "HABIS"
+				pColor = "rose"
+			} else if sisaHari <= 2 {
+				pStatus = "KRITIS"
+				pColor = "rose"
+			} else if sisaHari <= 5 {
+				pStatus = "WASPADA"
+				pColor = "amber"
+			}
+
+			projections = append(projections, models.TangkiProjectionItem{
+				HariKe:       d,
+				Tanggal:      pDate,
+				UnitTangki:   tr.Unit,
+				Area:         tr.Area,
+				SaldoAwal:    math.Round(curSaldo*10) / 10,
+				EstimasiBurn: math.Round(burnRate*10) / 10,
+				SaldoAkhir:   math.Round(nextSaldo*10) / 10,
+				SisaHari:     sisaHari,
+				Status:       pStatus,
+				StatusColor:  pColor,
+			})
+
+			curSaldo = nextSaldo
+		}
+	}
+
+	// 4. Query Riwayat Mutasi Harian Tangki (Ledger)
+	var conditions []string
+	var args []interface{}
+
+	conditions = append(conditions, "u.tangki = 'Yes'")
+
+	if filter.TglAwal != "" {
+		conditions = append(conditions, "s.tgl >= ?")
+		args = append(args, filter.TglAwal)
+	}
+	if filter.TglAkhir != "" {
+		conditions = append(conditions, "s.tgl <= ?")
+		args = append(args, filter.TglAkhir)
+	}
+	if filter.Area != "" {
+		conditions = append(conditions, "u.area = ?")
+		args = append(args, filter.Area)
+	}
+	if filter.Tangki != "" {
+		conditions = append(conditions, "s.unit = ?")
+		args = append(args, filter.Tangki)
+	}
+
+	whereClause := "WHERE " + strings.Join(conditions, " AND ")
+
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM dt_solar_summary s
+		JOIN dt_solar_unit u ON s.unit = u.unit
+		%s
+	`, whereClause)
+
+	var totalRows int64
+	if err := r.db.Raw(countQuery, args...).Row().Scan(&totalRows); err != nil {
+		return tankSummaries, nil, 0, projections, err
+	}
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	dataQuery := fmt.Sprintf(`
+		SELECT s.id, 
+		       COALESCE(DATE_FORMAT(s.tgl, '%%Y-%%m-%%d'), '') as tgl,
+		       s.unit, 
+		       COALESCE(u.area, '-') as area,
+		       ROUND(COALESCE(s.saldoawal, 0), 1) as saldo_awal,
+		       ROUND(COALESCE(s.isi, 0), 1) as isi,
+		       ROUND(COALESCE(s.pakai, 0), 1) as pakai,
+		       ROUND(COALESCE(s.saldoakhir, 0), 1) as saldo_akhir,
+		       COALESCE((
+		           SELECT GROUP_CONCAT(CONCAT(s2.unit, ': ', ROUND(s2.isi, 0), 'L') SEPARATOR ', ')
+		           FROM dt_solar_summary s2
+		           JOIN dt_solar_unit u2 ON s2.unit = u2.unit
+		           WHERE u2.area = u.area AND u2.tangki = 'No' AND s2.tgl = s.tgl AND s2.isi > 0
+		       ), '-') as rincian_unit
+		FROM dt_solar_summary s
+		JOIN dt_solar_unit u ON s.unit = u.unit
+		%s
+		ORDER BY s.tgl DESC, u.area ASC
+		LIMIT %d OFFSET %d
+	`, whereClause, limit, offset)
+
+	var items []models.LaporanMonitoringTangkiItem
+	if err := r.db.Raw(dataQuery, args...).Scan(&items).Error; err != nil {
+		return tankSummaries, nil, totalRows, projections, err
+	}
+
+	return tankSummaries, items, totalRows, projections, nil
 }

@@ -348,6 +348,35 @@ func (h *SolarHandler) GetDetailPoints(c *gin.Context) {
 }
 
 // GetLaporanFilterOptions handles GET /api/v1/solar/laporan/filters
+func (h *SolarHandler) GetLaporanMonitoringTangki(c *gin.Context) {
+	var filter models.LaporanMonitoringTangkiFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Parameter filter tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	result, err := h.service.GetLaporanMonitoringTangki(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal mengambil data monitoring tangki: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":         "success",
+		"tank_summaries": result["tank_summaries"],
+		"items":          result["items"],
+		"projections":    result["projections"],
+		"pagination":     result["pagination"],
+	})
+}
+
+// GetLaporanFilterOptions handles GET /api/v1/solar/laporan/filters
 func (h *SolarHandler) GetLaporanFilterOptions(c *gin.Context) {
 	options, err := h.service.GetLaporanFilterOptions()
 	if err != nil {
