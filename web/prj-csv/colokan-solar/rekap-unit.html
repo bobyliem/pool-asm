@@ -50,172 +50,157 @@
     <!-- MAIN CONTENT -->
     <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
 
-      <!-- TOP BAR: Header & Action Buttons -->
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5 bg-white border border-slate-300 rounded-xl px-4 py-2.5 shadow-xs">
+      <!-- TOP BAR: Header, Filter Area (Kanan Atas) & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
         
         <!-- Left: Title & Subtitle -->
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
-            <i class="fa-solid fa-chart-column text-base"></i>
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-chart-column text-xs"></i>
           </div>
           <div>
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm font-bold text-slate-800 leading-none">Summary Per Unit</h2>
-              <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Evaluasi Operasional</span>
+            <div class="flex items-center gap-1.5">
+              <h2 class="text-xs font-bold text-slate-800 leading-none">Summary Per Unit</h2>
+              <span class="bg-blue-100 text-blue-800 text-[9px] font-bold px-1.5 py-0.2 rounded">Evaluasi Operasional</span>
             </div>
-            <span class="text-[11px] text-slate-500 font-medium">Hari Kerja, Total Jam HM & Efisiensi Konsumsi Solar per Unit Alat</span>
+            <span class="text-[10px] text-slate-500 font-medium">Hari Kerja, Total Jam HM & Efisiensi Konsumsi Solar per Unit Alat</span>
           </div>
         </div>
 
-        <!-- Right: Action Buttons -->
+        <!-- Right: Filter Area Dropdown (Kanan Atas) & Action Buttons -->
         <div class="flex items-center gap-2">
-          <button onclick="toggleChart()" id="btnToggleChart" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Tampilkan/Sembunyikan Grafik">
-            <i class="fa-solid fa-chart-simple text-indigo-600 text-[11px]"></i>
-            <span id="chartToggleText">Grafik Efisiensi</span>
+          <!-- Filter Area (Identik Dashboard) -->
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="fetchData()" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+              <option value="">Semua Area</option>
+            </select>
+          </div>
+
+          <button onclick="toggleChart()" id="btnToggleChart" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Tampilkan/Sembunyikan Grafik">
+            <i class="fa-solid fa-chart-simple text-indigo-600 text-[10px]"></i>
+            <span id="chartToggleText">Grafik</span>
           </button>
 
-          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
-            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[10px]"></i>
             <span>Refresh</span>
           </button>
 
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
-            <i class="fa-solid fa-file-excel text-[11px]"></i>
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
+            <i class="fa-solid fa-file-excel text-[10px]"></i>
             <span>Export Excel</span>
           </button>
         </div>
       </div>
 
-      <!-- KPI SUMMARY CARDS (HEIGHT 3X) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-2.5">
+      <!-- KPI SUMMARY CARDS (COMPACT HEIGHT) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
         <!-- 1. Total Unit Aktif -->
-        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-blue-400 transition min-h-[72px]" title="Jumlah Unit Aktif Beroperasi">
-          <div class="space-y-0.5">
-            <span class="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Unit Aktif</span>
-            <span id="kpiTotalUnit" class="text-lg font-extrabold text-slate-800 leading-tight">0</span>
-            <span class="block text-[10px] text-slate-400 font-medium">Unit Beroperasi</span>
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-blue-400 transition min-h-[46px]" title="Jumlah Unit Aktif Beroperasi">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-slate-500 tracking-wider">Unit Aktif</span>
+            <span id="kpiTotalUnit" class="text-sm font-extrabold text-slate-800">0</span>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
-            <i class="fa-solid fa-truck-pickup text-base"></i>
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+            <i class="fa-solid fa-truck-pickup text-xs"></i>
           </div>
         </div>
 
         <!-- 2. Total HM -->
-        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-amber-400 transition min-h-[72px]" title="Total Akumulasi Jam Kerja HM">
-          <div class="space-y-0.5">
-            <span class="block text-[10px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
-            <span id="kpiTotalHm" class="text-lg font-extrabold text-amber-700 leading-tight">0 Jam</span>
-            <span class="block text-[10px] text-slate-400 font-medium">Akumulasi Jam Kerja</span>
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-amber-400 transition min-h-[46px]" title="Total Akumulasi Jam Kerja HM">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
+            <span id="kpiTotalHm" class="text-sm font-extrabold text-amber-700">0 Jam</span>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
-            <i class="fa-solid fa-clock text-base"></i>
+          <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <i class="fa-solid fa-clock text-xs"></i>
           </div>
         </div>
 
         <!-- 3. Total Pemakaian -->
-        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-rose-400 transition min-h-[72px]" title="Total Pemakaian Solar (Liter)">
-          <div class="space-y-0.5">
-            <span class="block text-[10px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
-            <span id="kpiTotalPakaiLiter" class="text-lg font-extrabold text-rose-700 leading-tight">0 Ltr</span>
-            <span class="block text-[10px] text-slate-400 font-medium">Total Volume (Liter)</span>
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-rose-400 transition min-h-[46px]" title="Total Pemakaian Solar (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
+            <span id="kpiTotalPakaiLiter" class="text-sm font-extrabold text-rose-700">0 Ltr</span>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
-            <i class="fa-solid fa-gas-pump text-base"></i>
+          <div class="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+            <i class="fa-solid fa-gas-pump text-xs"></i>
           </div>
         </div>
 
         <!-- 4. Total Pengisian -->
-        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-emerald-400 transition min-h-[72px]" title="Total Pengisian Solar Resmi (Liter)">
-          <div class="space-y-0.5">
-            <span class="block text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
-            <span id="kpiTotalIsiLiter" class="text-lg font-extrabold text-emerald-700 leading-tight">0 Ltr</span>
-            <span class="block text-[10px] text-slate-400 font-medium">Total Pengisian Resmi</span>
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-emerald-400 transition min-h-[46px]" title="Total Pengisian Solar Resmi (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
+            <span id="kpiTotalIsiLiter" class="text-sm font-extrabold text-emerald-700">0 Ltr</span>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
-            <i class="fa-solid fa-oil-can text-base"></i>
+          <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <i class="fa-solid fa-oil-can text-xs"></i>
           </div>
         </div>
 
         <!-- 5. Rasio Efisiensi -->
-        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-purple-400 transition min-h-[72px] col-span-2 sm:col-span-1" title="Rata-rata Konsumsi Armada (Liter/HM)">
-          <div class="space-y-0.5">
-            <span class="block text-[10px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
-            <span id="kpiAvgLtrPerHm" class="text-lg font-extrabold text-purple-700 leading-tight">0 L/HM</span>
-            <span class="block text-[10px] text-slate-400 font-medium">Rata-rata Liter / HM</span>
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-purple-400 transition min-h-[46px] col-span-2 sm:col-span-1" title="Rata-rata Konsumsi Armada (Liter/HM)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
+            <span id="kpiAvgLtrPerHm" class="text-sm font-extrabold text-purple-700">0 L/HM</span>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs">
-            <i class="fa-solid fa-gauge-high text-base"></i>
+          <div class="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+            <i class="fa-solid fa-gauge-high text-xs"></i>
           </div>
         </div>
       </div>
 
-      <!-- FILTER CARD (FRAME BESAR SEPERTI SUMMARY-PER-DRIVER) -->
-      <div class="bg-white border border-slate-300 rounded-xl p-4 mb-2.5 shadow-xs">
-        <div class="flex items-center justify-between font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-filter text-blue-600"></i>
-            <span>Filter Parameter Summary Per Unit</span>
-          </div>
-          <!-- Legend Efisiensi -->
-          <div class="text-[11px] text-slate-500 font-normal hidden lg:flex items-center gap-2.5">
-            <span>Tingkat Rasio:</span>
-            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> 20-40 L/HM (Moderat)</span>
-            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> &le; 20 L/HM (Efisien)</span>
-            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> &gt; 40 L/HM (Tinggi)</span>
-          </div>
-        </div>
-
-        <form id="filterForm" onsubmit="event.preventDefault(); fetchData();" class="flex flex-wrap items-end gap-3 text-xs">
-          <!-- Periode Date Picker -->
-          <div class="space-y-1 w-full sm:w-auto">
-            <label class="block font-semibold text-slate-600 text-[11px]">Periode (Tgl Awal - Tgl Akhir)</label>
-            <div class="flex items-center gap-2">
+      <!-- FILTER BAR (1 BARIS, COMPACT & EYE-CATCHING GRAY DATE) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs">
+        <form id="filterForm" onsubmit="event.preventDefault(); fetchData();" class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Periode Tgl Awal & Tgl Akhir (Background Abu-abu Eye Catching) -->
+            <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-400 rounded-lg px-2.5 py-1 shadow-inner">
+              <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
+              <span class="text-[11px] font-bold text-slate-700">Periode:</span>
               <input type="date" id="filterTglAwal"
-                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
-              <span class="text-slate-400 font-bold">s/d</span>
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+              <span class="text-slate-600 font-extrabold text-[11px]">s/d</span>
               <input type="date" id="filterTglAkhir"
-                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+            </div>
+
+            <!-- Unit Dropdown -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1">
+              <i class="fa-solid fa-truck-pickup text-slate-500 text-xs"></i>
+              <span class="text-[11px] font-semibold text-slate-600">Unit:</span>
+              <select id="filterUnit" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer min-w-[130px]">
+                <option value="">Semua Unit</option>
+              </select>
+            </div>
+
+            <!-- Mode Pengelompokan: Akumulasi Unit vs Bulanan -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1">
+              <i class="fa-solid fa-layer-group text-slate-500 text-xs"></i>
+              <span class="text-[11px] font-semibold text-slate-600">Mode:</span>
+              <select id="filterGroupBy" onchange="fetchData()" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer">
+                <option value="unit" selected>Total Per Unit</option>
+                <option value="month_unit">Breakdown Bulanan</option>
+              </select>
             </div>
           </div>
 
-          <!-- Area Dropdown -->
-          <div class="space-y-1 w-full sm:w-auto">
-            <label class="block font-semibold text-slate-600 text-[11px]">Area Kerja</label>
-            <select id="filterArea" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[140px] cursor-pointer font-medium">
-              <option value="">Semua Area</option>
-            </select>
-          </div>
-
-          <!-- Unit Dropdown -->
-          <div class="space-y-1 w-full sm:w-auto">
-            <label class="block font-semibold text-slate-600 text-[11px]">Unit Alat</label>
-            <select id="filterUnit" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[160px] cursor-pointer font-medium">
-              <option value="">Semua Unit</option>
-            </select>
-          </div>
-
-          <!-- Mode Pengelompokan: Akumulasi Unit vs Bulanan -->
-          <div class="space-y-1 w-full sm:w-auto">
-            <label class="block font-semibold text-slate-600 text-[11px]">Mode Tampilan</label>
-            <select id="filterGroupBy" onchange="fetchData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[190px] cursor-pointer font-semibold">
-              <option value="unit" selected>Total Per Unit (Akumulasi)</option>
-              <option value="month_unit">Breakdown Bulanan per Unit</option>
-            </select>
-          </div>
-
-          <!-- Tombol Aksi -->
-          <div class="flex items-center gap-2 pt-1 sm:pt-0">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
-              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+          <!-- Buttons -->
+          <div class="flex items-center gap-1.5">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1 transition cursor-pointer text-xs">
+              <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Tampilkan
             </button>
-            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
               Hari Ini
             </button>
-            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
               Bulan Ini
             </button>
-            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium flex items-center gap-1" title="Reset Filter">
-              <i class="fa-solid fa-rotate-left"></i> Reset
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset
             </button>
           </div>
         </form>
@@ -238,31 +223,31 @@
       <!-- TABLE CONTAINER -->
       <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
         <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
-          <table class="w-full text-left border-collapse min-w-[1100px]" id="rekapTable">
-            <thead class="bg-slate-100 text-slate-700 text-[11px] font-bold border-b border-slate-300 sticky top-0 z-10 select-none">
-              <tr>
-                <th class="py-2 px-2.5 text-center w-10 border-r border-slate-200">No</th>
-                <th id="thPeriod" class="py-2 px-3 border-r border-slate-200 hidden">Periode</th>
-                <th class="py-2 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('unit')">
-                  Unit Alat <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
+          <table class="w-full text-left border-collapse" id="rekapTable">
+            <thead class="bg-slate-100 text-slate-700 text-[10.5px] font-bold border-b border-slate-300 sticky top-0 z-10 select-none">
+              <!-- ROW 1 -->
+              <tr class="border-b border-slate-200">
+                <th rowspan="2" class="py-1 px-1.5 text-center w-8 border-r border-slate-200 bg-slate-100">No</th>
+                <th rowspan="2" id="thPeriod" class="py-1 px-2 text-center border-r border-slate-200 hidden bg-slate-100">Periode</th>
+                <th rowspan="2" class="py-1 px-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition bg-slate-100" onclick="sortTable('unit')">
+                  Unit Alat <i class="fa-solid fa-sort text-[9px] text-slate-400 ml-0.5"></i>
                 </th>
-                <th class="py-2 px-2.5 text-center border-r border-slate-200">Area</th>
-                <th class="py-2 px-2.5 text-center border-r border-slate-200" title="Jumlah Hari Beroperasi">Hari Kerja</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="HM Awal Minimum di Periode">HM Awal</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="HM Akhir Maksimum di Periode">HM Akhir</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-amber-50/50 cursor-pointer hover:bg-amber-100/60" onclick="sortTable('total_hm')">
-                  Total HM <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
-                </th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Rata-rata Jam Operasi per Hari Kerja">Avg HM/Hari</th>
-                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800 cursor-pointer hover:bg-rose-100/60" onclick="sortTable('total_pakai_liter')">
-                  Pemakaian (Ltr) <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
-                </th>
-                <th class="py-2 px-3 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800 cursor-pointer hover:bg-emerald-100/60" onclick="sortTable('total_isi_liter')">
-                  Pengisian (Ltr) <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
-                </th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Selisih Netto = Pengisian - Pemakaian">Netto (Ltr)</th>
-                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Rata-rata Pemakaian Solar per Hari Kerja">Avg Ltr/Hari</th>
-                <th class="py-2 px-2.5 text-center w-20">Status</th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-slate-100">Area</th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-slate-100" title="Jumlah Hari Beroperasi">Hari Kerja</th>
+                <th colspan="4" class="py-1 px-2 text-center border-r border-slate-200 bg-amber-50/70 text-amber-900">Hour Meter (HM)</th>
+                <th colspan="4" class="py-1 px-2 text-center border-r border-slate-200 bg-rose-50/70 text-rose-900">Volume Solar (Liter)</th>
+                <th rowspan="2" class="py-1 px-2 text-center w-20 bg-slate-100">Status</th>
+              </tr>
+              <!-- ROW 2 -->
+              <tr class="text-[10px] bg-slate-100 text-slate-600">
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="HM Awal Min">Awal</th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="HM Akhir Max">Akhir</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-amber-50/50 text-amber-800 font-bold cursor-pointer hover:bg-amber-100/60" onclick="sortTable('total_hm')">Total <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Rata-rata HM per Hari">Avg/Hari</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-rose-50/40 text-rose-800 font-bold cursor-pointer hover:bg-rose-100/60" onclick="sortTable('total_pakai_liter')">Pakai <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-emerald-50/40 text-emerald-800 font-bold cursor-pointer hover:bg-emerald-100/60" onclick="sortTable('total_isi_liter')">Isi <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200" title="Netto = Pengisian - Pemakaian">Netto</th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Rata-rata Liter per Hari">Avg/Hari</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
@@ -515,25 +500,25 @@
 
         html += `
           <tr class="hover:bg-blue-50/40 transition">
-            <td class="py-2 px-2.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
-            ${isMonthly ? `<td class="py-2 px-3 font-semibold text-slate-700 border-r border-slate-100 text-center">${row.period}</td>` : ""}
-            <td class="py-2 px-3 font-bold text-slate-900 border-r border-slate-100 flex items-center gap-1.5">
-              <i class="fa-solid fa-truck-pickup text-slate-400 text-[10px]"></i>
+            <td class="py-1 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            ${isMonthly ? `<td class="py-1 px-2 font-semibold text-slate-700 border-r border-slate-100 text-center whitespace-nowrap">${row.period}</td>` : ""}
+            <td class="py-1 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
+              <i class="fa-solid fa-truck-pickup text-slate-400 text-[9px]"></i>
               <span>${row.unit}</span>
             </td>
-            <td class="py-2 px-2.5 text-center border-r border-slate-100 font-sans">
-              <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${row.area || '-'}</span>
+            <td class="py-1 px-1.5 text-center border-r border-slate-100 font-sans whitespace-nowrap">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${row.area || '-'}</span>
             </td>
-            <td class="py-2 px-2.5 text-center font-medium text-slate-700 border-r border-slate-100">${row.hari_kerja} hari</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.min_hm_awal, 1)}</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.max_hm_akhir, 1)}</td>
-            <td class="py-2 px-2.5 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-600 border-r border-slate-100">${formatNum(row.avg_hm_per_hari, 1)}</td>
-            <td class="py-2 px-3 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.total_pakai_liter, 1)}</td>
-            <td class="py-2 px-3 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.total_isi_liter, 1)}</td>
-            <td class="py-2 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
-            <td class="py-2 px-2.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.avg_pakai_per_hari, 1)}</td>
-            <td class="py-2 px-2.5 text-center">${statusBadge}</td>
+            <td class="py-1 px-1.5 text-center font-medium text-slate-700 border-r border-slate-100 whitespace-nowrap">${row.hari_kerja} hr</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.min_hm_awal, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.max_hm_akhir, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-600 border-r border-slate-100">${formatNum(row.avg_hm_per_hari, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.total_pakai_liter, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.total_isi_liter, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.avg_pakai_per_hari, 1)}</td>
+            <td class="py-1 px-1.5 text-center">${statusBadge}</td>
           </tr>
         `;
       });
