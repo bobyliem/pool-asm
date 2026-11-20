@@ -396,16 +396,15 @@ func (r *solarRepository) GetLaporanDetailHarian(filter models.LaporanDetailHari
 SELECT 
     COUNT(*) AS total_records,
     ROUND(COALESCE(SUM(s.hm_akhir - s.hm_awal), 0), 2) AS total_hm,
-    ROUND(COALESCE(SUM(s.pakai), 0), 2) AS total_pakai_cm,
-    ROUND(COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0), 2) AS total_pakai_liter,
+    ROUND(COALESCE(SUM(s.pakai), 0), 2) AS total_pakai_liter,
     ROUND(COALESCE(SUM(s.isi), 0), 2) AS total_isi_liter,
     COUNT(DISTINCT s.unit) AS total_unit,
     CASE 
         WHEN COALESCE(SUM(s.hm_akhir - s.hm_awal), 0) > 0 
-        THEN ROUND(COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0) / SUM(s.hm_akhir - s.hm_awal), 2)
+        THEN ROUND(COALESCE(SUM(s.pakai), 0) / SUM(s.hm_akhir - s.hm_awal), 2)
         ELSE 0
     END AS avg_ltr_per_hm,
-    ROUND(COALESCE(SUM(s.isi), 0) - COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0), 2) AS netto_liter
+    ROUND(COALESCE(SUM(s.isi), 0) - COALESCE(SUM(s.pakai), 0), 2) AS netto_liter
 FROM dt_solar_summary s
 LEFT JOIN dt_solar_unit u ON s.unit = u.unit
 %s
@@ -436,16 +435,14 @@ SELECT
     s.hm_akhir,
     ROUND(s.hm_akhir - s.hm_awal, 2) AS total_hm,
     COALESCE(s.saldoawal, 0) AS saldo_awal,
-    s.pakai AS pakai_cm,
-    COALESCE(u.konsumsi, 0) AS konsumsi,
-    ROUND(s.pakai * COALESCE(u.konsumsi, 0), 2) AS pakai_liter,
+    ROUND(s.pakai, 2) AS pakai_liter,
     s.isi AS isi_liter,
     COALESCE(s.saldoakhir, 0) AS saldo_akhir,
     CASE 
-        WHEN (s.hm_akhir - s.hm_awal) > 0 THEN ROUND((s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal), 2)
+        WHEN (s.hm_akhir - s.hm_awal) > 0 THEN ROUND(s.pakai / (s.hm_akhir - s.hm_awal), 2)
         ELSE 0
     END AS ltr_per_hm,
-    ROUND(s.isi - (s.pakai * COALESCE(u.konsumsi, 0)), 2) AS netto_liter,
+    ROUND(s.isi - s.pakai, 2) AS netto_liter,
     COALESCE(DATE_FORMAT(s.created, '%%Y-%%m-%%d %%H:%%i:%%s'), '-') AS created
 FROM dt_solar_summary s
 LEFT JOIN dt_solar_unit u ON s.unit = u.unit
@@ -492,20 +489,20 @@ func (r *solarRepository) GetLaporanRekapUnit(filter models.LaporanRekapUnitFilt
 	statusOrderCase := `
     CASE 
         WHEN SUM(s.hm_akhir - s.hm_awal) <= 0 THEN 4
-        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 20 
-             AND (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 1
-        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 40 THEN 2
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 20 
+             AND (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 1
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) > 40 THEN 2
         ELSE 3
     END ASC`
 
 	var groupByClause, periodSelect, orderByClause string
 	if filter.GroupBy == "month_unit" {
 		periodSelect = "DATE_FORMAT(s.tgl, '%Y-%m') AS period"
-		groupByClause = "GROUP BY DATE_FORMAT(s.tgl, '%Y-%m'), s.unit, u.konsumsi, u.area"
+		groupByClause = "GROUP BY DATE_FORMAT(s.tgl, '%Y-%m'), s.unit, u.area"
 		orderByClause = fmt.Sprintf("ORDER BY period DESC, COALESCE(u.area, '-') ASC, %s, s.unit ASC", statusOrderCase)
 	} else {
 		periodSelect = "'Semua Periode' AS period"
-		groupByClause = "GROUP BY s.unit, u.konsumsi, u.area"
+		groupByClause = "GROUP BY s.unit, u.area"
 		orderByClause = fmt.Sprintf("ORDER BY COALESCE(u.area, '-') ASC, %s, s.unit ASC", statusOrderCase)
 	}
 
@@ -519,20 +516,18 @@ SELECT
     MAX(s.hm_akhir) AS max_hm_akhir,
     ROUND(SUM(s.hm_akhir - s.hm_awal), 2) AS total_hm,
     ROUND(SUM(s.hm_akhir - s.hm_awal) / COUNT(DISTINCT s.tgl), 2) AS avg_hm_per_hari,
-    ROUND(SUM(s.pakai), 2) AS total_pakai_cm,
-    COALESCE(u.konsumsi, 0) AS konsumsi,
-    ROUND(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 2) AS total_pakai_liter,
+    ROUND(SUM(s.pakai), 2) AS total_pakai_liter,
     ROUND(SUM(s.isi), 2) AS total_isi_liter,
-    ROUND(SUM(s.isi) - SUM(s.pakai * COALESCE(u.konsumsi, 0)), 2) AS netto_liter,
-    ROUND(SUM(s.pakai * COALESCE(u.konsumsi, 0)) / COUNT(DISTINCT s.tgl), 2) AS avg_pakai_per_hari,
+    ROUND(SUM(s.isi) - SUM(s.pakai), 2) AS netto_liter,
+    ROUND(SUM(s.pakai) / COUNT(DISTINCT s.tgl), 2) AS avg_pakai_per_hari,
     CASE 
-        WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN ROUND(SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal), 2)
+        WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN ROUND(SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal), 2)
         ELSE 0
     END AS ltr_per_hm,
     CASE
         WHEN SUM(s.hm_akhir - s.hm_awal) <= 0 THEN 'Idle'
-        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 20 THEN 'Efisien'
-        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai * COALESCE(u.konsumsi, 0)) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 'Moderat'
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 20 THEN 'Efisien'
+        WHEN (CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal) ELSE 0 END) <= 40 THEN 'Moderat'
         ELSE 'Tinggi'
     END AS efisiensi_status
 FROM dt_solar_summary s
@@ -552,14 +547,14 @@ SELECT
     COUNT(DISTINCT s.unit) AS total_unit,
     COUNT(DISTINCT s.tgl) AS total_hari_kerja,
     ROUND(COALESCE(SUM(s.hm_akhir - s.hm_awal), 0), 2) AS total_hm,
-    ROUND(COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0), 2) AS total_pakai_liter,
+    ROUND(COALESCE(SUM(s.pakai), 0), 2) AS total_pakai_liter,
     ROUND(COALESCE(SUM(s.isi), 0), 2) AS total_isi_liter,
     CASE 
         WHEN COALESCE(SUM(s.hm_akhir - s.hm_awal), 0) > 0 
-        THEN ROUND(COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0) / SUM(s.hm_akhir - s.hm_awal), 2)
+        THEN ROUND(COALESCE(SUM(s.pakai), 0) / SUM(s.hm_akhir - s.hm_awal), 2)
         ELSE 0
     END AS avg_ltr_per_hm,
-    ROUND(COALESCE(SUM(s.isi), 0) - COALESCE(SUM(s.pakai * COALESCE(u.konsumsi, 0)), 0), 2) AS netto_liter
+    ROUND(COALESCE(SUM(s.isi), 0) - COALESCE(SUM(s.pakai), 0), 2) AS netto_liter
 FROM dt_solar_summary s
 LEFT JOIN dt_solar_unit u ON s.unit = u.unit
 %s
@@ -608,43 +603,41 @@ SELECT
     s.hm_awal,
     s.hm_akhir,
     ROUND(s.hm_akhir - s.hm_awal, 2) AS total_hm,
-    s.pakai AS pakai_cm,
-    COALESCE(u.konsumsi, 0) AS konsumsi,
-    ROUND(s.pakai * COALESCE(u.konsumsi, 0), 2) AS pakai_liter,
+    ROUND(s.pakai, 2) AS pakai_liter,
     s.isi AS isi_liter,
     CASE 
-        WHEN (s.hm_akhir - s.hm_awal) > 0 THEN ROUND((s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal), 2)
+        WHEN (s.hm_akhir - s.hm_awal) > 0 THEN ROUND(s.pakai / (s.hm_akhir - s.hm_awal), 2)
         ELSE 0
     END AS ltr_per_hm,
-    ROUND(s.isi - (s.pakai * COALESCE(u.konsumsi, 0)), 2) AS netto_liter,
+    ROUND(s.isi - s.pakai, 2) AS netto_liter,
     CASE
         WHEN s.hm_akhir < s.hm_awal THEN 'ANOMALI'
         WHEN (s.hm_akhir - s.hm_awal) > 24 THEN 'ANOMALI'
         WHEN (s.hm_akhir - s.hm_awal) = 0 AND s.pakai > 0 THEN 'ANOMALI'
         WHEN s.pakai < 0 THEN 'ANOMALI'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 50 THEN 'ANOMALI'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 35 THEN 'PERINGATAN'
-        WHEN (s.pakai * COALESCE(u.konsumsi, 0)) > 300 AND s.isi = 0 THEN 'PERINGATAN'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 50 THEN 'ANOMALI'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 35 THEN 'PERINGATAN'
+        WHEN s.pakai > 300 AND s.isi = 0 THEN 'PERINGATAN'
         ELSE 'NORMAL'
     END AS status_audit,
     CASE
         WHEN s.hm_akhir < s.hm_awal THEN 'HM Mundur (Akhir < Awal)'
         WHEN (s.hm_akhir - s.hm_awal) > 24 THEN 'Jam Kerja > 24 Jam/Hari'
         WHEN (s.hm_akhir - s.hm_awal) = 0 AND s.pakai > 0 THEN 'Pemakaian Solar Tanpa Jam Kerja (HM = 0)'
-        WHEN s.pakai < 0 THEN 'Colokan Negatif (Colokan Sore > Pagi Tanpa Isi)'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 50 THEN 'Konsumsi Ekstrem (>50 L/HM)'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 35 THEN 'Konsumsi Tinggi (>35 L/HM)'
-        WHEN (s.pakai * COALESCE(u.konsumsi, 0)) > 300 AND s.isi = 0 THEN 'Konsumsi Besar Tanpa Pengisian Solar'
+        WHEN s.pakai < 0 THEN 'Pemakaian Negatif'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 50 THEN 'Konsumsi Ekstrem (>50 L/HM)'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 35 THEN 'Konsumsi Tinggi (>35 L/HM)'
+        WHEN s.pakai > 300 AND s.isi = 0 THEN 'Konsumsi Besar Tanpa Pengisian Solar'
         ELSE 'Operasional Normal'
     END AS jenis_anomali,
     CASE
         WHEN s.hm_akhir < s.hm_awal THEN 'Indikasi kesalahan catat odometer HM atau pergantian unit meteran'
         WHEN (s.hm_akhir - s.hm_awal) > 24 THEN 'Total jam kerja harian melebihi 24 jam fisik, periksa input HM awal/akhir'
         WHEN (s.hm_akhir - s.hm_awal) = 0 AND s.pakai > 0 THEN 'Ada konsumsi solar tercatat namun HM tidak bergerak (indikasi unit idle lama atau pencurian)'
-        WHEN s.pakai < 0 THEN 'Level solar colokan sore lebih tinggi dari pagi tanpa tercatat pengisian resmi'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 50 THEN 'Rasio konsumsi solar per jam kerja sangat tinggi di luar batas toleransi normal armada'
-        WHEN (s.hm_akhir - s.hm_awal) > 0 AND (s.pakai * COALESCE(u.konsumsi, 0)) / (s.hm_akhir - s.hm_awal) > 35 THEN 'Rasio konsumsi solar per jam di atas rata-rata operasional, perlu crosscheck beban kerja'
-        WHEN (s.pakai * COALESCE(u.konsumsi, 0)) > 300 AND s.isi = 0 THEN 'Pemakaian solar harian besar tanpa adanya pengisian solar pada hari tersebut'
+        WHEN s.pakai < 0 THEN 'Volume pemakaian solar bernilai negatif'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 50 THEN 'Rasio konsumsi solar per jam kerja sangat tinggi di luar batas toleransi normal armada'
+        WHEN (s.hm_akhir - s.hm_awal) > 0 AND s.pakai / (s.hm_akhir - s.hm_awal) > 35 THEN 'Rasio konsumsi solar per jam di atas rata-rata operasional, perlu crosscheck beban kerja'
+        WHEN s.pakai > 300 AND s.isi = 0 THEN 'Pemakaian solar harian besar tanpa adanya pengisian solar pada hari tersebut'
         ELSE 'Data konsumsi dan jam kerja berada dalam rentang toleransi normal'
     END AS keterangan_audit
 FROM dt_solar_summary s
