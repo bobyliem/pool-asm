@@ -392,3 +392,79 @@ func (h *SolarHandler) GetLaporanFilterOptions(c *gin.Context) {
 		"data":   options,
 	})
 }
+
+// GetDashboardSolarUnits handles GET /api/v1/solar/dashboard/units
+func (h *SolarHandler) GetDashboardSolarUnits(c *gin.Context) {
+	var filter models.DashboardSolarFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Parameter tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	items, err := h.service.GetDashboardSolarUnits(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": "Gagal memuat unit dashboard solar: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   items,
+	})
+}
+
+// SubmitColokan handles POST /api/v1/solar/dashboard/input-colokan
+func (h *SolarHandler) SubmitColokan(c *gin.Context) {
+	var req models.InputColokanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Data input colokan tidak lengkap atau tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.service.SubmitColokan(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Data colokan solar unit %s jam %02d:00 berhasil disimpan!", req.Unit, req.Jam),
+	})
+}
+
+// SubmitIsiSolar handles POST /api/v1/solar/dashboard/input-isi
+func (h *SolarHandler) SubmitIsiSolar(c *gin.Context) {
+	var req models.InputIsiSolarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Data input pengisian solar tidak lengkap atau tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.service.SubmitIsiSolar(req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": fmt.Sprintf("Data pengisian solar unit %s jam %02d:00 sebesar %.1f L berhasil disimpan!", req.Unit, req.Jam, req.IsiLiter),
+	})
+}

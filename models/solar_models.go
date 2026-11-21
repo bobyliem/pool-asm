@@ -272,3 +272,46 @@ type TangkiProjectionItem struct {
 	Status       string  `json:"status"`
 	StatusColor  string  `json:"status_color"`
 }
+
+// 5. Dashboard Solar
+type DashboardSolarFilter struct {
+	Area string `form:"area"`
+}
+
+type DashboardSolarUnitCard struct {
+	ID            int     `json:"id"`
+	Unit          string  `json:"unit"`
+	Area          string  `json:"area"`
+	Tangki        string  `json:"tangki"`
+	Induk         int     `json:"induk"`
+	IndukName     string  `json:"induk_name"`
+	Hm            float64 `json:"hm"`
+	SisaSolar     float64 `json:"sisa_solar"`
+	Konsumsi      float64 `json:"konsumsi"`
+	AvgLiterPerHm float64 `json:"avg_liter_per_hm"`
+	LastTgl       string  `json:"last_tgl"`
+	LastJam       int     `json:"last_jam"`
+	LastNote      string  `json:"last_note"`
+	Updated       string  `json:"updated"`
+	Status        string  `json:"status"`
+}
+
+type InputColokanRequest struct {
+	Tanggal   string  `json:"tanggal" binding:"required"`
+	Jam       int     `json:"jam" binding:"required,min=1,max=24"`
+	Unit      string  `json:"unit" binding:"required"`
+	Hm        float64 `json:"hm"`
+	CmSesudah float64 `json:"cm_sesudah"`
+}
+
+type InputIsiSolarRequest struct {
+	Tanggal   string  `json:"tanggal" binding:"required"`
+	Jam       int     `json:"jam" binding:"required,min=1,max=24"`
+	Unit      string  `json:"unit" binding:"required"`
+	Hm        float64 `json:"hm"`
+	CmAwal    float64 `json:"cm_awal"`
+	CmSebelum float64 `json:"cm_sebelum"`
+	IsiLiter  float64 `json:"isi_liter"`
+	CmAkhir   float64 `json:"cm_akhir"`
+	CmSesudah float64 `json:"cm_sesudah"`
+}
