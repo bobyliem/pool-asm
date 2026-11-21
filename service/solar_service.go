@@ -38,6 +38,11 @@ type SolarService interface {
 	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) (map[string]interface{}, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
 	GetLaporanFilterOptions() (map[string]interface{}, error)
+
+	// Dashboard Solar
+	GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error)
+	SubmitColokan(req models.InputColokanRequest) error
+	SubmitIsiSolar(req models.InputIsiSolarRequest) error
 }
 
 type solarService struct {
@@ -465,4 +470,19 @@ func (s *solarService) GetLaporanMonitoringTangki(filter models.LaporanMonitorin
 			"total_pages":  totalPages,
 		},
 	}, nil
+}
+
+// GetDashboardSolarUnits retrieves unit cards for Dashboard Solar
+func (s *solarService) GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error) {
+	return s.repo.GetDashboardSolarUnits(filter)
+}
+
+// SubmitColokan processes colokan input
+func (s *solarService) SubmitColokan(req models.InputColokanRequest) error {
+	return s.repo.SubmitColokan(req)
+}
+
+// SubmitIsiSolar processes fuel filling input
+func (s *solarService) SubmitIsiSolar(req models.InputIsiSolarRequest) error {
+	return s.repo.SubmitIsiSolar(req)
 }

@@ -118,6 +118,10 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 		pages.StaticFile("/prj-csv/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
 		pages.StaticFile("/colokan-solar/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
 
+		pages.StaticFile("/prj-csv/colokan-solar/dashboard", "./web/prj-csv/colokan-solar/dashboard.html")
+		pages.StaticFile("/prj-csv/dashboard-solar", "./web/prj-csv/colokan-solar/dashboard.html")
+		pages.StaticFile("/colokan-solar/dashboard", "./web/prj-csv/colokan-solar/dashboard.html")
+
 		// Administrator Routes
 		pages.StaticFile("/admin/users", "./web/admin/users.html")
 		pages.StaticFile("/admin/groups", "./web/admin/groups.html")
@@ -287,6 +291,11 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.GET("/solar/laporan/monitoring-tangki", solarHandler.GetLaporanMonitoringTangki)
 			api.GET("/solar/laporan/detail-points", solarHandler.GetDetailPoints)
 			api.GET("/solar/laporan/filters", solarHandler.GetLaporanFilterOptions)
+
+			// Dashboard Solar Endpoints
+			api.GET("/solar/dashboard/units", solarHandler.GetDashboardSolarUnits)
+			api.POST("/solar/dashboard/input-colokan", solarHandler.SubmitColokan)
+			api.POST("/solar/dashboard/input-isi", solarHandler.SubmitIsiSolar)
 		}
 
 		// Auth & Administrator Endpoints

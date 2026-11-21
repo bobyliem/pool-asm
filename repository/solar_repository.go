@@ -32,6 +32,11 @@ type SolarRepository interface {
 	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
 	GetLaporanFilterOptions() ([]string, []string, string, string, error)
+
+	// Dashboard Solar
+	GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error)
+	SubmitColokan(req models.InputColokanRequest) error
+	SubmitIsiSolar(req models.InputIsiSolarRequest) error
 }
 
 type solarRepository struct {
@@ -995,4 +1000,233 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 	}
 
 	return tankSummaries, items, totalRows, projections, nil
+}
+
+// GetDashboardSolarUnits retrieves unit cards for Dashboard Solar
+func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error) {
+	whereClause := "WHERE 1=1"
+	var queryArgs []interface{}
+
+	cleanArea := strings.TrimSpace(filter.Area)
+	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
+		whereClause += " AND u.area = ?"
+		queryArgs = append(queryArgs, cleanArea)
+	}
+
+	cleanTgl := strings.TrimSpace(filter.Tanggal)
+
+	var items []models.DashboardSolarUnitCard
+
+	if cleanTgl != "" {
+		selectArgs := []interface{}{cleanTgl, cleanTgl, cleanTgl, cleanTgl, cleanTgl, cleanTgl}
+		allArgs := append(selectArgs, queryArgs...)
+
+		query := fmt.Sprintf(`
+		SELECT 
+			u.id, u.unit, u.area, u.tangki, u.induk,
+			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
+			ROUND(COALESCE(s.hm_akhir, u.hm), 3) as hm, 
+			ROUND(COALESCE(s.saldoakhir, u.sisasolar), 2) as sisa_solar, 
+			ROUND(u.konsumsi, 2) as konsumsi,
+			ROUND(COALESCE(s.pakai, 0), 2) as hari_pakai,
+			ROUND(COALESCE(s.isi, 0), 2) as hari_isi,
+			COALESCE(DATE_FORMAT(u.updated, '%%Y-%%m-%%d %%H:%%i:%%s'), '-') as updated,
+			COALESCE((
+				SELECT CASE WHEN SUM(sm.hm_akhir - sm.hm_awal) > 0 THEN ROUND(SUM(sm.pakai) / SUM(sm.hm_akhir - sm.hm_awal), 2) ELSE 0 END
+				FROM dt_solar_summary sm
+				WHERE sm.unit = u.unit AND sm.tgl <= ? AND sm.tgl >= DATE_SUB(?, INTERVAL 30 DAY)
+			), 0) as avg_liter_per_hm,
+			COALESCE((
+				SELECT DATE_FORMAT(h.tgl, '%%Y-%%m-%%d')
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_tgl,
+			COALESCE((
+				SELECT h.jam
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), 0) as last_jam,
+			COALESCE((
+				SELECT h.note
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_note
+		FROM dt_solar_unit u
+		LEFT JOIN dt_solar_unit parent ON u.induk = parent.id
+		LEFT JOIN dt_solar_summary s ON u.unit = s.unit AND s.tgl = ?
+		%s
+		ORDER BY u.tangki ASC, u.induk ASC, u.unit ASC
+	`, whereClause)
+
+		if err := r.db.Raw(query, allArgs...).Scan(&items).Error; err != nil {
+			return nil, fmt.Errorf("gagal mengambil data dashboard solar: %w", err)
+		}
+
+		for i := range items {
+			if items[i].Tangki == "Yes" {
+				items[i].Status = "TANGKI INDUK"
+			} else if items[i].HariPakai > 0 || items[i].HariIsi > 0 {
+				items[i].Status = "BEROPERASI"
+			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
+				items[i].Status = "BEROPERASI"
+			} else {
+				items[i].Status = "STANDBY"
+			}
+		}
+	} else {
+		query := fmt.Sprintf(`
+		SELECT 
+			u.id, u.unit, u.area, u.tangki, u.induk,
+			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
+			ROUND(u.hm, 3) as hm, 
+			ROUND(u.sisasolar, 2) as sisa_solar, 
+			ROUND(u.konsumsi, 2) as konsumsi,
+			0 as hari_pakai,
+			0 as hari_isi,
+			COALESCE(DATE_FORMAT(u.updated, '%%Y-%%m-%%d %%H:%%i:%%s'), '-') as updated,
+			COALESCE((
+				SELECT CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN ROUND(SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal), 2) ELSE 0 END
+				FROM dt_solar_summary s
+				WHERE s.unit = u.unit AND s.tgl >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+			), 0) as avg_liter_per_hm,
+			COALESCE((
+				SELECT DATE_FORMAT(h.tgl, '%%Y-%%m-%%d')
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_tgl,
+			COALESCE((
+				SELECT h.jam
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), 0) as last_jam,
+			COALESCE((
+				SELECT h.note
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_note
+		FROM dt_solar_unit u
+		LEFT JOIN dt_solar_unit parent ON u.induk = parent.id
+		%s
+		ORDER BY u.tangki ASC, u.induk ASC, u.unit ASC
+	`, whereClause)
+
+		if err := r.db.Raw(query, queryArgs...).Scan(&items).Error; err != nil {
+			return nil, fmt.Errorf("gagal mengambil data dashboard solar: %w", err)
+		}
+
+		for i := range items {
+			if items[i].Tangki == "Yes" {
+				items[i].Status = "TANGKI INDUK"
+			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
+				items[i].Status = "BEROPERASI"
+			} else {
+				items[i].Status = "STANDBY"
+			}
+		}
+	}
+
+	return items, nil
+}
+
+// SubmitColokan executes CALL sp_solar for colokan input
+func (r *solarRepository) SubmitColokan(req models.InputColokanRequest) error {
+	// 1. Cek unit di dt_solar_unit
+	type UnitCheck struct {
+		ID       int
+		Hm       float64
+		Tangki   string
+		Konsumsi float64
+	}
+	var u UnitCheck
+	err := r.db.Raw("SELECT id, hm, tangki, konsumsi FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
+	if err != nil || u.ID == 0 {
+		return fmt.Errorf("unit '%s' tidak ditemukan di master dt_solar_unit", req.Unit)
+	}
+
+	if u.Tangki == "Yes" {
+		return fmt.Errorf("unit '%s' adalah tangki induk, transaksi colokan hanya untuk unit alat berat", req.Unit)
+	}
+
+	// 2. Validasi HM tidak boleh lebih kecil dari HM saat ini
+	if req.Hm < u.Hm {
+		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
+	}
+
+	// 3. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
+	var lastJam int
+	_ = r.db.Raw("SELECT COALESCE(MAX(jam), 0) FROM dt_solar_his WHERE unit = ? AND tgl = ?", req.Unit, req.Tanggal).Row().Scan(&lastJam)
+	if lastJam > 0 && req.Jam <= lastJam {
+		return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
+	}
+
+	// 4. Eksekusi Stored Procedure
+	// CALL sp_solar(tanggal, jam, unit, hm, 0, 0, cm_sesudah)
+	callSQL := "CALL sp_solar(?, ?, ?, ?, 0, 0, ?)"
+	if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.Hm, req.CmSesudah).Error; err != nil {
+		return fmt.Errorf("gagal mengeksekusi sp_solar: %w", err)
+	}
+
+	return nil
+}
+
+// SubmitIsiSolar executes CALL sp_solar for fuel filling input
+func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error {
+	// 1. Cek unit di dt_solar_unit
+	type UnitCheck struct {
+		ID       int
+		Hm       float64
+		Tangki   string
+		Konsumsi float64
+	}
+	var u UnitCheck
+	err := r.db.Raw("SELECT id, hm, tangki, konsumsi FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
+	if err != nil || u.ID == 0 {
+		return fmt.Errorf("unit '%s' tidak ditemukan di master dt_solar_unit", req.Unit)
+	}
+
+	if u.Tangki == "Yes" {
+		return fmt.Errorf("unit '%s' adalah tangki induk, transaksi pengisian solar ini untuk unit alat berat", req.Unit)
+	}
+
+	// 2. Validasi HM tidak boleh lebih kecil dari HM saat ini
+	if req.Hm < u.Hm {
+		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
+	}
+
+	// 3. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
+	var lastJam int
+	_ = r.db.Raw("SELECT COALESCE(MAX(jam), 0) FROM dt_solar_his WHERE unit = ? AND tgl = ?", req.Unit, req.Tanggal).Row().Scan(&lastJam)
+	if lastJam > 0 && req.Jam <= lastJam {
+		return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
+	}
+
+	// 4. Eksekusi Stored Procedure
+	cmSebelum := req.CmAwal
+	if cmSebelum == 0 && req.CmSebelum != 0 {
+		cmSebelum = req.CmSebelum
+	}
+	cmSesudah := req.CmAkhir
+	if cmSesudah == 0 && req.CmSesudah != 0 {
+		cmSesudah = req.CmSesudah
+	}
+
+	// CALL sp_solar(tanggal, jam, unit, hm, cm_sebelum, isi_liter, cm_sesudah)
+	callSQL := "CALL sp_solar(?, ?, ?, ?, ?, ?, ?)"
+	if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.Hm, cmSebelum, req.IsiLiter, cmSesudah).Error; err != nil {
+		return fmt.Errorf("gagal mengeksekusi sp_solar: %w", err)
+	}
+
+	return nil
 }
