@@ -49,53 +49,103 @@
     <main class="flex-1 px-3 py-2 overflow-hidden bg-slate-50 flex flex-col">
 
       <!-- TOP BAR: Header, Filter Area (Kanan Atas) & Action Buttons -->
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5 bg-white border border-slate-300 rounded-lg px-3 py-1 shadow-2xs">
         <!-- Left: Title & Subtitle -->
         <div class="flex items-center gap-2">
-          <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
-            <i class="fa-solid fa-oil-well text-xs"></i>
+          <div class="w-6 h-6 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
+            <i class="fa-solid fa-oil-well text-[11px]"></i>
           </div>
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="text-xs font-bold text-slate-800 leading-none">Monitoring & Ketahanan Stok Tangki</h2>
               <span class="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.2 rounded">Early Warning Tangki</span>
             </div>
-            <span class="text-[10px] text-slate-500 font-medium">Estimasi Ketahanan Stok BBM (Days of Supply) & Mutasi Keluar-Masuk Tangki per Area</span>
+            <span class="text-[9.5px] text-slate-500 font-medium">Estimasi Ketahanan Stok BBM (Days of Supply) & Mutasi Keluar-Masuk Tangki per Area</span>
           </div>
         </div>
 
         <!-- Right: Filter Area Dropdown (Kanan Atas) & Action Buttons -->
         <div class="flex items-center gap-2">
           <!-- Filter Area (Identik Dashboard) -->
-          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
-            <i class="fa-solid fa-location-dot text-amber-600 text-xs"></i>
-            <span class="text-xs font-semibold text-slate-600">Area:</span>
-            <select id="filterArea" onchange="fetchData(1)" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-0.5 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-amber-600 text-[11px]"></i>
+            <span class="text-[11px] font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="onAreaChange()" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
               <option value="">Semua Area</option>
             </select>
           </div>
 
-          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
             <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-amber-600 text-[10px]"></i>
             <span>Refresh</span>
           </button>
 
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-0.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
             <i class="fa-solid fa-file-excel text-[10px]"></i>
             <span>Export Excel</span>
           </button>
         </div>
       </div>
 
-      <!-- SECTION EARLY WARNING / MONITORING CARDS TANGKI (DI ATAS LAPORAN) -->
-      <div id="tankCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-2">
-        <!-- Skeleton Loading Cards -->
-        <div class="bg-white border border-slate-200 rounded-lg p-3 animate-pulse h-28"></div>
-        <div class="bg-white border border-slate-200 rounded-lg p-3 animate-pulse h-28"></div>
+      <!-- SECTION TANK TABS & COMPACT KPI METRIC FRAME (DI ATAS LAPORAN) -->
+      <div class="bg-white border border-slate-300 rounded-lg p-2 mb-1.5 shadow-2xs">
+        <!-- Row 1: Tank Tab Buttons Selector -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-slate-200">
+          <div class="flex items-center gap-1.5" id="tankTabButtons">
+            <button onclick="selectTankTab('')" id="tabTank_all" class="px-2.5 py-1 text-[11px] font-bold rounded-md bg-amber-500 text-white shadow-2xs transition flex items-center gap-1">
+              <i class="fa-solid fa-cubes-stacked text-[10px]"></i>
+              <span>Semua Tangki</span>
+            </button>
+            <button onclick="selectTankTab('TANGKI-CCK')" id="tabTank_TANGKI-CCK" class="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1">
+              <i class="fa-solid fa-gas-pump text-[10px] text-amber-600"></i>
+              <span>TANGKI-CCK (Cicangkal)</span>
+            </button>
+            <button onclick="selectTankTab('TANGKI-PION')" id="tabTank_TANGKI-PION" class="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1">
+              <i class="fa-solid fa-gas-pump text-[10px] text-rose-600"></i>
+              <span>TANGKI-PION (Pion)</span>
+            </button>
+          </div>
+
+          <!-- Active Tank Status Badge (Right) -->
+          <div id="tankHeaderBadge" class="flex items-center gap-2">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Row 2: Compact Metrics Frame (SALDO TERKINI, KETAHANAN STOK, ESTIMASI HABIS, OUTFLOW, REFILL) -->
+        <div id="compactMetricsContainer" class="pt-1.5">
+          <!-- Rendered dynamically with low height -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Saldo Terkini</span>
+              <span class="text-xs font-extrabold text-slate-900 block font-mono">-</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Ketahanan Stok</span>
+              <span class="text-xs font-extrabold text-slate-900 block font-mono">-</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Estimasi Habis</span>
+              <span class="text-xs font-bold text-slate-800 block">-</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Burn Rate Outflow</span>
+              <span class="text-xs font-bold text-slate-800 block">-</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Unit Dilayani</span>
+              <span class="text-xs font-bold text-slate-800 block">-</span>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center">
+              <span class="text-[9px] font-bold text-slate-500 block uppercase">Refill Terakhir</span>
+              <span class="text-xs font-bold text-slate-800 block">-</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- FILTER & TAB BAR -->
-      <div class="bg-white border border-slate-300 rounded-lg p-2 mb-2 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+      <div class="bg-white border border-slate-300 rounded-lg p-1.5 mb-1.5 shadow-2xs flex flex-wrap items-center justify-between gap-2">
         <!-- Left: Single Row Filters (Eye Catching Gray Dates) -->
         <div class="flex flex-wrap items-center gap-2">
           <!-- Tanggal Awal -->
@@ -123,11 +173,11 @@
 
         <!-- Right: View Mode Tabs -->
         <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-          <button id="tabBtnLedger" onclick="switchTab('ledger')" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5">
+          <button id="tabBtnLedger" onclick="switchViewTab('ledger')" class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5">
             <i class="fa-solid fa-list-check text-amber-600"></i>
             <span>Mutasi Tangki Harian</span>
           </button>
-          <button id="tabBtnProjection" onclick="switchTab('projection')" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5">
+          <button id="tabBtnProjection" onclick="switchViewTab('projection')" class="px-2.5 py-0.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5">
             <i class="fa-solid fa-chart-line text-blue-600"></i>
             <span>Proyeksi Ketahanan (14 Hari)</span>
           </button>
@@ -147,23 +197,23 @@
         <div id="viewLedger" class="flex-1 overflow-auto custom-scrollbar">
           <table class="w-full text-left border-collapse text-[11px]" id="tableLedger">
             <thead class="sticky top-0 z-10 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[10px] select-none shadow-xs">
-              <!-- Baris Header 1 -->
+              <!-- Baris Header 1 (Compact py-0.5) -->
               <tr class="border-b border-slate-200">
-                <th rowspan="2" class="py-1 px-1.5 text-center border-r border-slate-200 w-9">No</th>
-                <th rowspan="2" class="py-1 px-2 border-r border-slate-200 w-24">Tanggal</th>
-                <th rowspan="2" class="py-1 px-2 border-r border-slate-200 w-28">Tangki</th>
-                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 w-24">Area</th>
+                <th rowspan="2" class="py-0.5 px-1.5 text-center border-r border-slate-200 w-9">No</th>
+                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-24">Tanggal</th>
+                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-28">Tangki</th>
+                <th rowspan="2" class="py-0.5 px-2 text-center border-r border-slate-200 w-24">Area</th>
                 <th colspan="4" class="py-0.5 px-2 text-center border-r border-slate-200 bg-amber-50/60 text-amber-900 font-extrabold tracking-wide">
                   <i class="fa-solid fa-gas-pump text-[9px] mr-1"></i>Mutasi BBM Tangki (Liter)
                 </th>
-                <th rowspan="2" class="py-1 px-2 border-r border-slate-200">Rincian Unit yang Mengisi Solar</th>
+                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200">Rincian Penyaluran BBM</th>
               </tr>
-              <!-- Baris Header 2 -->
+              <!-- Baris Header 2 (Masuk -> IN, Keluar -> OUT) -->
               <tr class="bg-slate-50 text-[9.5px]">
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-24">Saldo Awal</th>
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-24 text-emerald-800 bg-emerald-50/40">Masuk (Refill)</th>
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-24 text-rose-800 bg-rose-50/40">Keluar (Unit)</th>
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-24 text-blue-900 bg-blue-50/40 font-bold">Saldo Akhir</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-24">Saldo Awal</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-20 text-emerald-800 bg-emerald-50/40 font-bold">IN</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-20 text-rose-800 bg-rose-50/40 font-bold">OUT</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-24 text-blue-900 bg-blue-50/40 font-bold">Saldo Akhir</th>
               </tr>
             </thead>
             <tbody id="tableBodyLedger" class="divide-y divide-slate-100 font-medium">
@@ -177,20 +227,20 @@
           <table class="w-full text-left border-collapse text-[11px]" id="tableProjection">
             <thead class="sticky top-0 z-10 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[10px] select-none shadow-xs">
               <tr class="border-b border-slate-200">
-                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 w-16">Hari Ke</th>
-                <th rowspan="2" class="py-1 px-2 border-r border-slate-200 w-24">Tanggal</th>
-                <th rowspan="2" class="py-1 px-2 border-r border-slate-200 w-28">Tangki</th>
-                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 w-24">Area</th>
+                <th rowspan="2" class="py-0.5 px-2 text-center border-r border-slate-200 w-16">Hari Ke</th>
+                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-24">Tanggal</th>
+                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-28">Tangki</th>
+                <th rowspan="2" class="py-0.5 px-2 text-center border-r border-slate-200 w-24">Area</th>
                 <th colspan="3" class="py-0.5 px-2 text-center border-r border-slate-200 bg-blue-50/60 text-blue-900 font-extrabold tracking-wide">
                   <i class="fa-solid fa-chart-line text-[9px] mr-1"></i>Simulasi Proyeksi Saldo (Liter)
                 </th>
-                <th rowspan="2" class="py-1 px-2 text-right border-r border-slate-200 w-24">Sisa Hari</th>
-                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 w-32">Status & Tindakan</th>
+                <th rowspan="2" class="py-0.5 px-2 text-right border-r border-slate-200 w-24">Sisa Hari</th>
+                <th rowspan="2" class="py-0.5 px-2 text-center border-r border-slate-200 w-32">Status & Tindakan</th>
               </tr>
               <tr class="bg-slate-50 text-[9.5px]">
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-28">Proyeksi Saldo Awal</th>
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-28 text-rose-800 bg-rose-50/40">Estimasi Outflow</th>
-                <th class="py-1 px-2 text-right border-r border-slate-200 w-28 text-blue-900 bg-blue-50/40 font-bold">Proyeksi Saldo Akhir</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-28">Proyeksi Awal</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-24 text-rose-800 bg-rose-50/40 font-bold">OUT</th>
+                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-28 text-blue-900 bg-blue-50/40 font-bold">Proyeksi Akhir</th>
               </tr>
             </thead>
             <tbody id="tableBodyProjection" class="divide-y divide-slate-100 font-medium">
@@ -200,7 +250,7 @@
         </div>
 
         <!-- FOOTER: Info & Pagination -->
-        <div class="px-3 py-1.5 bg-slate-50 border-t border-slate-300 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+        <div class="px-3 py-1 bg-slate-50 border-t border-slate-300 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
           <div id="tableInfo" class="font-medium">
             Menampilkan data tangki...
           </div>
@@ -226,7 +276,8 @@
   <script>
     let currentPage = 1;
     let totalPages = 1;
-    let currentTab = 'ledger';
+    let currentViewTab = 'ledger';
+    let selectedTangki = ''; // '' = semua, 'TANGKI-CCK', 'TANGKI-PION'
     let cachedData = null;
 
     // Format number dengan pemisah ribuan
@@ -265,7 +316,6 @@
           if (!tglAwalInput.value || !tglAkhirInput.value) {
             if (json.data.max_tgl) {
               tglAkhirInput.value = json.data.max_tgl;
-              // default 30 hari ke belakang
               const d = new Date(json.data.max_tgl);
               d.setDate(d.getDate() - 30);
               tglAwalInput.value = d.toISOString().split('T')[0];
@@ -279,6 +329,19 @@
       } catch (err) {
         console.error('Error loadFilterOptions:', err);
       }
+    }
+
+    function onAreaChange() {
+      const area = document.getElementById('filterArea').value;
+      if (area === 'Cicangkal') {
+        selectedTangki = 'TANGKI-CCK';
+      } else if (area === 'Pion') {
+        selectedTangki = 'TANGKI-PION';
+      } else {
+        selectedTangki = '';
+      }
+      updateTankTabButtonsUI();
+      fetchData(1);
     }
 
     // Quick range preset
@@ -298,24 +361,53 @@
     }
 
     // Switch between Ledger and Projection tab
-    function switchTab(tab) {
-      currentTab = tab;
+    function switchViewTab(tab) {
+      currentViewTab = tab;
       const tabLedger = document.getElementById('tabBtnLedger');
       const tabProj = document.getElementById('tabBtnProjection');
       const viewLedger = document.getElementById('viewLedger');
       const viewProj = document.getElementById('viewProjection');
 
       if (tab === 'ledger') {
-        tabLedger.className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5";
-        tabProj.className = "px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5";
+        tabLedger.className = "px-2.5 py-0.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5";
+        tabProj.className = "px-2.5 py-0.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5";
         viewLedger.classList.remove('hidden');
         viewProj.classList.add('hidden');
       } else {
-        tabProj.className = "px-3 py-1 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5";
-        tabLedger.className = "px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5";
+        tabProj.className = "px-2.5 py-0.5 text-xs font-bold rounded-md bg-white text-slate-800 shadow-2xs transition flex items-center gap-1.5";
+        tabLedger.className = "px-2.5 py-0.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition flex items-center gap-1.5";
         viewProj.classList.remove('hidden');
         viewLedger.classList.add('hidden');
       }
+    }
+
+    // Switch Tank Tab (TANGKI-CCK vs TANGKI-PION vs Semua)
+    function selectTankTab(tank) {
+      selectedTangki = tank;
+      updateTankTabButtonsUI();
+      // Auto synchronize area dropdown if specific tank
+      const areaSelect = document.getElementById('filterArea');
+      if (tank === 'TANGKI-CCK') {
+        areaSelect.value = 'Cicangkal';
+      } else if (tank === 'TANGKI-PION') {
+        areaSelect.value = 'Pion';
+      } else {
+        areaSelect.value = '';
+      }
+      fetchData(1);
+    }
+
+    function updateTankTabButtonsUI() {
+      const allBtn = document.getElementById('tabTank_all');
+      const cckBtn = document.getElementById('tabTank_TANGKI-CCK');
+      const pionBtn = document.getElementById('tabTank_TANGKI-PION');
+
+      const activeClass = "px-2.5 py-1 text-[11px] font-bold rounded-md bg-amber-500 text-white shadow-2xs transition flex items-center gap-1";
+      const inactiveClass = "px-2.5 py-1 text-[11px] font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1";
+
+      if (allBtn) allBtn.className = (selectedTangki === '') ? activeClass : inactiveClass;
+      if (cckBtn) cckBtn.className = (selectedTangki === 'TANGKI-CCK') ? activeClass : inactiveClass;
+      if (pionBtn) pionBtn.className = (selectedTangki === 'TANGKI-PION') ? activeClass : inactiveClass;
     }
 
     // Fetch Data from Backend API
@@ -330,6 +422,7 @@
         page: currentPage,
         limit: 50,
         area: document.getElementById('filterArea').value || '',
+        tangki: selectedTangki || '',
         tglAwal: document.getElementById('filterTglAwal').value || '',
         tglAkhir: document.getElementById('filterTglAkhir').value || ''
       });
@@ -339,7 +432,7 @@
         const json = await res.json();
         if (json.status === 'success') {
           cachedData = json;
-          renderTankCards(json.tank_summaries || []);
+          renderCompactMetrics(json.tank_summaries || []);
           renderLedgerTable(json.items || []);
           renderProjectionTable(json.projections || []);
           renderPagination(json.pagination || {});
@@ -355,98 +448,93 @@
       }
     }
 
-    // Render Early Warning Cards at Top
-    function renderTankCards(tanks) {
-      const container = document.getElementById('tankCardsContainer');
-      if (!tanks || tanks.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full bg-white border border-slate-300 rounded-lg p-3 text-center text-slate-500 font-medium">
-            Tidak ada unit tangki penampung ditemukan untuk filter area ini.
-          </div>
-        `;
+    // Render Compact Metrics Frame (Height perkecil)
+    function renderCompactMetrics(allTanks) {
+      const container = document.getElementById('compactMetricsContainer');
+      const badgeContainer = document.getElementById('tankHeaderBadge');
+
+      if (!allTanks || allTanks.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 py-2">Data tangki tidak ditemukan.</div>`;
+        badgeContainer.innerHTML = '';
         return;
       }
 
+      // Filter tank based on selected tab if any
+      let displayedTanks = allTanks;
+      if (selectedTangki) {
+        displayedTanks = allTanks.filter(t => t.unit === selectedTangki);
+      }
+
+      // Render Status Badges in Header Row
+      let badgesHtml = '';
+      allTanks.forEach(t => {
+        let bColor = t.status === 'KRITIS' ? 'bg-rose-600 text-white animate-pulse' : (t.status === 'WASPADA' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white');
+        badgesHtml += `
+          <span class="${bColor} font-bold text-[9.5px] px-2 py-0.5 rounded shadow-2xs flex items-center gap-1 cursor-pointer" onclick="selectTankTab('${t.unit}')" title="Klik untuk fokus ke ${t.unit}">
+            <i class="fa-solid fa-gas-pump text-[9px]"></i>
+            <span>${t.unit}: ${t.days_of_supply} Hari (${t.status})</span>
+          </span>
+        `;
+      });
+      badgeContainer.innerHTML = badgesHtml;
+
+      // Render Compact Metric Cards Frame
       let html = '';
-      tanks.forEach(t => {
-        // Status badge colors
-        let statusBadge = '';
-        let borderClass = 'border-slate-300';
-        let barColor = 'bg-emerald-500';
-
-        if (t.status === 'KRITIS') {
-          borderClass = 'border-rose-400 bg-rose-50/20';
-          barColor = 'bg-rose-500';
-          statusBadge = `<span class="bg-rose-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1 animate-pulse">
-            <i class="fa-solid fa-triangle-exclamation"></i> KRITIS (${t.days_of_supply} HARI)
-          </span>`;
-        } else if (t.status === 'WASPADA') {
-          borderClass = 'border-amber-400 bg-amber-50/20';
-          barColor = 'bg-amber-500';
-          statusBadge = `<span class="bg-amber-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1">
-            <i class="fa-solid fa-circle-exclamation"></i> WASPADA (${t.days_of_supply} HARI)
-          </span>`;
-        } else {
-          borderClass = 'border-emerald-400 bg-emerald-50/20';
-          barColor = 'bg-emerald-500';
-          statusBadge = `<span class="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-1">
-            <i class="fa-solid fa-circle-check"></i> AMAN (${t.days_of_supply} HARI)
-          </span>`;
-        }
-
-        // Visual progress bar (capped at 15 hari = 100%)
-        const pct = Math.min(100, Math.max(5, (t.days_of_supply / 15) * 100));
+      displayedTanks.forEach(t => {
+        const supplyColor = t.status === 'KRITIS' ? 'text-rose-600 font-extrabold' : (t.status === 'WASPADA' ? 'text-amber-600 font-extrabold' : 'text-emerald-700 font-extrabold');
+        const unitDetail = t.unit === 'TANGKI-CCK' ? '10 Unit Alat + TANGKI-PION' : '3 Unit Alat Pion';
 
         html += `
-          <div class="bg-white border ${borderClass} rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
-            <!-- Header Card: Nama Tangki & Status Badge -->
-            <div class="flex items-center justify-between pb-1.5 border-b border-slate-200">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-amber-100/70 border border-amber-300 text-amber-800 flex items-center justify-center font-bold text-sm shadow-2xs">
-                  <i class="fa-solid fa-gas-pump"></i>
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <h3 class="text-xs font-extrabold text-slate-800 tracking-tight">${t.unit}</h3>
-                    <span class="bg-slate-200 text-slate-700 font-bold px-1.5 py-0.2 rounded text-[9.5px]">Area ${t.area}</span>
-                  </div>
-                  <span class="text-[10px] text-slate-500 font-medium">Melayani <b>${t.unit_count} unit</b> alat berat aktif</span>
-                </div>
+          <div class="mb-1.5 last:mb-0 bg-slate-50 border border-slate-200 rounded p-1.5 shadow-2xs">
+            <div class="flex items-center justify-between pb-1 mb-1 border-b border-slate-200 text-[10.5px]">
+              <div class="flex items-center gap-1.5">
+                <span class="font-extrabold text-slate-900">${t.unit}</span>
+                <span class="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded text-[9px]">Area ${t.area}</span>
+                <span class="text-slate-500 text-[9.5px]">Induk: <b>${t.unit === 'TANGKI-CCK' ? 'Supplier Luar' : 'TANGKI-CCK'}</b></span>
               </div>
-              <div>${statusBadge}</div>
+              <div class="text-[9.5px] text-slate-500 font-medium">
+                Refill Terakhir: <b class="text-slate-700">${t.last_refill_date ? t.last_refill_date + ' (' + formatNum(t.last_refill_qty, 0) + 'L)' : '-'}</b>
+              </div>
             </div>
 
-            <!-- Middle: Main Metrics -->
-            <div class="grid grid-cols-3 gap-2 py-2 items-center">
+            <!-- 6 Compact Metric Pills with Reduced Height -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
               <!-- Saldo Terkini -->
-              <div class="bg-slate-50 border border-slate-200 rounded-md p-1.5 text-center">
-                <span class="text-[9.5px] font-semibold text-slate-500 block uppercase">Saldo Terkini</span>
-                <span class="text-sm font-extrabold text-slate-900 block font-mono leading-tight">${formatNum(t.current_stock, 1)} <span class="text-[10px] font-sans font-semibold text-slate-600">L</span></span>
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">SALDO TERKINI</span>
+                <span class="text-xs font-black text-slate-900 block font-mono leading-none my-0.5">${formatNum(t.current_stock, 1)} <span class="text-[9px] font-semibold text-slate-600 font-sans">L</span></span>
               </div>
 
               <!-- Ketahanan Stok -->
-              <div class="bg-slate-50 border border-slate-200 rounded-md p-1.5 text-center">
-                <span class="text-[9.5px] font-semibold text-slate-500 block uppercase">Ketahanan Stok</span>
-                <span class="text-sm font-extrabold ${t.status === 'KRITIS' ? 'text-rose-600' : (t.status === 'WASPADA' ? 'text-amber-600' : 'text-emerald-700')} block font-mono leading-tight">
-                  ${t.days_of_supply} <span class="text-[10px] font-sans font-semibold">Hari</span>
-                </span>
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">KETAHANAN STOK</span>
+                <span class="text-xs ${supplyColor} block font-mono leading-none my-0.5">${t.days_of_supply} <span class="text-[9px] font-sans font-bold">Hari</span></span>
               </div>
 
               <!-- Estimasi Habis -->
-              <div class="bg-slate-50 border border-slate-200 rounded-md p-1.5 text-center">
-                <span class="text-[9.5px] font-semibold text-slate-500 block uppercase">Estimasi Habis</span>
-                <span class="text-[11px] font-bold text-slate-800 block leading-tight mt-0.5">${t.run_out_date || '-'}</span>
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">ESTIMASI HABIS</span>
+                <span class="text-[10.5px] font-extrabold text-slate-800 block leading-none my-0.5">${t.run_out_date || '-'}</span>
               </div>
-            </div>
 
-            <!-- Visual Bar -->
-            <div class="space-y-1 pt-1 border-t border-slate-100">
-              <div class="flex items-center justify-between text-[10px] text-slate-500 font-medium">
-                <span>Rata-rata Outflow: <b>${formatNum(t.avg_daily_burn, 1)} L/hari</b> (${t.active_days} hari aktif)</span>
-                <span>Refill Terakhir: <b>${t.last_refill_date ? t.last_refill_date + ' (' + formatNum(t.last_refill_qty, 0) + 'L)' : '-'}</b></span>
+              <!-- Burn Rate Outflow -->
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">AVG OUTFLOW</span>
+                <span class="text-xs font-bold text-slate-800 block font-mono leading-none my-0.5">${formatNum(t.avg_daily_burn, 1)} <span class="text-[9px] font-sans text-slate-500">L/hr</span></span>
               </div>
-              <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                <div class="${barColor} h-full transition-all duration-500" style="width: ${pct}%"></div>
+
+              <!-- Unit Dilayani -->
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">UNIT DILAYANI</span>
+                <span class="text-[10px] font-bold text-slate-800 block leading-none my-0.5 truncate" title="${unitDetail}">${unitDetail}</span>
+              </div>
+
+              <!-- Status Tangki -->
+              <div class="bg-white border border-slate-200 rounded px-2 py-0.5 text-center shadow-2xs">
+                <span class="text-[8.5px] font-bold text-slate-500 block uppercase tracking-tight">STATUS TANGKI</span>
+                <span class="text-[10px] font-extrabold ${t.status === 'KRITIS' ? 'text-rose-600' : (t.status === 'WASPADA' ? 'text-amber-600' : 'text-emerald-700')} block leading-none my-0.5">
+                  ${t.status}
+                </span>
               </div>
             </div>
           </div>
@@ -462,9 +550,9 @@
       if (!items || items.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="9" class="py-6 text-center text-slate-400 font-medium">
-              <i class="fa-solid fa-inbox text-2xl mb-1 block text-slate-300"></i>
-              Tidak ada data mutasi tangki pada rentang tanggal ini.
+            <td colspan="9" class="py-4 text-center text-slate-400 font-medium">
+              <i class="fa-solid fa-inbox text-xl mb-1 block text-slate-300"></i>
+              Tidak ada data mutasi tangki pada rentang filter ini.
             </td>
           </tr>
         `;
@@ -481,27 +569,31 @@
         let rincianHtml = '-';
         if (row.rincian_unit && row.rincian_unit !== '-') {
           const pills = row.rincian_unit.split(', ').map(p => {
-            return `<span class="inline-block bg-blue-50 border border-blue-200 text-blue-800 text-[9.5px] font-semibold px-1.5 py-0.2 rounded mr-1 mb-0.5">${p}</span>`;
+            const isTankRefill = p.includes('TANGKI-PION');
+            const pillClass = isTankRefill 
+              ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold' 
+              : 'bg-blue-50 border-blue-200 text-blue-800 font-semibold';
+            return `<span class="inline-block ${pillClass} border text-[9.5px] px-1.5 py-0.2 rounded mr-1 mb-0.5">${p}</span>`;
           }).join('');
           rincianHtml = `<div class="flex flex-wrap">${pills}</div>`;
         }
 
         html += `
           <tr class="hover:bg-amber-50/40 transition">
-            <td class="py-1 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
-            <td class="py-1 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">${row.tgl}</td>
-            <td class="py-1 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
+            <td class="py-0.5 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            <td class="py-0.5 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">${row.tgl}</td>
+            <td class="py-0.5 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
               <i class="fa-solid fa-oil-well text-amber-600 text-[9px]"></i>
               <span>${row.unit}</span>
             </td>
-            <td class="py-1 px-2 text-center border-r border-slate-100 whitespace-nowrap">
+            <td class="py-0.5 px-2 text-center border-r border-slate-100 whitespace-nowrap">
               <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${row.area}</span>
             </td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 font-medium text-slate-700">${formatNum(row.saldo_awal, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.isi, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.pakai, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 font-bold text-slate-900 bg-blue-50/20">${formatNum(row.saldo_akhir, 1)}</td>
-            <td class="py-1 px-2 border-r border-slate-100">${rincianHtml}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 font-medium text-slate-700">${formatNum(row.saldo_awal, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.isi, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.pakai, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 font-bold text-slate-900 bg-blue-50/20">${formatNum(row.saldo_akhir, 1)}</td>
+            <td class="py-0.5 px-2 border-r border-slate-100">${rincianHtml}</td>
           </tr>
         `;
       });
@@ -515,7 +607,7 @@
       if (!projections || projections.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="9" class="py-6 text-center text-slate-400 font-medium">
+            <td colspan="9" class="py-4 text-center text-slate-400 font-medium">
               Tidak ada data proyeksi tersedia.
             </td>
           </tr>
@@ -523,34 +615,40 @@
         return;
       }
 
+      // Filter by selected tank if active
+      let displayedProj = projections;
+      if (selectedTangki) {
+        displayedProj = projections.filter(p => p.unit_tangki === selectedTangki);
+      }
+
       let html = '';
-      projections.forEach((p) => {
+      displayedProj.forEach((p) => {
         let statusBadge = '';
         if (p.status === 'HABIS') {
-          statusBadge = `<span class="bg-rose-600 text-white font-extrabold text-[9.5px] px-2 py-0.5 rounded shadow-2xs">HABIS / OUT OF STOCK</span>`;
+          statusBadge = `<span class="bg-rose-600 text-white font-extrabold text-[9px] px-1.5 py-0.2 rounded shadow-2xs">HABIS / OUT OF STOCK</span>`;
         } else if (p.status === 'KRITIS') {
-          statusBadge = `<span class="bg-rose-500 text-white font-bold text-[9.5px] px-2 py-0.5 rounded shadow-2xs">KRITIS - ORDER SEGERA</span>`;
+          statusBadge = `<span class="bg-rose-500 text-white font-bold text-[9px] px-1.5 py-0.2 rounded shadow-2xs">KRITIS - ORDER SEGERA</span>`;
         } else if (p.status === 'WASPADA') {
-          statusBadge = `<span class="bg-amber-500 text-white font-bold text-[9.5px] px-2 py-0.5 rounded shadow-2xs">WASPADA - SIAPKAN PO</span>`;
+          statusBadge = `<span class="bg-amber-500 text-white font-bold text-[9px] px-1.5 py-0.2 rounded shadow-2xs">WASPADA - SIAPKAN PO</span>`;
         } else {
-          statusBadge = `<span class="bg-emerald-600 text-white font-bold text-[9.5px] px-2 py-0.5 rounded shadow-2xs">STOK AMAN</span>`;
+          statusBadge = `<span class="bg-emerald-600 text-white font-bold text-[9px] px-1.5 py-0.2 rounded shadow-2xs">STOK AMAN</span>`;
         }
 
         const saldoAkhirClass = p.saldo_akhir <= 0 ? 'text-rose-600 font-extrabold' : 'text-slate-900 font-bold';
 
         html += `
           <tr class="hover:bg-blue-50/40 transition">
-            <td class="py-1 px-2 text-center text-slate-500 border-r border-slate-100 font-bold">H+${p.hari_ke}</td>
-            <td class="py-1 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">${p.tanggal}</td>
-            <td class="py-1 px-2 font-bold text-slate-800 border-r border-slate-100 whitespace-nowrap">${p.unit_tangki}</td>
-            <td class="py-1 px-2 text-center border-r border-slate-100 whitespace-nowrap">
+            <td class="py-0.5 px-2 text-center text-slate-500 border-r border-slate-100 font-bold">H+${p.hari_ke}</td>
+            <td class="py-0.5 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">${p.tanggal}</td>
+            <td class="py-0.5 px-2 font-bold text-slate-800 border-r border-slate-100 whitespace-nowrap">${p.unit_tangki}</td>
+            <td class="py-0.5 px-2 text-center border-r border-slate-100 whitespace-nowrap">
               <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${p.area}</span>
             </td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 text-slate-700 font-medium">${formatNum(p.saldo_awal, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 text-rose-700 font-medium">${formatNum(p.estimasi_burn, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 ${saldoAkhirClass}">${formatNum(p.saldo_akhir, 1)}</td>
-            <td class="py-1 px-2 text-right border-r border-slate-100 font-mono font-bold text-slate-700">${p.sisa_hari} hr</td>
-            <td class="py-1 px-2 text-center border-r border-slate-100">${statusBadge}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 text-slate-700 font-medium">${formatNum(p.saldo_awal, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 text-rose-700 font-medium">${formatNum(p.estimasi_burn, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${saldoAkhirClass}">${formatNum(p.saldo_akhir, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 font-mono font-bold text-slate-700">${p.sisa_hari} hr</td>
+            <td class="py-0.5 px-2 text-center border-r border-slate-100">${statusBadge}</td>
           </tr>
         `;
       });
@@ -608,7 +706,7 @@
       // Sheet 2: Mutasi Harian (Ledger)
       if (cachedData.items && cachedData.items.length > 0) {
         const wsLedgerData = [
-          ['Tanggal', 'Tangki', 'Area', 'Saldo Awal (L)', 'Masuk Refill (L)', 'Keluar Unit (L)', 'Saldo Akhir (L)', 'Rincian Unit yang Mengisi']
+          ['Tanggal', 'Tangki', 'Area', 'Saldo Awal (L)', 'IN (L)', 'OUT (L)', 'Saldo Akhir (L)', 'Rincian Penyaluran']
         ];
         cachedData.items.forEach(i => {
           wsLedgerData.push([
@@ -622,7 +720,7 @@
       // Sheet 3: Proyeksi 14 Hari
       if (cachedData.projections && cachedData.projections.length > 0) {
         const wsProjData = [
-          ['Hari Ke', 'Tanggal', 'Tangki', 'Area', 'Proyeksi Saldo Awal (L)', 'Estimasi Konsumsi (L)', 'Proyeksi Saldo Akhir (L)', 'Sisa Hari', 'Status']
+          ['Hari Ke', 'Tanggal', 'Tangki', 'Area', 'Proyeksi Awal (L)', 'OUT (L)', 'Proyeksi Akhir (L)', 'Sisa Hari', 'Status']
         ];
         cachedData.projections.forEach(p => {
           wsProjData.push([

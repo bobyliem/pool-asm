@@ -366,7 +366,7 @@ func (r *solarRepository) GetLaporanDetailHarian(filter models.LaporanDetailHari
 	var items []models.LaporanDetailHarianItem
 	var summary models.LaporanDetailHarianSummary
 
-	baseWhere := "WHERE 1=1"
+	baseWhere := "WHERE 1=1 AND COALESCE(u.tangki, 'No') = 'No'"
 	var args []interface{}
 
 	if filter.TglAwal != "" {
@@ -466,7 +466,7 @@ func (r *solarRepository) GetLaporanRekapUnit(filter models.LaporanRekapUnitFilt
 	var items []models.LaporanRekapUnitItem
 	var summary models.LaporanRekapUnitSummary
 
-	baseWhere := "WHERE 1=1"
+	baseWhere := "WHERE 1=1 AND COALESCE(u.tangki, 'No') = 'No'"
 	var args []interface{}
 
 	if filter.TglAwal != "" {
@@ -574,7 +574,7 @@ func (r *solarRepository) GetLaporanRekonsiliasi(filter models.LaporanRekonsilia
 	var items []models.LaporanRekonsiliasiItem
 	var summary models.LaporanRekonsiliasiSummary
 
-	baseWhere := "WHERE 1=1"
+	baseWhere := "WHERE 1=1 AND COALESCE(u.tangki, 'No') = 'No'"
 	var args []interface{}
 
 	if filter.TglAwal != "" {
@@ -728,7 +728,7 @@ func (r *solarRepository) GetLaporanFilterOptions() ([]string, []string, string,
 	r.db.Table("dt_solar_unit").Where("area != '' AND area IS NOT NULL").Distinct("area").Order("area ASC").Pluck("area", &areas)
 
 	var units []string
-	r.db.Table("dt_solar_summary").Distinct("unit").Order("unit ASC").Pluck("unit", &units)
+	r.db.Table("dt_solar_unit").Where("tangki = ?", "No").Distinct("unit").Order("unit ASC").Pluck("unit", &units)
 
 	// Combine with master units
 	masterUnits := []string{
@@ -803,9 +803,9 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 			summary.LastDate = lastDate
 		}
 
-		// Jumlah unit alat di area ini (tangki = 'No')
+		// Jumlah unit yang mengambil suplai dari tangki ini (induk = tank.id)
 		var unitCount int
-		_ = r.db.Raw("SELECT COUNT(*) FROM dt_solar_unit WHERE area = ? AND tangki = 'No'", tr.Area).Row().Scan(&unitCount)
+		_ = r.db.Raw("SELECT COUNT(*) FROM dt_solar_unit WHERE induk = (SELECT id FROM dt_solar_unit WHERE unit = ? LIMIT 1)", tr.Unit).Row().Scan(&unitCount)
 		summary.UnitCount = unitCount
 
 		// Pengisian/Refill terakhir tangki dari supplier
@@ -980,7 +980,7 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 		           SELECT GROUP_CONCAT(CONCAT(s2.unit, ': ', ROUND(s2.isi, 0), 'L') SEPARATOR ', ')
 		           FROM dt_solar_summary s2
 		           JOIN dt_solar_unit u2 ON s2.unit = u2.unit
-		           WHERE u2.area = u.area AND u2.tangki = 'No' AND s2.tgl = s.tgl AND s2.isi > 0
+		           WHERE u2.induk = u.id AND s2.tgl = s.tgl AND s2.isi > 0
 		       ), '-') as rincian_unit
 		FROM dt_solar_summary s
 		JOIN dt_solar_unit u ON s.unit = u.unit
