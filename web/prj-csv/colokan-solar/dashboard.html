@@ -74,8 +74,16 @@
           </div>
         </div>
 
-        <!-- Right Side: Filter Area & Search -->
+        <!-- Right Side: Filter Tanggal, Filter Area, Search & Refresh -->
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Filter Tanggal (Background abu-abu sesuai request) -->
+          <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+            <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-700">Tanggal:</span>
+            <input type="date" id="filterTanggal" onchange="onDateChange(this.value)"
+              class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer" />
+          </div>
+
           <!-- Quick Search Unit -->
           <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
@@ -443,6 +451,7 @@
     // State Data
     let allUnitsData = [];
     let selectedArea = 'ALL';
+    let selectedDate = '';
 
     // Excavator SVG Definition (High Quality Vector)
     const EXCAVATOR_SVG = `
@@ -521,7 +530,13 @@
     // Area Filter Change
     function onAreaChange(area) {
       selectedArea = area;
-      renderCards();
+      loadDashboardUnits();
+    }
+
+    // Date Filter Change
+    function onDateChange(date) {
+      selectedDate = date;
+      loadDashboardUnits();
     }
 
     // Load Data from API
@@ -537,10 +552,14 @@
       if (grid) grid.innerHTML = '';
 
       try {
-        const res = await fetch('/api/v1/solar/dashboard/units?area=ALL');
+        let url = `/api/v1/solar/dashboard/units?area=${encodeURIComponent(selectedArea || 'ALL')}`;
+        if (selectedDate) {
+          url += `&tanggal=${encodeURIComponent(selectedDate)}`;
+        }
+        const res = await fetch(url);
         const json = await res.json();
 
-        if (json.code === 200 && Array.isArray(json.data)) {
+        if ((json.code === 200 || json.status === 'success') && Array.isArray(json.data)) {
           allUnitsData = json.data;
           updateTopStats(allUnitsData);
           renderCards();
@@ -675,7 +694,7 @@
               </div>
 
               <!-- Main Content: Excavator Icon + Core Metrics -->
-              <div class="flex items-center gap-3 py-1 bg-slate-50/70 rounded-lg p-2.5 border border-slate-100 mb-2.5">
+              <div class="flex items-center gap-3 py-1 bg-slate-50/70 rounded-lg p-2.5 border border-slate-100 mb-2">
                 <!-- Excavator or Tank Icon -->
                 ${isTangki ? TANK_SVG : EXCAVATOR_SVG}
 
@@ -703,6 +722,20 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Refill & Pakai on selected date -->
+              ${(u.hari_isi > 0 || u.hari_pakai > 0) ? `
+                <div class="grid grid-cols-2 gap-1.5 text-[10px] text-slate-600 mb-2 bg-amber-50/70 border border-amber-200/70 p-1.5 rounded-lg">
+                  <div class="flex justify-between items-center pr-1 border-r border-amber-200/60">
+                    <span class="text-[9.5px] font-semibold text-slate-500">Refill (Hari Ini):</span>
+                    <span class="font-bold text-emerald-700">+${formatNumber(u.hari_isi, 1)} L</span>
+                  </div>
+                  <div class="flex justify-between items-center pl-1">
+                    <span class="text-[9.5px] font-semibold text-slate-500">Pakai (Hari Ini):</span>
+                    <span class="font-bold text-rose-700">-${formatNumber(u.hari_pakai, 1)} L</span>
+                  </div>
+                </div>
+              ` : ''}
 
               <!-- Secondary Details: Terakhir & Note -->
               <div class="space-y-1 text-[10px] text-slate-500 mb-3 bg-white p-1 rounded">
@@ -780,7 +813,7 @@
       document.getElementById('colokan_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
       // Prefill Inputs
-      document.getElementById('colokan_tanggal').value = getTodayDateStr();
+      document.getElementById('colokan_tanggal').value = selectedDate || getTodayDateStr();
       document.getElementById('colokan_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('colokan_min_hm_label').textContent = formatHM(u.hm);
       document.getElementById('colokan_cm_sesudah').value = '';
@@ -906,7 +939,7 @@
       document.getElementById('isi_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
       // Prefill Inputs
-      document.getElementById('isi_tanggal').value = getTodayDateStr();
+      document.getElementById('isi_tanggal').value = selectedDate || getTodayDateStr();
       document.getElementById('isi_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('isi_min_hm_label').textContent = formatHM(u.hm);
       document.getElementById('isi_cm_sebelum').value = sisaCm > 0 ? Number(sisaCm).toFixed(1) : '';
@@ -1048,6 +1081,14 @@
     document.addEventListener('DOMContentLoaded', () => {
       populateHourOptions('colokan_jam');
       populateHourOptions('isi_jam');
+
+      const todayStr = getTodayDateStr();
+      const filterTgl = document.getElementById('filterTanggal');
+      if (filterTgl) {
+        filterTgl.value = todayStr;
+        selectedDate = todayStr;
+      }
+
       loadDashboardUnits();
     });
   </script>
