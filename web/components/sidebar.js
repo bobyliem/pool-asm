@@ -141,6 +141,7 @@ class AppSidebar extends HTMLElement {
           {
             title: "COLOKAN SOLAR",
             submenus: [
+              { id: "dashboard-solar", label: "Dashboard Solar", icon: "fa-gauge-high", href: "/prj-csv/colokan-solar/dashboard", menuId: 24 },
               { id: "pemakaian-solar", label: "Pemakaian Solar", icon: "fa-gas-pump", href: "/prj-csv/colokan-solar/pemakaian-solar", menuId: 8 },
               { id: "import-data", label: "Import Data", icon: "fa-file-import", href: "/prj-csv/colokan-solar/import-data", menuId: 19 },
               { id: "detail-harian", label: "Resume Harian", icon: "fa-calendar-day", href: "/prj-csv/colokan-solar/detail-harian", menuId: 20 },
