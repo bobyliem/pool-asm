@@ -275,7 +275,8 @@ type TangkiProjectionItem struct {
 
 // 5. Dashboard Solar
 type DashboardSolarFilter struct {
-	Area string `form:"area"`
+	Area    string `form:"area"`
+	Tanggal string `form:"tanggal"`
 }
 
 type DashboardSolarUnitCard struct {
@@ -288,6 +289,8 @@ type DashboardSolarUnitCard struct {
 	Hm            float64 `json:"hm"`
 	SisaSolar     float64 `json:"sisa_solar"`
 	Konsumsi      float64 `json:"konsumsi"`
+	HariPakai     float64 `json:"hari_pakai"`
+	HariIsi       float64 `json:"hari_isi"`
 	AvgLiterPerHm float64 `json:"avg_liter_per_hm"`
 	LastTgl       string  `json:"last_tgl"`
 	LastJam       int     `json:"last_jam"`

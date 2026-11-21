@@ -1005,21 +1005,90 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 // GetDashboardSolarUnits retrieves unit cards for Dashboard Solar
 func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error) {
 	whereClause := "WHERE 1=1"
-	var args []interface{}
+	var queryArgs []interface{}
 
 	cleanArea := strings.TrimSpace(filter.Area)
 	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
 		whereClause += " AND u.area = ?"
-		args = append(args, cleanArea)
+		queryArgs = append(queryArgs, cleanArea)
 	}
 
-	query := fmt.Sprintf(`
+	cleanTgl := strings.TrimSpace(filter.Tanggal)
+
+	var items []models.DashboardSolarUnitCard
+
+	if cleanTgl != "" {
+		selectArgs := []interface{}{cleanTgl, cleanTgl, cleanTgl, cleanTgl, cleanTgl, cleanTgl}
+		allArgs := append(selectArgs, queryArgs...)
+
+		query := fmt.Sprintf(`
+		SELECT 
+			u.id, u.unit, u.area, u.tangki, u.induk,
+			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
+			ROUND(COALESCE(s.hm_akhir, u.hm), 3) as hm, 
+			ROUND(COALESCE(s.saldoakhir, u.sisasolar), 2) as sisa_solar, 
+			ROUND(u.konsumsi, 2) as konsumsi,
+			ROUND(COALESCE(s.pakai, 0), 2) as hari_pakai,
+			ROUND(COALESCE(s.isi, 0), 2) as hari_isi,
+			COALESCE(DATE_FORMAT(u.updated, '%%Y-%%m-%%d %%H:%%i:%%s'), '-') as updated,
+			COALESCE((
+				SELECT CASE WHEN SUM(sm.hm_akhir - sm.hm_awal) > 0 THEN ROUND(SUM(sm.pakai) / SUM(sm.hm_akhir - sm.hm_awal), 2) ELSE 0 END
+				FROM dt_solar_summary sm
+				WHERE sm.unit = u.unit AND sm.tgl <= ? AND sm.tgl >= DATE_SUB(?, INTERVAL 30 DAY)
+			), 0) as avg_liter_per_hm,
+			COALESCE((
+				SELECT DATE_FORMAT(h.tgl, '%%Y-%%m-%%d')
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_tgl,
+			COALESCE((
+				SELECT h.jam
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), 0) as last_jam,
+			COALESCE((
+				SELECT h.note
+				FROM dt_solar_his h
+				WHERE h.unit = u.unit AND h.tgl <= ?
+				ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+				LIMIT 1
+			), '') as last_note
+		FROM dt_solar_unit u
+		LEFT JOIN dt_solar_unit parent ON u.induk = parent.id
+		LEFT JOIN dt_solar_summary s ON u.unit = s.unit AND s.tgl = ?
+		%s
+		ORDER BY u.tangki ASC, u.induk ASC, u.unit ASC
+	`, whereClause)
+
+		if err := r.db.Raw(query, allArgs...).Scan(&items).Error; err != nil {
+			return nil, fmt.Errorf("gagal mengambil data dashboard solar: %w", err)
+		}
+
+		for i := range items {
+			if items[i].Tangki == "Yes" {
+				items[i].Status = "TANGKI INDUK"
+			} else if items[i].HariPakai > 0 || items[i].HariIsi > 0 {
+				items[i].Status = "BEROPERASI"
+			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
+				items[i].Status = "BEROPERASI"
+			} else {
+				items[i].Status = "STANDBY"
+			}
+		}
+	} else {
+		query := fmt.Sprintf(`
 		SELECT 
 			u.id, u.unit, u.area, u.tangki, u.induk,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
 			ROUND(u.hm, 3) as hm, 
 			ROUND(u.sisasolar, 2) as sisa_solar, 
 			ROUND(u.konsumsi, 2) as konsumsi,
+			0 as hari_pakai,
+			0 as hari_isi,
 			COALESCE(DATE_FORMAT(u.updated, '%%Y-%%m-%%d %%H:%%i:%%s'), '-') as updated,
 			COALESCE((
 				SELECT CASE WHEN SUM(s.hm_akhir - s.hm_awal) > 0 THEN ROUND(SUM(s.pakai) / SUM(s.hm_akhir - s.hm_awal), 2) ELSE 0 END
@@ -1053,18 +1122,18 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		ORDER BY u.tangki ASC, u.induk ASC, u.unit ASC
 	`, whereClause)
 
-	var items []models.DashboardSolarUnitCard
-	if err := r.db.Raw(query, args...).Scan(&items).Error; err != nil {
-		return nil, fmt.Errorf("gagal mengambil data dashboard solar: %w", err)
-	}
+		if err := r.db.Raw(query, queryArgs...).Scan(&items).Error; err != nil {
+			return nil, fmt.Errorf("gagal mengambil data dashboard solar: %w", err)
+		}
 
-	for i := range items {
-		if items[i].Tangki == "Yes" {
-			items[i].Status = "TANGKI INDUK"
-		} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
-			items[i].Status = "BEROPERASI"
-		} else {
-			items[i].Status = "STANDBY"
+		for i := range items {
+			if items[i].Tangki == "Yes" {
+				items[i].Status = "TANGKI INDUK"
+			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
+				items[i].Status = "BEROPERASI"
+			} else {
+				items[i].Status = "STANDBY"
+			}
 		}
 	}
 

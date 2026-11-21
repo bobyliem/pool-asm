@@ -414,8 +414,10 @@ func (h *SolarHandler) GetDashboardSolarUnits(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data":   items,
+		"status":  "success",
+		"code":    200,
+		"message": "success",
+		"data":    items,
 	})
 }
 
@@ -425,6 +427,7 @@ func (h *SolarHandler) SubmitColokan(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
+			"code":    400,
 			"message": "Data input colokan tidak lengkap atau tidak valid: " + err.Error(),
 		})
 		return
@@ -433,6 +436,7 @@ func (h *SolarHandler) SubmitColokan(c *gin.Context) {
 	if err := h.service.SubmitColokan(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
+			"code":    400,
 			"message": err.Error(),
 		})
 		return
@@ -440,6 +444,7 @@ func (h *SolarHandler) SubmitColokan(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
+		"code":    200,
 		"message": fmt.Sprintf("Data colokan solar unit %s jam %02d:00 berhasil disimpan!", req.Unit, req.Jam),
 	})
 }
@@ -450,6 +455,7 @@ func (h *SolarHandler) SubmitIsiSolar(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
+			"code":    400,
 			"message": "Data input pengisian solar tidak lengkap atau tidak valid: " + err.Error(),
 		})
 		return
@@ -458,6 +464,7 @@ func (h *SolarHandler) SubmitIsiSolar(c *gin.Context) {
 	if err := h.service.SubmitIsiSolar(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "error",
+			"code":    400,
 			"message": err.Error(),
 		})
 		return
@@ -465,6 +472,7 @@ func (h *SolarHandler) SubmitIsiSolar(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
+		"code":    200,
 		"message": fmt.Sprintf("Data pengisian solar unit %s jam %02d:00 sebesar %.1f L berhasil disimpan!", req.Unit, req.Jam, req.IsiLiter),
 	})
 }
