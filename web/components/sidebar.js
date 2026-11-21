@@ -145,7 +145,8 @@ class AppSidebar extends HTMLElement {
               { id: "import-data", label: "Import Data", icon: "fa-file-import", href: "/prj-csv/colokan-solar/import-data", menuId: 19 },
               { id: "detail-harian", label: "Resume Harian", icon: "fa-calendar-day", href: "/prj-csv/colokan-solar/detail-harian", menuId: 20 },
               { id: "rekap-unit", label: "Summary Per Unit", icon: "fa-chart-column", href: "/prj-csv/colokan-solar/rekap-unit", menuId: 21 },
-              { id: "rekonsiliasi-anomali", label: "Laporan Rekonsiliasi & Anomali", icon: "fa-shield-halved", href: "/prj-csv/colokan-solar/rekonsiliasi-anomali", menuId: 22 }
+              { id: "rekonsiliasi-anomali", label: "Laporan Rekonsiliasi & Anomali", icon: "fa-shield-halved", href: "/prj-csv/colokan-solar/rekonsiliasi-anomali", menuId: 22 },
+              { id: "monitoring-tangki", label: "Monitoring Stok Tangki", icon: "fa-oil-well", href: "/prj-csv/colokan-solar/monitoring-tangki", menuId: 23 }
             ]
           },
           {

@@ -221,3 +221,54 @@ type LaporanRekonsiliasiSummary struct {
 	TotalPakaiAnomaliLiter float64 `json:"total_pakai_anomali_liter"`
 	TotalSelisihNettoLiter float64 `json:"total_selisih_netto_liter"`
 }
+
+// 4. Laporan Monitoring & Ketahanan Stok Tangki
+type LaporanMonitoringTangkiFilter struct {
+	TglAwal  string `form:"tglAwal"`
+	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
+	Tangki   string `form:"tangki"`
+	Page     int    `form:"page,default=1"`
+	Limit    int    `form:"limit,default=50"`
+}
+
+type TangkiStatusSummary struct {
+	Unit           string  `json:"unit"`
+	Area           string  `json:"area"`
+	CurrentStock   float64 `json:"current_stock"`
+	LastDate       string  `json:"last_date"`
+	AvgDailyBurn   float64 `json:"avg_daily_burn"`
+	ActiveDays     int     `json:"active_days"`
+	DaysOfSupply   float64 `json:"days_of_supply"`
+	RunOutDate     string  `json:"run_out_date"`
+	Status         string  `json:"status"`       // "AMAN", "WASPADA", "KRITIS"
+	StatusColor    string  `json:"status_color"` // "emerald", "amber", "rose"
+	UnitCount      int     `json:"unit_count"`
+	LastRefillDate string  `json:"last_refill_date"`
+	LastRefillQty  float64 `json:"last_refill_qty"`
+}
+
+type LaporanMonitoringTangkiItem struct {
+	ID          int     `json:"id"`
+	Tgl         string  `json:"tgl"`
+	Unit        string  `json:"unit"`
+	Area        string  `json:"area"`
+	SaldoAwal   float64 `json:"saldo_awal" gorm:"column:saldo_awal"`
+	Isi         float64 `json:"isi" gorm:"column:isi"`
+	Pakai       float64 `json:"pakai" gorm:"column:pakai"`
+	SaldoAkhir  float64 `json:"saldo_akhir" gorm:"column:saldo_akhir"`
+	RincianUnit string  `json:"rincian_unit" gorm:"column:rincian_unit"`
+}
+
+type TangkiProjectionItem struct {
+	HariKe       int     `json:"hari_ke"`
+	Tanggal      string  `json:"tanggal"`
+	UnitTangki   string  `json:"unit_tangki"`
+	Area         string  `json:"area"`
+	SaldoAwal    float64 `json:"saldo_awal"`
+	EstimasiBurn float64 `json:"estimasi_burn"`
+	SaldoAkhir   float64 `json:"saldo_akhir"`
+	SisaHari     float64 `json:"sisa_hari"`
+	Status       string  `json:"status"`
+	StatusColor  string  `json:"status_color"`
+}

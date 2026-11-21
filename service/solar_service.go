@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,7 @@ type SolarService interface {
 	GetLaporanDetailHarian(filter models.LaporanDetailHarianFilter) (map[string]interface{}, error)
 	GetLaporanRekapUnit(filter models.LaporanRekapUnitFilter) (map[string]interface{}, error)
 	GetLaporanRekonsiliasi(filter models.LaporanRekonsiliasiFilter) (map[string]interface{}, error)
+	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) (map[string]interface{}, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
 	GetLaporanFilterOptions() (map[string]interface{}, error)
 }
@@ -432,5 +434,35 @@ func (s *solarService) GetLaporanFilterOptions() (map[string]interface{}, error)
 		"units":   units,
 		"min_tgl": minTgl,
 		"max_tgl": maxTgl,
+	}, nil
+}
+
+// GetLaporanMonitoringTangki handles monitoring and tank days of supply logic
+func (s *solarService) GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) (map[string]interface{}, error) {
+	tankSummaries, items, totalRows, projections, err := s.repo.GetLaporanMonitoringTangki(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	page := filter.Page
+	if page <= 0 {
+		page = 1
+	}
+	totalPages := int(math.Ceil(float64(totalRows) / float64(limit)))
+
+	return map[string]interface{}{
+		"tank_summaries": tankSummaries,
+		"items":          items,
+		"projections":    projections,
+		"pagination": map[string]interface{}{
+			"current_page": page,
+			"limit":        limit,
+			"total_rows":   totalRows,
+			"total_pages":  totalPages,
+		},
 	}, nil
 }
