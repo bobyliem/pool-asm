@@ -453,9 +453,51 @@
     let selectedArea = 'ALL';
     let selectedDate = '';
 
-    // Excavator SVG Monochrome Generator: Hitam jika aktif (BEROPERASI), Abu-abu jika standby
-    function getExcavatorSVG(isActive) {
-      const mainColor = isActive ? '#0f172a' : '#94a3b8'; // Hitam pekat vs Abu-abu
+    // Excavator SVG Generator: Merah jika input terakhir bukan hari ini. Jika sudah input hari ini: Hitam jika aktif (BEROPERASI), Abu-abu jika standby
+    function getExcavatorSVG(isActive, isNotToday) {
+      if (isNotToday) {
+        // Mode Merah (Peringatan: Belum input hari ini)
+        const mainColor = '#dc2626'; // Red-600
+        const secondaryColor = '#ef4444'; // Red-500
+        const trackColor = '#7f1d1d'; // Red-900
+        const wheelColor = '#fecaca'; // Rose-200
+        const armColor = '#dc2626';
+        const bucketColor = '#991b1b'; // Red-800
+        const windowColor = '#fee2e2'; // Rose-100
+        const bgClass = 'bg-rose-50 border-rose-300 text-rose-600';
+
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Perhatian: Belum ada input hari ini!">
+            <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Tracks Base -->
+              <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+              <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+              <!-- Rotating Cabin Platform -->
+              <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+              <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+              <!-- Window -->
+              <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+              <!-- Counterweight -->
+              <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+              <!-- Boom (Main Arm) -->
+              <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+              <!-- Hydraulic Cylinder -->
+              <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+              <!-- Arm (Stick) -->
+              <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+              <!-- Bucket Joint & Bucket -->
+              <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+              <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Mode Normal: Hitam pekat jika aktif vs Abu-abu jika standby
+      const mainColor = isActive ? '#0f172a' : '#94a3b8';
       const secondaryColor = isActive ? '#334155' : '#cbd5e1';
       const trackColor = isActive ? '#1e293b' : '#64748b';
       const wheelColor = isActive ? '#475569' : '#e2e8f0';
@@ -494,12 +536,21 @@
       `;
     }
 
-    // Tank Icon Definition
-    const TANK_SVG = `
-      <div class="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
-        <i class="fa-solid fa-oil-well text-base"></i>
-      </div>
-    `;
+    // Tank Icon Generator (Merah jika input terakhir bukan hari ini)
+    function getTankSVG(isNotToday) {
+      if (isNotToday) {
+        return `
+          <div class="w-9 h-9 rounded-md bg-rose-50 border border-rose-300 flex items-center justify-center text-rose-600 shadow-2xs shrink-0" title="Perhatian: Belum ada input hari ini!">
+            <i class="fa-solid fa-oil-well text-base"></i>
+          </div>
+        `;
+      }
+      return `
+        <div class="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
+          <i class="fa-solid fa-oil-well text-base"></i>
+        </div>
+      `;
+    }
 
     // Format "Input Terakhir": 31 Dec 2026 23:59
     function formatLastInputDateTime(tglStr, jamInt) {
@@ -670,12 +721,34 @@
         if (empty) empty.classList.add('hidden');
       }
 
+      // Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+      filtered.sort((a, b) => {
+        const getRank = (u) => {
+          if ((u.tangki || '').toUpperCase() === 'YES') return 1; // Tangki Induk di posisi atas
+          if ((u.status || '').toUpperCase() === 'STANDBY') return 3; // Standby di urutan bawah
+          return 2; // Aktif / Beroperasi
+        };
+        const rankA = getRank(a);
+        const rankB = getRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      const todayStr = getTodayDateStr();
+      const targetDate = selectedDate || todayStr;
+
       let html = '';
       filtered.forEach((u, idx) => {
         const isTangki = (u.tangki || '').toUpperCase() === 'YES';
         const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
         const cardNum = `#${idx + 1}`;
         const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
+
+        // Validasi input terakhir bukan hari ini (icon jadi merah jika bukan hari ini)
+        const cleanLastTgl = (u.last_tgl || '').substring(0, 10);
+        const isNotToday = (cleanLastTgl !== targetDate);
 
         // Fuel visual indicator
         const sisaLtr = u.sisa_solar || 0;
@@ -735,7 +808,7 @@
               ${isTangki ? `
                 <!-- Khusus Card Tangki: Tanpa HM dan AVG HM, langsung Sisa Solar -->
                 <div class="flex items-center gap-2 bg-amber-50/70 rounded-lg p-2 border border-amber-200/80 mb-1.5">
-                  ${TANK_SVG}
+                  ${getTankSVG(isNotToday)}
                   <div class="flex-1 min-w-0">
                     <div class="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Sisa Stok Solar:</div>
                     <div class="flex items-baseline gap-1 mt-0.5">
@@ -745,9 +818,9 @@
                   </div>
                 </div>
               ` : `
-                <!-- Unit Alat Berat: Icon Beko Monochrome (Hitam = Aktif, Abu-abu = Standby) + HM + Sisa Solar -->
+                <!-- Unit Alat Berat: Icon Beko (Merah jika belum input hari ini; Hitam jika aktif, Abu-abu jika standby) + HM + Sisa Solar -->
                 <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5 border border-slate-200/70 mb-1.5">
-                  ${getExcavatorSVG(isActive)}
+                  ${getExcavatorSVG(isActive, isNotToday)}
                   <div class="flex-1 min-w-0 space-y-0.5">
                     <div class="flex items-baseline justify-between">
                       <span class="text-[9px] font-semibold text-slate-500 uppercase">Hour Meter:</span>
@@ -778,10 +851,15 @@
                 </div>
               ` : ''}
 
-              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59) -->
-              <div class="flex justify-between items-center text-[9.5px] text-slate-500 mb-1.5 bg-slate-50/70 border border-slate-100 px-1.5 py-0.5 rounded">
-                <span class="text-slate-400">Input Terakhir:</span>
-                <span class="font-bold text-slate-700 font-mono">${formatLastInputDateTime(u.last_tgl, u.last_jam)}</span>
+              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59, Merah jika bukan hari ini) -->
+              <div class="flex justify-between items-center text-[9.5px] mb-1.5 px-1.5 py-0.5 rounded transition ${isNotToday ? 'bg-rose-50/80 border border-rose-200 text-rose-700' : 'bg-slate-50/70 border border-slate-100 text-slate-500'}">
+                <span class="flex items-center gap-1 ${isNotToday ? 'text-rose-600 font-bold' : 'text-slate-400'}">
+                  <i class="fa-solid ${isNotToday ? 'fa-triangle-exclamation text-rose-500 text-[10px]' : 'fa-clock text-slate-400 text-[9px]'}"></i>
+                  <span>Input Terakhir:</span>
+                </span>
+                <span class="font-bold font-mono ${isNotToday ? 'text-rose-700' : 'text-slate-700'}">
+                  ${formatLastInputDateTime(u.last_tgl, u.last_jam)}
+                </span>
               </div>
             </div>
 
