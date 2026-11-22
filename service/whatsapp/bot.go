@@ -17,6 +17,8 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -67,7 +69,12 @@ func (b *WhatsAppBot) Start() error {
 	}
 	b.container = container
 
-	// 2. Ambil atau buat device store
+	// 2. Set identitas companion ke Chrome (Windows) agar dikenali sebagai WhatsApp Web resmi
+	store.DeviceProps.Os = proto.String("Chrome (Windows)")
+	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
+	store.SetOSInfo("Chrome", [3]uint32{128, 0, 0})
+
+	// 3. Ambil atau buat device store
 	deviceStore, err := container.GetFirstDevice(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get first device: %w", err)
@@ -77,7 +84,7 @@ func (b *WhatsAppBot) Start() error {
 	b.client.AddEventHandler(b.eventHandler)
 	b.client.EnableAutoReconnect = true
 
-	// 3. Cek apakah sudah login sebelumnya
+	// 4. Cek apakah sudah login sebelumnya
 	if b.client.Store.ID == nil {
 		// Device baru: butuh Scan QR
 		qrChan, err := b.client.GetQRChannel(context.Background())
@@ -255,9 +262,19 @@ func (b *WhatsAppBot) ResetSession() error {
 	b.qrPNG = nil
 
 	if b.container != nil {
-		deviceStore, err := b.container.GetFirstDevice(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to get new device store: %w", err)
+		// Bersihkan semua device lama agar kunci kriptografi baru tidak berkonflik
+		if devs, err := b.container.GetAllDevices(context.Background()); err == nil {
+			for _, dev := range devs {
+				_ = b.container.DeleteDevice(context.Background(), dev)
+			}
+		}
+
+		deviceStore := b.container.NewDevice()
+		if err := b.container.PutDevice(context.Background(), deviceStore); err != nil {
+			deviceStore, err = b.container.GetFirstDevice(context.Background())
+			if err != nil {
+				return fmt.Errorf("failed to get new device store: %w", err)
+			}
 		}
 		logLevel := "INFO"
 		clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
