@@ -212,10 +212,7 @@ func (b *WhatsAppBot) RequestNewQR() error {
 		time.Sleep(300 * time.Millisecond)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	qrChan, err := b.client.GetQRChannel(ctx)
+	qrChan, err := b.client.GetQRChannel(context.Background())
 	if err != nil {
 		return fmt.Errorf("gagal mendapatkan qr channel: %w", err)
 	}
