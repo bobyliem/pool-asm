@@ -647,9 +647,20 @@
         sumTotalIsi += (row.total_isi_unit || 0);
         sumTotalPakai += (row.total_pakai_unit || 0);
 
+        const outVal = Math.round((row.pakai || 0) * 10) / 10;
+        const totIsiVal = Math.round((row.total_isi_unit || 0) * 10) / 10;
+        const isDiff = Math.abs(outVal - totIsiVal) >= 0.1;
+
         const inClass = row.isi > 0 ? 'font-bold text-emerald-700 bg-emerald-50/40' : 'text-slate-400';
         const outClass = row.pakai > 0 ? 'font-bold text-rose-700 bg-rose-50/40' : 'text-slate-400';
-        const totIsiClass = row.total_isi_unit > 0 ? 'font-bold text-emerald-700 bg-emerald-50/30' : 'text-slate-400';
+        
+        let totIsiClass = row.total_isi_unit > 0 ? 'font-bold text-emerald-700 bg-emerald-50/30' : 'text-slate-400';
+        let totIsiTitle = '';
+        if (isDiff) {
+          totIsiClass = 'font-bold text-rose-600 bg-rose-50/60 line-through decoration-rose-600 decoration-2';
+          totIsiTitle = `title="Tidak Cocok: Out Tangki (${formatNum(outVal, 1)}) vs Total Isi Unit (${formatNum(totIsiVal, 1)})"`;
+        }
+
         const totPakaiClass = row.total_pakai_unit > 0 ? 'font-bold text-rose-700 bg-rose-50/30' : 'text-slate-400';
 
         bodyHtml += `
@@ -660,7 +671,7 @@
             <td class="py-0.5 px-2 text-right border-r border-slate-100 ${inClass}">${formatNum(row.isi, 1)}</td>
             <td class="py-0.5 px-2 text-right border-r border-slate-100 ${outClass}">${formatNum(row.pakai, 1)}</td>
             <td class="py-0.5 px-2 text-right border-r border-slate-300 font-bold text-slate-900 bg-blue-50/20">${formatNum(row.saldo_akhir, 1)}</td>
-            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${totIsiClass}">${formatNum(row.total_isi_unit, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${totIsiClass}" ${totIsiTitle}>${formatNum(row.total_isi_unit, 1)}</td>
             <td class="py-0.5 px-2 text-right border-r border-slate-300 ${totPakaiClass}">${formatNum(row.total_pakai_unit, 1)}</td>
             ${relatedUnits.map(u => {
               const val = row.units_detail?.[u] || { isi: 0, pakai: 0 };
@@ -683,6 +694,14 @@
 
       // Render Table Footer (Summary Totals)
       if (tfoot) {
+        const sumOutRound = Math.round(sumOut * 10) / 10;
+        const sumTotalIsiRound = Math.round(sumTotalIsi * 10) / 10;
+        const sumDiff = Math.abs(sumOutRound - sumTotalIsiRound) >= 0.1;
+        const sumTotalIsiClass = sumDiff 
+          ? 'text-rose-800 bg-rose-100/70 font-mono line-through decoration-rose-800 decoration-2' 
+          : 'text-emerald-800 bg-emerald-100/60 font-mono';
+        const sumTotalIsiTitle = sumDiff ? `title="Total Out Tangki (${formatNum(sumOutRound, 1)}) vs Total Isi Unit (${formatNum(sumTotalIsiRound, 1)}) berbeda"` : '';
+
         tfoot.innerHTML = `
           <tr class="bg-slate-200 text-slate-900 border-t-2 border-slate-300 font-extrabold select-none">
             <td colspan="2" class="py-1 px-2 text-center border-r border-slate-300 uppercase tracking-wider text-[10px]">TOTAL</td>
@@ -690,7 +709,7 @@
             <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/60 font-mono">${formatNum(sumIn, 1)}</td>
             <td class="py-1 px-2 text-right border-r border-slate-200 text-rose-800 bg-rose-100/60 font-mono">${formatNum(sumOut, 1)}</td>
             <td class="py-1 px-2 text-right border-r border-slate-300 text-blue-900 bg-blue-100/40 font-mono">-</td>
-            <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/60 font-mono">${formatNum(sumTotalIsi, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-200 ${sumTotalIsiClass}" ${sumTotalIsiTitle}>${formatNum(sumTotalIsi, 1)}</td>
             <td class="py-1 px-2 text-right border-r border-slate-300 text-rose-800 bg-rose-100/60 font-mono">${formatNum(sumTotalPakai, 1)}</td>
             ${relatedUnits.map(u => `
               <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/40 font-mono">${formatNum(unitSums[u].isi, 1)}</td>
