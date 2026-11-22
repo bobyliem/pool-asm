@@ -1009,8 +1009,12 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 
 	cleanArea := strings.TrimSpace(filter.Area)
 	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
-		whereClause += " AND u.area = ?"
-		queryArgs = append(queryArgs, cleanArea)
+		if strings.EqualFold(cleanArea, "Cicangkal") {
+			whereClause += " AND (u.area = 'Cicangkal' OR parent.unit = 'TANGKI-CCK')"
+		} else {
+			whereClause += " AND u.area = ?"
+			queryArgs = append(queryArgs, cleanArea)
+		}
 	}
 
 	cleanTgl := strings.TrimSpace(filter.Tanggal)
