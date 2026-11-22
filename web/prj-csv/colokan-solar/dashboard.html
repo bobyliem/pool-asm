@@ -54,47 +54,47 @@
     <app-sidebar active-menu="Dashboard Solar"></app-sidebar>
 
     <!-- MAIN DASHBOARD CONTENT -->
-    <main class="flex-1 p-3.5 sm:p-5 overflow-y-auto bg-slate-50 custom-scrollbar flex flex-col">
+    <main class="flex-1 p-2 sm:p-3 overflow-y-auto bg-slate-50 custom-scrollbar flex flex-col">
 
       <!-- TOP BAR: Header Title & Filter Area (Sesuai Layout Dashboard CSV) -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 bg-white border border-slate-300 rounded-xl px-4 py-2.5 shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-2xs">
         <div>
-          <div class="flex items-center space-x-2.5">
-            <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
-              <i class="fa-solid fa-gauge-high text-xs"></i>
+          <div class="flex items-center space-x-2">
+            <div class="w-6 h-6 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+              <i class="fa-solid fa-gauge-high text-[11px]"></i>
             </div>
-            <h2 class="text-base sm:text-lg font-bold text-gray-800 tracking-tight">Dashboard Solar</h2>
-            <span class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Project CSV</span>
+            <h2 class="text-sm sm:text-base font-bold text-gray-800 tracking-tight leading-none">Dashboard Solar</h2>
+            <span class="bg-blue-100 text-blue-700 text-[9px] font-semibold px-2 py-0.2 rounded-full">Project CSV</span>
           </div>
-          <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
-            <i class="fa-regular fa-clock text-[10px] text-slate-400"></i>
-            <span>Monitoring & Input Colokan/Pengisian Unit & Tangki Solar</span>
+          <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-[9px] text-slate-400"></i>
+            <span>Monitoring Stok & Input Colokan / Pengisian Unit Solar</span>
             <span class="text-slate-300">•</span>
-            <span>Update Terakhir: <span id="lastUpdateText" class="font-semibold text-slate-700">-</span></span>
+            <span>Update: <span id="lastUpdateText" class="font-semibold text-slate-700">-</span></span>
           </div>
         </div>
 
         <!-- Right Side: Filter Tanggal, Filter Area, Search & Refresh -->
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-1.5">
           <!-- Filter Tanggal (Background abu-abu sesuai request) -->
-          <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
-            <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
-            <span class="text-xs font-semibold text-slate-700">Tanggal:</span>
+          <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-300 rounded-lg px-2 py-0.5 shadow-2xs">
+            <i class="fa-regular fa-calendar-days text-slate-700 text-[11px]"></i>
+            <span class="text-[11px] font-semibold text-slate-700">Tanggal:</span>
             <input type="date" id="filterTanggal" onchange="onDateChange(this.value)"
               class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer" />
           </div>
 
           <!-- Quick Search Unit -->
           <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+            <i class="fa-solid fa-magnifying-glass absolute left-2 top-1.5 text-slate-400 text-[10px]"></i>
             <input type="text" id="searchUnitInput" oninput="renderCards()" placeholder="Cari unit..."
-              class="pl-7 pr-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-32 sm:w-40 transition" />
+              class="pl-6 pr-2 py-0.5 text-xs border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-28 sm:w-36 transition" />
           </div>
 
           <!-- Filter Area Dropdown (Kanan Atas) -->
-          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
-            <i class="fa-solid fa-location-dot text-blue-600 text-xs"></i>
-            <span class="text-xs font-semibold text-slate-600">Area:</span>
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-lg px-2 py-0.5 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-[11px]"></i>
+            <span class="text-[11px] font-semibold text-slate-600">Area:</span>
             <select id="filterArea" onchange="onAreaChange(this.value)" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
               <option value="ALL">Semua Area</option>
               <option value="Cicangkal">Cicangkal</option>
@@ -103,55 +103,55 @@
           </div>
 
           <!-- Refresh Button -->
-          <button onclick="loadDashboardUnits()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
-            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+          <button onclick="loadDashboardUnits()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[10px]"></i>
             <span class="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
       <!-- COMPACT KPI STATS CARDS (RINGKASAN TOTAL) -->
-      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3.5">
+      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
         <!-- Total Unit -->
-        <div class="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs flex items-center justify-between">
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
           <div>
-            <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wider">Total Unit Terdata</div>
-            <div class="text-lg font-bold text-slate-800 mt-0.5"><span id="statTotalUnit">0</span> <span class="text-[11px] font-normal text-slate-500">Unit</span></div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Unit Terdata</div>
+            <div class="text-base font-bold text-slate-800 mt-0.5"><span id="statTotalUnit">0</span> <span class="text-[10px] font-normal text-slate-500">Unit</span></div>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm">
+          <div class="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
             <i class="fa-solid fa-truck-monster"></i>
           </div>
         </div>
 
         <!-- Total Sisa Solar -->
-        <div class="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs flex items-center justify-between">
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
           <div>
-            <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wider">Total Sisa Solar</div>
-            <div class="text-lg font-bold text-amber-600 mt-0.5"><span id="statTotalSisaSolar">0</span> <span class="text-[11px] font-normal text-slate-500">Liter</span></div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Sisa Solar</div>
+            <div class="text-base font-bold text-amber-600 mt-0.5"><span id="statTotalSisaSolar">0</span> <span class="text-[10px] font-normal text-slate-500">Liter</span></div>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-sm">
+          <div class="w-7 h-7 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
             <i class="fa-solid fa-gas-pump"></i>
           </div>
         </div>
 
         <!-- Unit Alat Berat -->
-        <div class="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs flex items-center justify-between">
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
           <div>
-            <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wider">Unit Alat Berat</div>
-            <div class="text-lg font-bold text-emerald-600 mt-0.5"><span id="statUnitOperasi">0</span> <span class="text-[11px] font-normal text-slate-500">Unit</span></div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Unit Alat Berat</div>
+            <div class="text-base font-bold text-emerald-600 mt-0.5"><span id="statUnitOperasi">0</span> <span class="text-[10px] font-normal text-slate-500">Unit</span></div>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm">
+          <div class="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
             <i class="fa-solid fa-helmet-safety"></i>
           </div>
         </div>
 
         <!-- Tangki Induk -->
-        <div class="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs flex items-center justify-between">
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
           <div>
-            <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wider">Tangki Induk</div>
-            <div class="text-lg font-bold text-indigo-600 mt-0.5"><span id="statTotalTangki">0</span> <span class="text-[11px] font-normal text-slate-500">Tangki</span></div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tangki Induk</div>
+            <div class="text-base font-bold text-indigo-600 mt-0.5"><span id="statTotalTangki">0</span> <span class="text-[10px] font-normal text-slate-500">Tangki</span></div>
           </div>
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm">
+          <div class="w-7 h-7 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
             <i class="fa-solid fa-oil-well"></i>
           </div>
         </div>
@@ -173,7 +173,7 @@
         </div>
 
         <!-- Grid Container -->
-        <div id="unitsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div id="unitsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
           <!-- Rendered dynamically via JavaScript -->
         </div>
       </div>
@@ -453,40 +453,126 @@
     let selectedArea = 'ALL';
     let selectedDate = '';
 
-    // Excavator SVG Definition (High Quality Vector)
-    const EXCAVATOR_SVG = `
-      <svg class="w-11 h-11 text-amber-500 excavator-icon shrink-0" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Tracks Base -->
-        <rect x="6" y="44" width="38" height="12" rx="6" fill="#475569" stroke="#1e293b" stroke-width="2"/>
-        <circle cx="12" cy="50" r="3" fill="#cbd5e1"/>
-        <circle cx="20" cy="50" r="3" fill="#cbd5e1"/>
-        <circle cx="28" cy="50" r="3" fill="#cbd5e1"/>
-        <circle cx="36" cy="50" r="3" fill="#cbd5e1"/>
-        <!-- Rotating Cabin Platform -->
-        <rect x="10" y="32" width="28" height="12" rx="2" fill="#f59e0b" stroke="#b45309" stroke-width="1.5"/>
-        <rect x="12" y="24" width="16" height="12" rx="2" fill="#fcd34d" stroke="#b45309" stroke-width="1.5"/>
-        <!-- Window -->
-        <rect x="14" y="26" width="10" height="7" rx="1" fill="#38bdf8"/>
-        <!-- Counterweight -->
-        <rect x="28" y="28" width="8" height="8" rx="1" fill="#d97706"/>
-        <!-- Boom (Main Arm) -->
-        <path d="M 28 32 L 44 14" stroke="#f59e0b" stroke-width="4.5" stroke-linecap="round"/>
-        <!-- Hydraulic Cylinder -->
-        <path d="M 32 34 L 40 22" stroke="#94a3b8" stroke-width="2"/>
-        <!-- Arm (Stick) -->
-        <path d="M 44 14 L 54 28" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
-        <!-- Bucket Joint & Bucket -->
-        <circle cx="54" cy="28" r="2.5" fill="#475569"/>
-        <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="#334155" stroke="#1e293b" stroke-width="1.5"/>
-      </svg>
-    `;
+    // Excavator SVG Generator: Merah jika input terakhir bukan hari ini. Jika sudah input hari ini: Hitam jika aktif (BEROPERASI), Abu-abu jika standby
+    function getExcavatorSVG(isActive, isNotToday) {
+      if (isNotToday) {
+        // Mode Merah (Peringatan: Belum input hari ini)
+        const mainColor = '#dc2626'; // Red-600
+        const secondaryColor = '#ef4444'; // Red-500
+        const trackColor = '#7f1d1d'; // Red-900
+        const wheelColor = '#fecaca'; // Rose-200
+        const armColor = '#dc2626';
+        const bucketColor = '#991b1b'; // Red-800
+        const windowColor = '#fee2e2'; // Rose-100
+        const bgClass = 'bg-rose-50 border-rose-300 text-rose-600';
 
-    // Tank Icon Definition
-    const TANK_SVG = `
-      <div class="w-11 h-11 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
-        <i class="fa-solid fa-oil-well text-xl"></i>
-      </div>
-    `;
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Perhatian: Belum ada input hari ini!">
+            <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Tracks Base -->
+              <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+              <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+              <!-- Rotating Cabin Platform -->
+              <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+              <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+              <!-- Window -->
+              <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+              <!-- Counterweight -->
+              <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+              <!-- Boom (Main Arm) -->
+              <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+              <!-- Hydraulic Cylinder -->
+              <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+              <!-- Arm (Stick) -->
+              <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+              <!-- Bucket Joint & Bucket -->
+              <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+              <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Mode Normal: Hitam pekat jika aktif vs Abu-abu jika standby
+      const mainColor = isActive ? '#0f172a' : '#94a3b8';
+      const secondaryColor = isActive ? '#334155' : '#cbd5e1';
+      const trackColor = isActive ? '#1e293b' : '#64748b';
+      const wheelColor = isActive ? '#475569' : '#e2e8f0';
+      const armColor = isActive ? '#0f172a' : '#94a3b8';
+      const bucketColor = isActive ? '#020617' : '#64748b';
+      const windowColor = isActive ? '#94a3b8' : '#e2e8f0';
+      const bgClass = isActive ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 border-slate-200';
+
+      return `
+        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs">
+          <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Tracks Base -->
+            <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+            <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+            <!-- Rotating Cabin Platform -->
+            <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+            <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+            <!-- Window -->
+            <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+            <!-- Counterweight -->
+            <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+            <!-- Boom (Main Arm) -->
+            <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+            <!-- Hydraulic Cylinder -->
+            <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+            <!-- Arm (Stick) -->
+            <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+            <!-- Bucket Joint & Bucket -->
+            <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+            <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+          </svg>
+        </div>
+      `;
+    }
+
+    // Tank Icon Generator (Merah jika input terakhir bukan hari ini)
+    function getTankSVG(isNotToday) {
+      if (isNotToday) {
+        return `
+          <div class="w-9 h-9 rounded-md bg-rose-50 border border-rose-300 flex items-center justify-center text-rose-600 shadow-2xs shrink-0" title="Perhatian: Belum ada input hari ini!">
+            <i class="fa-solid fa-oil-well text-base"></i>
+          </div>
+        `;
+      }
+      return `
+        <div class="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
+          <i class="fa-solid fa-oil-well text-base"></i>
+        </div>
+      `;
+    }
+
+    // Format "Input Terakhir": 31 Dec 2026 23:59
+    function formatLastInputDateTime(tglStr, jamInt) {
+      if (!tglStr) return '-';
+      const clean = tglStr.substring(0, 10);
+      const parts = clean.split('-');
+      if (parts.length !== 3) return tglStr;
+      const year = parts[0];
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const dayStr = String(day).padStart(2, '0');
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = months[monthIdx] || parts[1];
+
+      let timeStr = '00:00';
+      if (jamInt !== null && jamInt !== undefined && jamInt > 0) {
+        timeStr = `${String(jamInt).padStart(2, '0')}:00`;
+      }
+
+      return `${dayStr} ${monthName} ${year} ${timeStr}`;
+    }
 
     // Initialize Hours Dropdown (01:00 - 24:00)
     function populateHourOptions(selectId) {
@@ -605,10 +691,16 @@
       const searchKeyword = (document.getElementById('searchUnitInput')?.value || '').trim().toLowerCase();
 
       let filtered = allUnitsData.filter(u => {
-        // Area filter
+        // Area filter: Jika Cicangkal, tampilkan juga yang induknya TANGKI-CCK (termasuk Tangki Pion)
         if (selectedArea && selectedArea !== 'ALL') {
-          if ((u.area || '').toLowerCase() !== selectedArea.toLowerCase()) {
-            return false;
+          if (selectedArea.toLowerCase() === 'cicangkal') {
+            const isCicangkalArea = (u.area || '').toLowerCase() === 'cicangkal';
+            const isIndukCck = (u.induk_name || '').toLowerCase() === 'tangki-cck';
+            if (!isCicangkalArea && !isIndukCck) return false;
+          } else {
+            if ((u.area || '').toLowerCase() !== selectedArea.toLowerCase()) {
+              return false;
+            }
           }
         }
         // Search filter
@@ -629,20 +721,34 @@
         if (empty) empty.classList.add('hidden');
       }
 
+      // Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+      filtered.sort((a, b) => {
+        const getRank = (u) => {
+          if ((u.tangki || '').toUpperCase() === 'YES') return 1; // Tangki Induk di posisi atas
+          if ((u.status || '').toUpperCase() === 'STANDBY') return 3; // Standby di urutan bawah
+          return 2; // Aktif / Beroperasi
+        };
+        const rankA = getRank(a);
+        const rankB = getRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      const todayStr = getTodayDateStr();
+      const targetDate = selectedDate || todayStr;
+
       let html = '';
       filtered.forEach((u, idx) => {
         const isTangki = (u.tangki || '').toUpperCase() === 'YES';
+        const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
         const cardNum = `#${idx + 1}`;
         const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
-        
-        // Induk badge
-        let indukBadge = '';
-        const indukLabel = u.induk_name || (u.induk ? `ID ${u.induk}` : 'Luar');
-        if (u.induk && u.induk !== 0 && u.induk !== '0') {
-          indukBadge = `<span class="bg-slate-100 text-slate-700 text-[9.5px] font-medium px-1.5 py-0.2 rounded border border-slate-200">Sumber: ${indukLabel}</span>`;
-        } else {
-          indukBadge = `<span class="bg-slate-100 text-slate-500 text-[9.5px] font-medium px-1.5 py-0.2 rounded border border-slate-200">Sumber: ${indukLabel}</span>`;
-        }
+
+        // Validasi input terakhir bukan hari ini (icon jadi merah jika bukan hari ini)
+        const cleanLastTgl = (u.last_tgl || '').substring(0, 10);
+        const isNotToday = (cleanLastTgl !== targetDate);
 
         // Fuel visual indicator
         const sisaLtr = u.sisa_solar || 0;
@@ -651,129 +757,132 @@
         if (sisaLtr < 100) fuelColor = 'text-rose-600';
         else if (sisaLtr < 250) fuelColor = 'text-amber-600';
 
-        // Last activity text
-        let lastInfo = '-';
-        if (u.last_tgl) {
-          lastInfo = `${u.last_tgl} (Jam ${u.last_jam || '-'})`;
-        }
-
         // Status badge
         let statusBadge = '';
         if (isTangki) {
           statusBadge = '<span class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs">TANGKI</span>';
-        } else if (u.status === 'BEROPERASI') {
+        } else if (isActive) {
           statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.2 rounded">AKTIF</span>';
         } else {
-          statusBadge = '<span class="bg-slate-100 text-slate-600 text-[9px] font-semibold px-1.5 py-0.2 rounded">STANDBY</span>';
+          statusBadge = '<span class="bg-slate-100 text-slate-500 text-[9px] font-semibold px-1.5 py-0.2 rounded">STANDBY</span>';
         }
 
         html += `
-          <div class="unit-card bg-white border border-slate-200 rounded-xl p-3 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
+          <div class="unit-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
             
             <!-- Card Header: Unit Name, Numbering & Badges -->
             <div>
-              <div class="flex items-center justify-between pb-2 border-b border-slate-100 gap-1.5">
+              <div class="flex items-center justify-between pb-1 border-b border-slate-100 gap-1.5">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <span class="text-[10px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${cardNum}</span>
-                  <h3 class="text-xs sm:text-sm font-black text-slate-800 tracking-tight truncate uppercase" title="${u.unit}">
+                  <span class="text-[9.5px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">${cardNum}</span>
+                  <h3 class="text-xs sm:text-[13px] font-black text-slate-800 tracking-tight truncate uppercase" title="${u.unit}">
                     ${u.unit}
                   </h3>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                   ${statusBadge}
-                  <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${areaColor}">${u.area || '-'}</span>
+                  <span class="text-[9.5px] font-bold px-1.5 py-0.2 rounded ${areaColor}">${u.area || '-'}</span>
                 </div>
               </div>
 
-              <!-- Sub-header: Induk Information -->
-              <div class="flex items-center justify-between pt-1 pb-2">
-                ${indukBadge}
-                <div class="text-[10px] text-slate-400 font-mono">
-                  ${u.konsumsi > 0 ? `<span title="Kapasitas rasio">${formatNumber(u.konsumsi, 2)} L/cm</span>` : ''}
-                </div>
-              </div>
-
-              <!-- Main Content: Excavator Icon + Core Metrics -->
-              <div class="flex items-center gap-3 py-1 bg-slate-50/70 rounded-lg p-2.5 border border-slate-100 mb-2">
-                <!-- Excavator or Tank Icon -->
-                ${isTangki ? TANK_SVG : EXCAVATOR_SVG}
-
-                <!-- HM & Sisa Solar Metrics -->
-                <div class="flex-1 min-w-0 space-y-1">
-                  <!-- HM -->
-                  <div class="flex items-baseline justify-between">
-                    <span class="text-[10px] font-semibold text-slate-500 uppercase">Hour Meter:</span>
-                    <span class="text-xs font-black font-mono text-slate-800">${formatHM(u.hm)}</span>
+              <!-- Sub-header: Avg Konsumsi (Menggantikan Data Sumber) -->
+              <div class="flex items-center justify-between pt-1 pb-1">
+                ${isTangki ? `
+                  <div class="flex items-center gap-1 text-[9.5px] text-amber-700 font-bold">
+                    <i class="fa-solid fa-oil-well text-[9.5px]"></i>
+                    <span>Tangki Induk Distribusi</span>
                   </div>
+                ` : `
+                  <div class="flex items-center gap-1 text-[10px] text-slate-700">
+                    <span class="text-slate-500 font-medium text-[9.5px]">Avg Konsumsi:</span>
+                    <span class="font-bold text-slate-800 font-mono">${formatNumber(u.avg_liter_per_hm, 2)}</span>
+                    <span class="text-[8.5px] text-slate-400">L/HM</span>
+                  </div>
+                `}
+                <div class="text-[9.5px] text-slate-400 font-mono">
+                  ${u.konsumsi > 0 ? `${formatNumber(u.konsumsi, 2)} L/cm` : ''}
+                </div>
+              </div>
 
-                  <!-- Sisa Solar (Liter & cm) -->
-                  <div class="flex items-baseline justify-between">
-                    <span class="text-[10px] font-semibold text-slate-500 uppercase">Sisa Solar:</span>
-                    <div class="text-right">
-                      <span class="text-xs font-black ${fuelColor}">${formatNumber(sisaLtr, 1)} L</span>
-                      ${sisaCm > 0 ? `<span class="text-[10px] font-semibold text-slate-400">(${formatNumber(sisaCm, 1)} cm)</span>` : ''}
+              <!-- Main Content: Icon + Core Metrics -->
+              ${isTangki ? `
+                <!-- Khusus Card Tangki: Tanpa HM dan AVG HM, langsung Sisa Solar -->
+                <div class="flex items-center gap-2 bg-amber-50/70 rounded-lg p-2 border border-amber-200/80 mb-1.5">
+                  ${getTankSVG(isNotToday)}
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Sisa Stok Solar:</div>
+                    <div class="flex items-baseline gap-1 mt-0.5">
+                      <span class="text-sm sm:text-base font-black text-amber-900">${formatNumber(sisaLtr, 2)}</span>
+                      <span class="text-xs font-bold text-amber-700">Liter</span>
                     </div>
                   </div>
-
-                  <!-- Avg Burn Rate -->
-                  <div class="flex items-baseline justify-between">
-                    <span class="text-[10px] font-semibold text-slate-500 uppercase">Avg Konsumsi:</span>
-                    <span class="text-[11px] font-bold text-slate-700">${formatNumber(u.avg_liter_per_hm, 2)} <span class="text-[9px] font-normal text-slate-400">L/HM</span></span>
+                </div>
+              ` : `
+                <!-- Unit Alat Berat: Icon Beko (Merah jika belum input hari ini; Hitam jika aktif, Abu-abu jika standby) + HM + Sisa Solar -->
+                <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5 border border-slate-200/70 mb-1.5">
+                  ${getExcavatorSVG(isActive, isNotToday)}
+                  <div class="flex-1 min-w-0 space-y-0.5">
+                    <div class="flex items-baseline justify-between">
+                      <span class="text-[9px] font-semibold text-slate-500 uppercase">Hour Meter:</span>
+                      <span class="text-xs font-black font-mono text-slate-800">${formatHM(u.hm)}</span>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                      <span class="text-[9px] font-semibold text-slate-500 uppercase">Sisa Solar:</span>
+                      <div class="text-right">
+                        <span class="text-xs font-black ${fuelColor}">${formatNumber(sisaLtr, 1)} L</span>
+                        ${sisaCm > 0 ? `<span class="text-[9px] font-semibold text-slate-400">(${formatNumber(sisaCm, 1)} cm)</span>` : ''}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              `}
 
-              <!-- Refill & Pakai on selected date -->
+              <!-- Refill & Pakai on selected date (Jika ada) -->
               ${(u.hari_isi > 0 || u.hari_pakai > 0) ? `
-                <div class="grid grid-cols-2 gap-1.5 text-[10px] text-slate-600 mb-2 bg-amber-50/70 border border-amber-200/70 p-1.5 rounded-lg">
-                  <div class="flex justify-between items-center pr-1 border-r border-amber-200/60">
-                    <span class="text-[9.5px] font-semibold text-slate-500">Refill (Hari Ini):</span>
+                <div class="grid grid-cols-2 gap-1 text-[9px] text-slate-600 mb-1.5 bg-amber-50/60 border border-amber-200/60 px-1.5 py-0.5 rounded">
+                  <div class="flex justify-between items-center pr-1 border-r border-amber-200/50">
+                    <span class="text-slate-500">Refill:</span>
                     <span class="font-bold text-emerald-700">+${formatNumber(u.hari_isi, 1)} L</span>
                   </div>
                   <div class="flex justify-between items-center pl-1">
-                    <span class="text-[9.5px] font-semibold text-slate-500">Pakai (Hari Ini):</span>
+                    <span class="text-slate-500">Pakai:</span>
                     <span class="font-bold text-rose-700">-${formatNumber(u.hari_pakai, 1)} L</span>
                   </div>
                 </div>
               ` : ''}
 
-              <!-- Secondary Details: Terakhir & Note -->
-              <div class="space-y-1 text-[10px] text-slate-500 mb-3 bg-white p-1 rounded">
-                <div class="flex justify-between items-center text-slate-500">
+              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59, Merah jika bukan hari ini) -->
+              <div class="flex justify-between items-center text-[9.5px] mb-1.5 px-1.5 py-0.5 rounded transition ${isNotToday ? 'bg-rose-50/80 border border-rose-200 text-rose-700' : 'bg-slate-50/70 border border-slate-100 text-slate-500'}">
+                <span class="flex items-center gap-1 ${isNotToday ? 'text-rose-600 font-bold' : 'text-slate-400'}">
+                  <i class="fa-solid ${isNotToday ? 'fa-triangle-exclamation text-rose-500 text-[10px]' : 'fa-clock text-slate-400 text-[9px]'}"></i>
                   <span>Input Terakhir:</span>
-                  <span class="font-bold text-slate-700 font-mono">${lastInfo}</span>
-                </div>
-                ${u.last_note ? `
-                  <div class="flex justify-between items-center text-[9.5px] text-slate-400 border-t border-slate-50 pt-0.5">
-                    <span>Aktivitas:</span>
-                    <span class="font-medium text-slate-600 truncate max-w-[140px]" title="${u.last_note}">${u.last_note}</span>
-                  </div>
-                ` : ''}
+                </span>
+                <span class="font-bold font-mono ${isNotToday ? 'text-rose-700' : 'text-slate-700'}">
+                  ${formatLastInputDateTime(u.last_tgl, u.last_jam)}
+                </span>
               </div>
             </div>
 
             <!-- Footer: 2 Action Buttons (Colokan & IsiSolar) -->
-            <div class="pt-2 border-t border-slate-100">
+            <div class="pt-1.5 border-t border-slate-100">
               ${isTangki ? `
-                <div class="flex items-center justify-between gap-1.5">
-                  <a href="/prj-csv/colokan-solar/monitoring-tangki" class="w-full text-center py-1.5 px-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1">
-                    <i class="fa-solid fa-chart-line text-[10px]"></i>
-                    <span>Monitoring Stok Tangki</span>
-                  </a>
-                </div>
+                <a href="/prj-csv/colokan-solar/monitoring-tangki" class="w-full text-center py-1 px-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs">
+                  <i class="fa-solid fa-chart-line text-[10px]"></i>
+                  <span>Monitoring Stok Tangki</span>
+                </a>
               ` : `
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-1.5">
                   <!-- Button Colokan -->
                   <button onclick="openModalColokan('${escapeQuotes(u.unit)}')"
-                    class="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-bold shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-ruler-vertical text-[10px]"></i>
+                    class="py-1 px-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-ruler-vertical text-[9.5px]"></i>
                     <span>Colokan</span>
                   </button>
 
                   <!-- Button IsiSolar -->
                   <button onclick="openModalIsiSolar('${escapeQuotes(u.unit)}')"
-                    class="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-gas-pump text-[10px]"></i>
+                    class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-gas-pump text-[9.5px]"></i>
                     <span>IsiSolar</span>
                   </button>
                 </div>

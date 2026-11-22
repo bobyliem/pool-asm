@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -163,14 +164,46 @@ func (h *WhatsAppHandler) ShowQRPage(c *gin.Context) {
 		return
 	}
 
-	html := `
+	_, qrPNG, _ := h.bot.GetQR()
+
+	var qrElement string
+	refreshSec := 5
+	if len(qrPNG) > 0 {
+		qrBase64 := base64.StdEncoding.EncodeToString(qrPNG)
+		qrElement = fmt.Sprintf(`
+				<div class="p-4 bg-white rounded-xl border border-slate-200 inline-block shadow-xs">
+					<img src="data:image/png;base64,%s" alt="QR Code WhatsApp" class="w-64 h-64 mx-auto rounded-lg">
+				</div>
+				<div class="pt-1 flex items-center justify-center gap-2">
+					<a href="/wa/reconnect" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition border border-slate-200">
+						<i class="fa-solid fa-rotate"></i> Muat Ulang QR
+					</a>
+				</div>
+		`, qrBase64)
+	} else {
+		refreshSec = 3
+		qrElement = `
+				<div class="p-8 bg-slate-50 rounded-xl border border-dashed border-slate-300 w-64 h-64 mx-auto flex flex-col items-center justify-center space-y-3">
+					<i class="fa-solid fa-circle-notch fa-spin text-3xl text-emerald-600"></i>
+					<p class="text-xs text-slate-700 font-semibold">Menyiapkan QR Code...</p>
+					<p class="text-[11px] text-slate-400">Sedang menghubungi server WhatsApp</p>
+				</div>
+				<div class="pt-1 flex items-center justify-center gap-2">
+					<a href="/wa/reconnect" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition shadow-xs">
+						<i class="fa-solid fa-rotate"></i> Klik untuk Muat QR Baru
+					</a>
+				</div>
+		`
+	}
+
+	html := fmt.Sprintf(`
 		<!DOCTYPE html>
 		<html lang="id">
 		<head>
 			<meta charset="UTF-8">
 			<meta name="viewport" content="width=device-width, initial-scale=1.0">
 			<title>Scan QR WhatsApp - ASM Bot</title>
-			<meta http-equiv="refresh" content="5">
+			<meta http-equiv="refresh" content="%d">
 			<script src="https://cdn.tailwindcss.com"></script>
 			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 		</head>
@@ -178,14 +211,12 @@ func (h *WhatsAppHandler) ShowQRPage(c *gin.Context) {
 			<div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-md w-full text-center space-y-4">
 				<h1 class="text-xl font-bold text-slate-800">Scan QR Code WhatsApp</h1>
 				<p class="text-xs text-slate-500">Buka WhatsApp di HP ➔ Titik 3 / Setelan ➔ <strong>Perangkat Tertaut</strong> ➔ <strong>Tautkan Perangkat</strong></p>
-				<div class="p-4 bg-slate-50 rounded-xl border border-slate-200 inline-block">
-					<img src="/wa/qr/image" alt="QR Code WhatsApp" class="w-64 h-64 mx-auto rounded-lg shadow-xs" onerror="this.src=''; this.alt='Memuat QR Code...';">
-				</div>
-				<p class="text-[11px] text-slate-400 italic">Halaman ini otomatis merefresh setiap 5 detik</p>
+				%s
+				<p class="text-[11px] text-slate-400 italic">Halaman ini otomatis merefresh setiap %d detik</p>
 			</div>
 		</body>
 		</html>
-	`
+	`, refreshSec, qrElement, refreshSec)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 

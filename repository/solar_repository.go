@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -1009,8 +1010,12 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 
 	cleanArea := strings.TrimSpace(filter.Area)
 	if cleanArea != "" && !strings.EqualFold(cleanArea, "all") && !strings.EqualFold(cleanArea, "Semua Area") {
-		whereClause += " AND u.area = ?"
-		queryArgs = append(queryArgs, cleanArea)
+		if strings.EqualFold(cleanArea, "Cicangkal") {
+			whereClause += " AND (u.area = 'Cicangkal' OR parent.unit = 'TANGKI-CCK')"
+		} else {
+			whereClause += " AND u.area = ?"
+			queryArgs = append(queryArgs, cleanArea)
+		}
 	}
 
 	cleanTgl := strings.TrimSpace(filter.Tanggal)
@@ -1079,6 +1084,26 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 				items[i].Status = "STANDBY"
 			}
 		}
+
+		// Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+		sort.Slice(items, func(i, j int) bool {
+			rank := func(item models.DashboardSolarUnitCard) int {
+				if item.Tangki == "Yes" {
+					return 1
+				}
+				if item.Status == "STANDBY" {
+					return 3
+				}
+				return 2 // BEROPERASI
+			}
+
+			rankI := rank(items[i])
+			rankJ := rank(items[j])
+			if rankI != rankJ {
+				return rankI < rankJ
+			}
+			return items[i].Unit < items[j].Unit
+		})
 	} else {
 		query := fmt.Sprintf(`
 		SELECT 
@@ -1135,6 +1160,26 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 				items[i].Status = "STANDBY"
 			}
 		}
+
+		// Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+		sort.Slice(items, func(i, j int) bool {
+			rank := func(item models.DashboardSolarUnitCard) int {
+				if item.Tangki == "Yes" {
+					return 1
+				}
+				if item.Status == "STANDBY" {
+					return 3
+				}
+				return 2 // BEROPERASI
+			}
+
+			rankI := rank(items[i])
+			rankJ := rank(items[j])
+			if rankI != rankJ {
+				return rankI < rankJ
+			}
+			return items[i].Unit < items[j].Unit
+		})
 	}
 
 	return items, nil
