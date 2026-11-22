@@ -263,9 +263,9 @@ type LaporanMonitoringTangkiItem struct {
 	Pakai          float64                 `json:"pakai" gorm:"column:pakai"`
 	SaldoAkhir     float64                 `json:"saldo_akhir" gorm:"column:saldo_akhir"`
 	RincianUnit    string                  `json:"rincian_unit" gorm:"column:rincian_unit"`
-	TotalIsiUnit   float64                 `json:"total_isi_unit"`
-	TotalPakaiUnit float64                 `json:"total_pakai_unit"`
-	UnitsDetail    map[string]UnitIsiPakai `json:"units_detail"`
+	TotalIsiUnit   float64                 `json:"total_isi_unit" gorm:"-"`
+	TotalPakaiUnit float64                 `json:"total_pakai_unit" gorm:"-"`
+	UnitsDetail    map[string]UnitIsiPakai `json:"units_detail" gorm:"-"`
 }
 
 type TangkiProjectionItem struct {
