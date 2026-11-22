@@ -17,8 +17,6 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
-	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
-	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -60,7 +58,7 @@ func (b *WhatsAppBot) Start() error {
 	dbPath := filepath.Join(dataDir, "whatsapp_session.db")
 	dbUri := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_busy_timeout=5000", dbPath)
 
-	logLevel := "INFO"
+	logLevel := "DEBUG"
 	clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
 
 	container, err := sqlstore.New(context.Background(), "sqlite", dbUri, clientLog)
@@ -69,12 +67,7 @@ func (b *WhatsAppBot) Start() error {
 	}
 	b.container = container
 
-	// 2. Set identitas companion ke Chrome (Windows) agar dikenali sebagai WhatsApp Web resmi
-	store.DeviceProps.Os = proto.String("Chrome (Windows)")
-	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-	store.SetOSInfo("Chrome", [3]uint32{128, 0, 0})
-
-	// 3. Ambil atau buat device store
+	// 2. Ambil atau buat device store
 	deviceStore, err := container.GetFirstDevice(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get first device: %w", err)
@@ -84,7 +77,7 @@ func (b *WhatsAppBot) Start() error {
 	b.client.AddEventHandler(b.eventHandler)
 	b.client.EnableAutoReconnect = true
 
-	// 4. Cek apakah sudah login sebelumnya
+	// 3. Cek apakah sudah login sebelumnya
 	if b.client.Store.ID == nil {
 		// Device baru: butuh Scan QR
 		qrChan, err := b.client.GetQRChannel(context.Background())
@@ -183,6 +176,17 @@ func (b *WhatsAppBot) handleQRChannel(qrChan <-chan whatsmeow.QRChannelItem) {
 			}
 			return
 
+		case "error":
+			fmt.Printf("❌ [WhatsApp QR Channel Error]: %v\n", evt.Error)
+			b.mu.Lock()
+			b.qrText = ""
+			b.qrPNG = nil
+			b.mu.Unlock()
+			if b.client != nil {
+				b.client.Disconnect()
+			}
+			return
+
 		default:
 			fmt.Printf("⚠️ [WhatsApp] QR Event: %s\n", evt.Event)
 		}
@@ -269,14 +273,11 @@ func (b *WhatsAppBot) ResetSession() error {
 			}
 		}
 
-		deviceStore := b.container.NewDevice()
-		if err := b.container.PutDevice(context.Background(), deviceStore); err != nil {
-			deviceStore, err = b.container.GetFirstDevice(context.Background())
-			if err != nil {
-				return fmt.Errorf("failed to get new device store: %w", err)
-			}
+		deviceStore, err := b.container.GetFirstDevice(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to get new device store: %w", err)
 		}
-		logLevel := "INFO"
+		logLevel := "DEBUG"
 		clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
 		b.client = whatsmeow.NewClient(deviceStore, clientLog)
 		b.client.AddEventHandler(b.eventHandler)
@@ -398,6 +399,24 @@ func (b *WhatsAppBot) GetPendingHarianMessage() string {
 // eventHandler menangani semua event pesan masuk dari WhatsApp
 func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
+	case *events.PairSuccess:
+		b.mu.Lock()
+		b.isLoggedIn = true
+		b.isConnected = true
+		b.qrText = ""
+		b.qrPNG = nil
+		b.mu.Unlock()
+		fmt.Printf("✅ [WhatsApp] Pairing BERHASIL! Terhubung dengan nomor: %s (LID: %s)\n", v.ID.User, v.LID.User)
+
+	case *events.PairError:
+		b.mu.Lock()
+		b.isLoggedIn = false
+		b.isConnected = false
+		b.qrText = ""
+		b.qrPNG = nil
+		b.mu.Unlock()
+		fmt.Printf("❌ [WhatsApp Pairing GAGAL]: %v (ID: %v, Platform: %s)\n", v.Error, v.ID, v.Platform)
+
 	case *events.Connected:
 		b.mu.Lock()
 		b.isConnected = true
