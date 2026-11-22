@@ -444,7 +444,7 @@ func (s *solarService) GetLaporanFilterOptions() (map[string]interface{}, error)
 
 // GetLaporanMonitoringTangki handles monitoring and tank days of supply logic
 func (s *solarService) GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) (map[string]interface{}, error) {
-	tankSummaries, items, totalRows, projections, err := s.repo.GetLaporanMonitoringTangki(filter)
+	tankSummaries, items, totalRows, projections, relatedUnits, err := s.repo.GetLaporanMonitoringTangki(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -463,6 +463,7 @@ func (s *solarService) GetLaporanMonitoringTangki(filter models.LaporanMonitorin
 		"tank_summaries": tankSummaries,
 		"items":          items,
 		"projections":    projections,
+		"related_units":  relatedUnits,
 		"pagination": map[string]interface{}{
 			"current_page": page,
 			"limit":        limit,
