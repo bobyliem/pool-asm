@@ -565,6 +565,18 @@ window.initNavWhatsAppStatus = function() {
           text.className = 'text-[11px] sm:text-xs font-bold text-emerald-800 truncate max-w-[80px] sm:max-w-[120px]';
           text.innerText = phone ? `WA: ${phone}` : 'WA: Online';
         }
+      } else if (isLoggedIn && !isConnected) {
+        // TERPUTUS / SOCKET OFFLINE (Amber/Peringatan) -> Klik ke /wa/qr untuk Reconnect!
+        link.className = 'border border-amber-300 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-amber-50 hover:bg-amber-100 cursor-pointer transition select-none shadow-2xs text-amber-800 animate-pulse sm:animate-none';
+        link.title = `WhatsApp Bot Terputus (Offline)!\nNomor: ${phone || 'Tertaut'}\nKlik di sini untuk Hubungkan Ulang (Reconnect)`;
+        link.href = '/wa/qr';
+        if (icon) icon.className = 'fa-brands fa-whatsapp text-sm sm:text-base text-amber-600';
+        if (dot) dot.classList.add('hidden');
+        if (ping) ping.classList.remove('hidden');
+        if (text) {
+          text.className = 'text-[11px] sm:text-xs font-bold text-amber-800 truncate max-w-[80px] sm:max-w-[120px]';
+          text.innerText = 'WA: Offline';
+        }
       } else {
         // OFFLINE / Perlu Scan (Merah) -> Klik langsung ke /wa/qr untuk scan!
         link.className = 'border border-rose-300 rounded-xl px-2 sm:px-2.5 py-1 flex items-center gap-1.5 sm:gap-2 bg-rose-50 hover:bg-rose-100 cursor-pointer transition select-none shadow-2xs text-rose-700 animate-pulse sm:animate-none';

@@ -127,13 +127,111 @@ func (b *WhatsAppBot) Start() error {
 
 		err = b.client.Connect()
 		if err != nil {
-			return fmt.Errorf("failed to reconnect existing session: %w", err)
+			fmt.Printf("⚠️ [WhatsApp] Gagal konek awal sesi tersimpan (%v), watchdog akan mencoba reconnect berkala...\n", err)
+		} else {
+			fmt.Printf("✅ [WhatsApp] Terkoneksi kembali dengan nomor: %s\n", b.client.Store.ID.User)
 		}
-		fmt.Printf("✅ [WhatsApp] Terkoneksi kembali dengan nomor: %s\n", b.client.Store.ID.User)
 	}
 
 	// Rutin pembersihan deduplikasi setiap 5 menit
 	go b.cleanupDedupLoop()
+
+	// Rutin watchdog pemeriksa koneksi setiap 15 detik jika terputus
+	go b.watchdogLoop()
+
+	return nil
+}
+
+// watchdogLoop memeriksa koneksi WhatsApp setiap 15 detik. Jika device login tapi offline, ia akan mencoba reconnect otomatis.
+func (b *WhatsAppBot) watchdogLoop() {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if b.IsLoggedIn() && !b.IsConnected() {
+			if b.client != nil {
+				fmt.Println("⚠️ [WhatsApp Watchdog] Sesi login terdeteksi tapi koneksi offline, mencoba reconnect otomatis...")
+				if err := b.client.Connect(); err != nil {
+					fmt.Printf("⚠️ [WhatsApp Watchdog] Reconnect gagal: %v\n", err)
+				} else {
+					fmt.Println("✅ [WhatsApp Watchdog] Reconnect berhasil!")
+				}
+			}
+		}
+	}
+}
+
+// ForceReconnect memaksa pemutusan koneksi WebSocket dan menghubungkan kembali
+func (b *WhatsAppBot) ForceReconnect() error {
+	if b.client == nil {
+		return fmt.Errorf("client whatsapp belum terinisialisasi")
+	}
+
+	b.client.Disconnect()
+	time.Sleep(500 * time.Millisecond)
+	return b.client.Connect()
+}
+
+// ResetSession melakukan logout, membersihkan session database, dan memulai sesi scan QR baru
+func (b *WhatsAppBot) ResetSession() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.client != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := b.client.Logout(ctx)
+		cancel()
+		if err != nil {
+			b.client.Disconnect()
+			if b.client.Store != nil {
+				_ = b.client.Store.Delete(context.Background())
+			}
+		}
+	}
+
+	b.isLoggedIn = false
+	b.isConnected = false
+	b.qrText = ""
+	b.qrPNG = nil
+
+	if b.container != nil {
+		deviceStore, err := b.container.GetFirstDevice(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to get new device store: %w", err)
+		}
+		logLevel := "INFO"
+		clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
+		b.client = whatsmeow.NewClient(deviceStore, clientLog)
+		b.client.AddEventHandler(b.eventHandler)
+		b.client.EnableAutoReconnect = true
+
+		qrChan, err := b.client.GetQRChannel(context.Background())
+		if err == nil {
+			if err := b.client.Connect(); err == nil {
+				go func() {
+					for evt := range qrChan {
+						if evt.Event == "code" {
+							b.mu.Lock()
+							b.qrText = evt.Code
+							png, err := qrcode.Encode(evt.Code, qrcode.Medium, 300)
+							if err == nil {
+								b.qrPNG = png
+							}
+							b.mu.Unlock()
+						} else if evt.Event == "success" {
+							b.mu.Lock()
+							b.isLoggedIn = true
+							b.isConnected = true
+							b.qrText = ""
+							b.qrPNG = nil
+							b.mu.Unlock()
+							fmt.Println("✅ [WhatsApp] Login WhatsApp BERHASIL! Session tersimpan.")
+						}
+					}
+				}()
+			}
+		}
+	}
 
 	return nil
 }
@@ -154,6 +252,11 @@ func (b *WhatsAppBot) IsLoggedIn() bool {
 		return false
 	}
 	return b.client.Store.ID != nil
+}
+
+// IsConnected mengecek apakah socket client sedang aktif terhubung ke WhatsApp server
+func (b *WhatsAppBot) IsConnected() bool {
+	return b.client != nil && b.client.IsConnected()
 }
 
 // ReconnectQR mencoba rekoneksi untuk mendapatkan channel QR baru jika belum login dan offline
