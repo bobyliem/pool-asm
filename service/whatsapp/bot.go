@@ -212,10 +212,7 @@ func (b *WhatsAppBot) RequestNewQR() error {
 		time.Sleep(300 * time.Millisecond)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	qrChan, err := b.client.GetQRChannel(ctx)
+	qrChan, err := b.client.GetQRChannel(context.Background())
 	if err != nil {
 		return fmt.Errorf("gagal mendapatkan qr channel: %w", err)
 	}
@@ -241,6 +238,59 @@ func (b *WhatsAppBot) ForceReconnect() error {
 	b.client.Disconnect()
 	time.Sleep(500 * time.Millisecond)
 	return b.client.Connect()
+}
+
+// PairPhone meminta kode pairing 8-karakter dari WhatsApp untuk ditautkan via nomor telepon
+func (b *WhatsAppBot) PairPhone(phone string) (string, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.client == nil {
+		return "", fmt.Errorf("client WhatsApp belum terinisialisasi")
+	}
+	if b.IsLoggedIn() {
+		return "", fmt.Errorf("WhatsApp sudah terhubung")
+	}
+
+	// Bersihkan karakter non-digit
+	cleanPhone := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, phone)
+
+	if strings.HasPrefix(cleanPhone, "0") {
+		cleanPhone = "62" + strings.TrimPrefix(cleanPhone, "0")
+	}
+
+	if len(cleanPhone) < 8 {
+		return "", fmt.Errorf("nomor telepon tidak valid (minimal 8 digit)")
+	}
+
+	// Pastikan client terhubung ke WebSocket
+	if !b.client.IsConnected() {
+		qrChan, err := b.client.GetQRChannel(context.Background())
+		if err != nil {
+			return "", fmt.Errorf("gagal inisialisasi QR channel: %w", err)
+		}
+		if err := b.client.Connect(); err != nil {
+			return "", fmt.Errorf("gagal menghubungkan ke server WhatsApp: %w", err)
+		}
+		go b.handleQRChannel(qrChan)
+		time.Sleep(1200 * time.Millisecond)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
+	code, err := b.client.PairPhone(ctx, cleanPhone, true, whatsmeow.PairClientChrome, "Chrome (Windows)")
+	if err != nil {
+		return "", fmt.Errorf("gagal meminta kode pairing dari WhatsApp: %w", err)
+	}
+
+	fmt.Printf("📲 [WhatsApp] Kode Pairing Dibuat untuk nomor %s: %s\n", cleanPhone, code)
+	return code, nil
 }
 
 // ResetSession melakukan logout, membersihkan session database, dan memulai sesi scan QR baru

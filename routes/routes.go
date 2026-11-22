@@ -344,6 +344,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			r.POST("/wa/reconnect", waHandler.Reconnect)
 			r.GET("/wa/reset", waHandler.Reset)
 			r.POST("/wa/reset", waHandler.Reset)
+			r.POST("/wa/pair-phone", waHandler.PairPhone)
 			api.POST("/wa/send", waHandler.SendMessage)
 		}
 
