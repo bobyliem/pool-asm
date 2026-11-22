@@ -30,7 +30,7 @@ type SolarRepository interface {
 	GetLaporanDetailHarian(filter models.LaporanDetailHarianFilter) ([]models.LaporanDetailHarianItem, int64, models.LaporanDetailHarianSummary, error)
 	GetLaporanRekapUnit(filter models.LaporanRekapUnitFilter) ([]models.LaporanRekapUnitItem, models.LaporanRekapUnitSummary, error)
 	GetLaporanRekonsiliasi(filter models.LaporanRekonsiliasiFilter) ([]models.LaporanRekonsiliasiItem, int64, models.LaporanRekonsiliasiSummary, error)
-	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, error)
+	GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, []string, error)
 	GetDetailPoints(tgl string, unit string) ([]models.DtSolar, error)
 	GetLaporanFilterOptions() ([]string, []string, string, string, error)
 
@@ -764,7 +764,7 @@ func (r *solarRepository) GetLaporanFilterOptions() ([]string, []string, string,
 }
 
 // GetLaporanMonitoringTangki retrieves tank status overview, daily ledger, and forward projections
-func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, error) {
+func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonitoringTangkiFilter) ([]models.TangkiStatusSummary, []models.LaporanMonitoringTangkiItem, int64, []models.TangkiProjectionItem, []string, error) {
 	// 1. Ambil list tangki (u.tangki = 'Yes')
 	tankQuery := r.db.Table("dt_solar_unit").Where("tangki = ?", "Yes")
 	if filter.Area != "" {
@@ -780,7 +780,7 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 	}
 	var tankRows []TankRow
 	if err := tankQuery.Select("unit, area").Order("area ASC, unit ASC").Scan(&tankRows).Error; err != nil {
-		return nil, nil, 0, nil, err
+		return nil, nil, 0, nil, nil, err
 	}
 
 	now := time.Now()
@@ -927,10 +927,43 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 	}
 
 	// 4. Query Riwayat Mutasi Harian Tangki (Ledger)
+	cleanTangki := strings.TrimSpace(filter.Tangki)
+	if cleanTangki == "" && strings.EqualFold(filter.Area, "Cicangkal") {
+		cleanTangki = "TANGKI-CCK"
+	} else if cleanTangki == "" && strings.EqualFold(filter.Area, "Pion") {
+		cleanTangki = "TANGKI-PION"
+	}
+
+	// Pas Tab All diklik: tidak usah munculkan data row
+	if cleanTangki == "" {
+		return tankSummaries, []models.LaporanMonitoringTangkiItem{}, 0, projections, []string{}, nil
+	}
+
+	// Cari data unit tangki dan unit-unit yang induknya adalah tangki ini
+	var tankID int
+	var tankArea string
+	err := r.db.Raw("SELECT id, area FROM dt_solar_unit WHERE unit = ? LIMIT 1", cleanTangki).Row().Scan(&tankID, &tankArea)
+	if err != nil {
+		return tankSummaries, nil, 0, projections, nil, fmt.Errorf("tangki %s tidak ditemukan: %w", cleanTangki, err)
+	}
+
+	var relatedUnits []string
+	err = r.db.Raw(`
+		SELECT unit 
+		FROM dt_solar_unit 
+		WHERE induk = ? 
+		ORDER BY tangki ASC, unit ASC
+	`, tankID).Scan(&relatedUnits).Error
+	if err != nil {
+		return tankSummaries, nil, 0, projections, nil, fmt.Errorf("gagal mengambil unit terkait: %w", err)
+	}
+
+	// Query data mutasi BBM tangki
 	var conditions []string
 	var args []interface{}
 
-	conditions = append(conditions, "u.tangki = 'Yes'")
+	conditions = append(conditions, "s.unit = ?")
+	args = append(args, cleanTangki)
 
 	if filter.TglAwal != "" {
 		conditions = append(conditions, "s.tgl >= ?")
@@ -939,14 +972,6 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 	if filter.TglAkhir != "" {
 		conditions = append(conditions, "s.tgl <= ?")
 		args = append(args, filter.TglAkhir)
-	}
-	if filter.Area != "" {
-		conditions = append(conditions, "u.area = ?")
-		args = append(args, filter.Area)
-	}
-	if filter.Tangki != "" {
-		conditions = append(conditions, "s.unit = ?")
-		args = append(args, filter.Tangki)
 	}
 
 	whereClause := "WHERE " + strings.Join(conditions, " AND ")
@@ -960,7 +985,7 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 
 	var totalRows int64
 	if err := r.db.Raw(countQuery, args...).Row().Scan(&totalRows); err != nil {
-		return tankSummaries, nil, 0, projections, err
+		return tankSummaries, nil, 0, projections, relatedUnits, err
 	}
 
 	limit := filter.Limit
@@ -981,26 +1006,79 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 		       ROUND(COALESCE(s.saldoawal, 0), 1) as saldo_awal,
 		       ROUND(COALESCE(s.isi, 0), 1) as isi,
 		       ROUND(COALESCE(s.pakai, 0), 1) as pakai,
-		       ROUND(COALESCE(s.saldoakhir, 0), 1) as saldo_akhir,
-		       COALESCE((
-		           SELECT GROUP_CONCAT(CONCAT(s2.unit, ': ', ROUND(s2.isi, 0), 'L') SEPARATOR ', ')
-		           FROM dt_solar_summary s2
-		           JOIN dt_solar_unit u2 ON s2.unit = u2.unit
-		           WHERE u2.induk = u.id AND s2.tgl = s.tgl AND s2.isi > 0
-		       ), '-') as rincian_unit
+		       ROUND(COALESCE(s.saldoakhir, 0), 1) as saldo_akhir
 		FROM dt_solar_summary s
 		JOIN dt_solar_unit u ON s.unit = u.unit
 		%s
-		ORDER BY s.tgl DESC, u.area ASC
+		ORDER BY s.tgl DESC
 		LIMIT %d OFFSET %d
 	`, whereClause, limit, offset)
 
 	var items []models.LaporanMonitoringTangkiItem
 	if err := r.db.Raw(dataQuery, args...).Scan(&items).Error; err != nil {
-		return tankSummaries, nil, totalRows, projections, err
+		return tankSummaries, nil, totalRows, projections, relatedUnits, err
 	}
 
-	return tankSummaries, items, totalRows, projections, nil
+	// Query isi dan pakai unit terkait pada tanggal-tanggal tersebut
+	if len(items) > 0 && len(relatedUnits) > 0 {
+		var tglList []string
+		for _, it := range items {
+			if it.Tgl != "" {
+				tglList = append(tglList, it.Tgl)
+			}
+		}
+
+		type UnitSummaryRow struct {
+			Tgl   string  `gorm:"column:tgl"`
+			Unit  string  `gorm:"column:unit"`
+			Isi   float64 `gorm:"column:isi"`
+			Pakai float64 `gorm:"column:pakai"`
+		}
+		var unitRows []UnitSummaryRow
+
+		_ = r.db.Raw(`
+			SELECT COALESCE(DATE_FORMAT(tgl, '%Y-%m-%d'), '') as tgl,
+			       unit,
+			       ROUND(COALESCE(isi, 0), 1) as isi,
+			       ROUND(COALESCE(pakai, 0), 1) as pakai
+			FROM dt_solar_summary
+			WHERE unit IN (?) AND tgl IN (?)
+		`, relatedUnits, tglList).Scan(&unitRows).Error
+
+		// Buat lookup map: dateUnitMap[tgl][unit] = UnitIsiPakai
+		dateUnitMap := make(map[string]map[string]models.UnitIsiPakai)
+		for _, ur := range unitRows {
+			if _, ok := dateUnitMap[ur.Tgl]; !ok {
+				dateUnitMap[ur.Tgl] = make(map[string]models.UnitIsiPakai)
+			}
+			dateUnitMap[ur.Tgl][ur.Unit] = models.UnitIsiPakai{
+				Isi:   ur.Isi,
+				Pakai: ur.Pakai,
+			}
+		}
+
+		for i := range items {
+			var totIsi float64
+			var totPakai float64
+			detail := make(map[string]models.UnitIsiPakai)
+
+			for _, ru := range relatedUnits {
+				var val models.UnitIsiPakai
+				if dMap, ok := dateUnitMap[items[i].Tgl]; ok {
+					val = dMap[ru]
+				}
+				detail[ru] = val
+				totIsi += val.Isi
+				totPakai += val.Pakai
+			}
+
+			items[i].TotalIsiUnit = math.Round(totIsi*10) / 10
+			items[i].TotalPakaiUnit = math.Round(totPakai*10) / 10
+			items[i].UnitsDetail = detail
+		}
+	}
+
+	return tankSummaries, items, totalRows, projections, relatedUnits, nil
 }
 
 // GetDashboardSolarUnits retrieves unit cards for Dashboard Solar
@@ -1076,6 +1154,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		for i := range items {
 			if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
+
+				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
+				var totalPakai float64
+				var activeDays int
+				_ = r.db.Raw(`
+					SELECT COALESCE(SUM(pakai), 0), COUNT(CASE WHEN pakai > 0 THEN 1 END)
+					FROM dt_solar_summary
+					WHERE unit = ? AND tgl <= ? AND tgl >= DATE_SUB(?, INTERVAL 30 DAY)
+				`, items[i].Unit, cleanTgl, cleanTgl).Row().Scan(&totalPakai, &activeDays)
+
+				if activeDays > 0 && totalPakai > 0 {
+					items[i].AvgDailyBurn = math.Round((totalPakai/float64(activeDays))*10) / 10
+				} else {
+					items[i].AvgDailyBurn = 0
+				}
+
+				if items[i].AvgDailyBurn > 0 && items[i].SisaSolar > 0 {
+					items[i].DaysOfSupply = math.Round((items[i].SisaSolar/items[i].AvgDailyBurn)*10) / 10
+				} else if items[i].SisaSolar <= 0 {
+					items[i].DaysOfSupply = 0
+				} else {
+					items[i].DaysOfSupply = 999
+				}
 			} else if items[i].HariPakai > 0 || items[i].HariIsi > 0 {
 				items[i].Status = "BEROPERASI"
 			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
@@ -1154,6 +1255,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		for i := range items {
 			if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
+
+				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
+				var totalPakai float64
+				var activeDays int
+				_ = r.db.Raw(`
+					SELECT COALESCE(SUM(pakai), 0), COUNT(CASE WHEN pakai > 0 THEN 1 END)
+					FROM dt_solar_summary
+					WHERE unit = ? AND tgl >= DATE_SUB(COALESCE((SELECT MAX(tgl) FROM dt_solar_summary WHERE unit = ?), CURDATE()), INTERVAL 30 DAY)
+				`, items[i].Unit, items[i].Unit).Row().Scan(&totalPakai, &activeDays)
+
+				if activeDays > 0 && totalPakai > 0 {
+					items[i].AvgDailyBurn = math.Round((totalPakai/float64(activeDays))*10) / 10
+				} else {
+					items[i].AvgDailyBurn = 0
+				}
+
+				if items[i].AvgDailyBurn > 0 && items[i].SisaSolar > 0 {
+					items[i].DaysOfSupply = math.Round((items[i].SisaSolar/items[i].AvgDailyBurn)*10) / 10
+				} else if items[i].SisaSolar <= 0 {
+					items[i].DaysOfSupply = 0
+				} else {
+					items[i].DaysOfSupply = 999
+				}
 			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
 				items[i].Status = "BEROPERASI"
 			} else {

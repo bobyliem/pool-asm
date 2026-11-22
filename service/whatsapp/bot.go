@@ -58,7 +58,7 @@ func (b *WhatsAppBot) Start() error {
 	dbPath := filepath.Join(dataDir, "whatsapp_session.db")
 	dbUri := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_busy_timeout=5000", dbPath)
 
-	logLevel := "INFO"
+	logLevel := "DEBUG"
 	clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
 
 	container, err := sqlstore.New(context.Background(), "sqlite", dbUri, clientLog)
@@ -176,6 +176,17 @@ func (b *WhatsAppBot) handleQRChannel(qrChan <-chan whatsmeow.QRChannelItem) {
 			}
 			return
 
+		case "error":
+			fmt.Printf("❌ [WhatsApp QR Channel Error]: %v\n", evt.Error)
+			b.mu.Lock()
+			b.qrText = ""
+			b.qrPNG = nil
+			b.mu.Unlock()
+			if b.client != nil {
+				b.client.Disconnect()
+			}
+			return
+
 		default:
 			fmt.Printf("⚠️ [WhatsApp] QR Event: %s\n", evt.Event)
 		}
@@ -255,11 +266,18 @@ func (b *WhatsAppBot) ResetSession() error {
 	b.qrPNG = nil
 
 	if b.container != nil {
+		// Bersihkan semua device lama agar kunci kriptografi baru tidak berkonflik
+		if devs, err := b.container.GetAllDevices(context.Background()); err == nil {
+			for _, dev := range devs {
+				_ = b.container.DeleteDevice(context.Background(), dev)
+			}
+		}
+
 		deviceStore, err := b.container.GetFirstDevice(context.Background())
 		if err != nil {
 			return fmt.Errorf("failed to get new device store: %w", err)
 		}
-		logLevel := "INFO"
+		logLevel := "DEBUG"
 		clientLog := waLog.Stdout("WhatsMeow", logLevel, true)
 		b.client = whatsmeow.NewClient(deviceStore, clientLog)
 		b.client.AddEventHandler(b.eventHandler)
@@ -381,6 +399,24 @@ func (b *WhatsAppBot) GetPendingHarianMessage() string {
 // eventHandler menangani semua event pesan masuk dari WhatsApp
 func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
+	case *events.PairSuccess:
+		b.mu.Lock()
+		b.isLoggedIn = true
+		b.isConnected = true
+		b.qrText = ""
+		b.qrPNG = nil
+		b.mu.Unlock()
+		fmt.Printf("✅ [WhatsApp] Pairing BERHASIL! Terhubung dengan nomor: %s (LID: %s)\n", v.ID.User, v.LID.User)
+
+	case *events.PairError:
+		b.mu.Lock()
+		b.isLoggedIn = false
+		b.isConnected = false
+		b.qrText = ""
+		b.qrPNG = nil
+		b.mu.Unlock()
+		fmt.Printf("❌ [WhatsApp Pairing GAGAL]: %v (ID: %v, Platform: %s)\n", v.Error, v.ID, v.Platform)
+
 	case *events.Connected:
 		b.mu.Lock()
 		b.isConnected = true
