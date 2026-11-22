@@ -40,6 +40,20 @@
     .unit-card:hover .excavator-icon {
       transform: scale(1.06);
     }
+    /* Blinking animation for critical tank stock (<= 3 hari) */
+    @keyframes blinkStock {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.2;
+        transform: scale(0.97);
+      }
+    }
+    .blink-stock-alert {
+      animation: blinkStock 0.85s infinite ease-in-out;
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
@@ -743,6 +757,7 @@
       filtered.forEach((u, idx) => {
         const isTangki = (u.tangki || '').toUpperCase() === 'YES';
         const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
+        const isCriticalStock = isTangki && (u.days_of_supply !== undefined && u.days_of_supply !== null && u.days_of_supply <= 3);
         const cardNum = `#${idx + 1}`;
         const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
 
@@ -785,12 +800,17 @@
                 </div>
               </div>
 
-              <!-- Sub-header: Avg Konsumsi (Menggantikan Data Sumber) -->
+              <!-- Sub-header: Avg Konsumsi / AVG Tangki & Ketahanan Stok -->
               <div class="flex items-center justify-between pt-1 pb-1">
                 ${isTangki ? `
-                  <div class="flex items-center gap-1 text-[9.5px] text-amber-700 font-bold">
-                    <i class="fa-solid fa-oil-well text-[9.5px]"></i>
-                    <span>Tangki Induk Distribusi</span>
+                  <div class="flex items-center gap-1 text-[10px] text-slate-700">
+                    <span class="text-slate-500 font-medium text-[9.5px]">AVG:</span>
+                    <span class="font-bold text-slate-800 font-mono">${formatNumber(u.avg_daily_burn, 1)}</span>
+                    <span class="text-[8.5px] text-slate-400">L/Hari</span>
+                  </div>
+                  <div class="text-[9.5px] font-bold ${isCriticalStock ? 'text-rose-600 font-black' : 'text-slate-500'}">
+                    <span>Ketahanan: </span>
+                    <span class="font-mono ${isCriticalStock ? 'text-rose-700 font-black blink-stock-alert' : 'text-amber-800'}">${u.days_of_supply > 0 ? formatNumber(u.days_of_supply, 1) : '0'} Hari</span>
                   </div>
                 ` : `
                   <div class="flex items-center gap-1 text-[10px] text-slate-700">
@@ -798,22 +818,37 @@
                     <span class="font-bold text-slate-800 font-mono">${formatNumber(u.avg_liter_per_hm, 2)}</span>
                     <span class="text-[8.5px] text-slate-400">L/HM</span>
                   </div>
+                  <div class="text-[9.5px] text-slate-400 font-mono">
+                    ${u.konsumsi > 0 ? `${formatNumber(u.konsumsi, 2)} L/cm` : ''}
+                  </div>
                 `}
-                <div class="text-[9.5px] text-slate-400 font-mono">
-                  ${u.konsumsi > 0 ? `${formatNumber(u.konsumsi, 2)} L/cm` : ''}
-                </div>
               </div>
 
               <!-- Main Content: Icon + Core Metrics -->
               ${isTangki ? `
-                <!-- Khusus Card Tangki: Tanpa HM dan AVG HM, langsung Sisa Solar -->
-                <div class="flex items-center gap-2 bg-amber-50/70 rounded-lg p-2 border border-amber-200/80 mb-1.5">
+                <!-- Khusus Card Tangki: Sisa Solar + Ketahanan Stok (Kedip jika <= 3 Hari) -->
+                <div class="flex items-center gap-2 rounded-lg p-2 border mb-1.5 transition ${isCriticalStock ? 'bg-rose-50/90 border-rose-300 shadow-rose-100 shadow-sm' : 'bg-amber-50/70 border-amber-200/80'}">
                   ${getTankSVG(isNotToday)}
                   <div class="flex-1 min-w-0">
-                    <div class="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Sisa Stok Solar:</div>
-                    <div class="flex items-baseline gap-1 mt-0.5">
-                      <span class="text-sm sm:text-base font-black text-amber-900">${formatNumber(sisaLtr, 2)}</span>
-                      <span class="text-xs font-bold text-amber-700">Liter</span>
+                    <div class="flex items-center justify-between">
+                      <span class="text-[9px] font-bold uppercase tracking-wider ${isCriticalStock ? 'text-rose-700' : 'text-amber-700'}">Sisa Stok Solar:</span>
+                      ${isCriticalStock ? `
+                        <span class="bg-rose-100 text-rose-700 border border-rose-300 font-black px-1.5 py-0.2 rounded text-[8.5px] tracking-wide blink-stock-alert">
+                          <i class="fa-solid fa-triangle-exclamation mr-0.5"></i>KRITIS
+                        </span>
+                      ` : ''}
+                    </div>
+                    <div class="flex items-baseline justify-between mt-0.5">
+                      <div class="flex items-baseline gap-1 ${isCriticalStock ? 'blink-stock-alert' : ''}">
+                        <span class="text-sm sm:text-base font-black ${isCriticalStock ? 'text-rose-600' : 'text-amber-900'}">${formatNumber(sisaLtr, 2)}</span>
+                        <span class="text-xs font-bold ${isCriticalStock ? 'text-rose-600' : 'text-amber-700'}">Liter</span>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-[8.5px] text-slate-400 font-medium">Ketahanan:</div>
+                        <div class="text-[11px] font-black font-mono ${isCriticalStock ? 'text-rose-700 blink-stock-alert' : 'text-slate-800'}">
+                          ${u.days_of_supply > 0 ? formatNumber(u.days_of_supply, 1) : '0'} <span class="text-[9px] font-semibold text-slate-500">Hari</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

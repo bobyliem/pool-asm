@@ -1076,6 +1076,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		for i := range items {
 			if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
+
+				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
+				var totalPakai float64
+				var activeDays int
+				_ = r.db.Raw(`
+					SELECT COALESCE(SUM(pakai), 0), COUNT(CASE WHEN pakai > 0 THEN 1 END)
+					FROM dt_solar_summary
+					WHERE unit = ? AND tgl <= ? AND tgl >= DATE_SUB(?, INTERVAL 30 DAY)
+				`, items[i].Unit, cleanTgl, cleanTgl).Row().Scan(&totalPakai, &activeDays)
+
+				if activeDays > 0 && totalPakai > 0 {
+					items[i].AvgDailyBurn = math.Round((totalPakai/float64(activeDays))*10) / 10
+				} else {
+					items[i].AvgDailyBurn = 0
+				}
+
+				if items[i].AvgDailyBurn > 0 && items[i].SisaSolar > 0 {
+					items[i].DaysOfSupply = math.Round((items[i].SisaSolar/items[i].AvgDailyBurn)*10) / 10
+				} else if items[i].SisaSolar <= 0 {
+					items[i].DaysOfSupply = 0
+				} else {
+					items[i].DaysOfSupply = 999
+				}
 			} else if items[i].HariPakai > 0 || items[i].HariIsi > 0 {
 				items[i].Status = "BEROPERASI"
 			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
@@ -1154,6 +1177,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		for i := range items {
 			if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
+
+				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
+				var totalPakai float64
+				var activeDays int
+				_ = r.db.Raw(`
+					SELECT COALESCE(SUM(pakai), 0), COUNT(CASE WHEN pakai > 0 THEN 1 END)
+					FROM dt_solar_summary
+					WHERE unit = ? AND tgl >= DATE_SUB(COALESCE((SELECT MAX(tgl) FROM dt_solar_summary WHERE unit = ?), CURDATE()), INTERVAL 30 DAY)
+				`, items[i].Unit, items[i].Unit).Row().Scan(&totalPakai, &activeDays)
+
+				if activeDays > 0 && totalPakai > 0 {
+					items[i].AvgDailyBurn = math.Round((totalPakai/float64(activeDays))*10) / 10
+				} else {
+					items[i].AvgDailyBurn = 0
+				}
+
+				if items[i].AvgDailyBurn > 0 && items[i].SisaSolar > 0 {
+					items[i].DaysOfSupply = math.Round((items[i].SisaSolar/items[i].AvgDailyBurn)*10) / 10
+				} else if items[i].SisaSolar <= 0 {
+					items[i].DaysOfSupply = 0
+				} else {
+					items[i].DaysOfSupply = 999
+				}
 			} else if items[i].AvgLiterPerHm > 0 || items[i].SisaSolar > 0 {
 				items[i].Status = "BEROPERASI"
 			} else {
