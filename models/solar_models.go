@@ -292,6 +292,8 @@ type DashboardSolarUnitCard struct {
 	HariPakai     float64 `json:"hari_pakai"`
 	HariIsi       float64 `json:"hari_isi"`
 	AvgLiterPerHm float64 `json:"avg_liter_per_hm"`
+	AvgDailyBurn  float64 `json:"avg_daily_burn"`
+	DaysOfSupply  float64 `json:"days_of_supply"`
 	LastTgl       string  `json:"last_tgl"`
 	LastJam       int     `json:"last_jam"`
 	LastNote      string  `json:"last_note"`
