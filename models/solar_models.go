@@ -248,16 +248,24 @@ type TangkiStatusSummary struct {
 	LastRefillQty  float64 `json:"last_refill_qty"`
 }
 
+type UnitIsiPakai struct {
+	Isi   float64 `json:"isi"`
+	Pakai float64 `json:"pakai"`
+}
+
 type LaporanMonitoringTangkiItem struct {
-	ID          int     `json:"id"`
-	Tgl         string  `json:"tgl"`
-	Unit        string  `json:"unit"`
-	Area        string  `json:"area"`
-	SaldoAwal   float64 `json:"saldo_awal" gorm:"column:saldo_awal"`
-	Isi         float64 `json:"isi" gorm:"column:isi"`
-	Pakai       float64 `json:"pakai" gorm:"column:pakai"`
-	SaldoAkhir  float64 `json:"saldo_akhir" gorm:"column:saldo_akhir"`
-	RincianUnit string  `json:"rincian_unit" gorm:"column:rincian_unit"`
+	ID             int                     `json:"id"`
+	Tgl            string                  `json:"tgl"`
+	Unit           string                  `json:"unit"`
+	Area           string                  `json:"area"`
+	SaldoAwal      float64                 `json:"saldo_awal" gorm:"column:saldo_awal"`
+	Isi            float64                 `json:"isi" gorm:"column:isi"`
+	Pakai          float64                 `json:"pakai" gorm:"column:pakai"`
+	SaldoAkhir     float64                 `json:"saldo_akhir" gorm:"column:saldo_akhir"`
+	RincianUnit    string                  `json:"rincian_unit" gorm:"column:rincian_unit"`
+	TotalIsiUnit   float64                 `json:"total_isi_unit"`
+	TotalPakaiUnit float64                 `json:"total_pakai_unit"`
+	UnitsDetail    map[string]UnitIsiPakai `json:"units_detail"`
 }
 
 type TangkiProjectionItem struct {

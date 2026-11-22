@@ -373,6 +373,7 @@ func (h *SolarHandler) GetLaporanMonitoringTangki(c *gin.Context) {
 		"items":          result["items"],
 		"projections":    result["projections"],
 		"pagination":     result["pagination"],
+		"related_units":  result["related_units"],
 	})
 }
 

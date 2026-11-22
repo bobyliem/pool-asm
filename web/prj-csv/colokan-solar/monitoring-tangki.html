@@ -195,30 +195,16 @@
 
         <!-- VIEW 1: TABEL MUTASI TANGKI (LEDGER) -->
         <div id="viewLedger" class="flex-1 overflow-auto custom-scrollbar">
-          <table class="w-full text-left border-collapse text-[11px]" id="tableLedger">
-            <thead class="sticky top-0 z-10 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[10px] select-none shadow-xs">
-              <!-- Baris Header 1 (Compact py-0.5) -->
-              <tr class="border-b border-slate-200">
-                <th rowspan="2" class="py-0.5 px-1.5 text-center border-r border-slate-200 w-9">No</th>
-                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-24">Tanggal</th>
-                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200 w-28">Tangki</th>
-                <th rowspan="2" class="py-0.5 px-2 text-center border-r border-slate-200 w-24">Area</th>
-                <th colspan="4" class="py-0.5 px-2 text-center border-r border-slate-200 bg-amber-50/60 text-amber-900 font-extrabold tracking-wide">
-                  <i class="fa-solid fa-gas-pump text-[9px] mr-1"></i>Mutasi BBM Tangki (Liter)
-                </th>
-                <th rowspan="2" class="py-0.5 px-2 border-r border-slate-200">Rincian Penyaluran BBM</th>
-              </tr>
-              <!-- Baris Header 2 (Masuk -> IN, Keluar -> OUT) -->
-              <tr class="bg-slate-50 text-[9.5px]">
-                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-24">Saldo Awal</th>
-                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-20 text-emerald-800 bg-emerald-50/40 font-bold">IN</th>
-                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-20 text-rose-800 bg-rose-50/40 font-bold">OUT</th>
-                <th class="py-0.5 px-2 text-right border-r border-slate-200 w-24 text-blue-900 bg-blue-50/40 font-bold">Saldo Akhir</th>
-              </tr>
+          <table class="w-full text-left border-collapse text-[11px] whitespace-nowrap" id="tableLedger">
+            <thead id="tableHeadLedger" class="sticky top-0 z-10 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[10px] select-none shadow-xs">
+              <!-- Rendered dynamically by JavaScript -->
             </thead>
             <tbody id="tableBodyLedger" class="divide-y divide-slate-100 font-medium">
               <!-- Data rows rendered by JS -->
             </tbody>
+            <tfoot id="tableFootLedger" class="bg-slate-100 font-bold border-t-2 border-slate-300 sticky bottom-0 text-[10px]">
+              <!-- Summary totals rendered by JS -->
+            </tfoot>
           </table>
         </div>
 
@@ -433,7 +419,7 @@
         if (json.status === 'success') {
           cachedData = json;
           renderCompactMetrics(json.tank_summaries || []);
-          renderLedgerTable(json.items || []);
+          renderLedgerTable(json.items || [], json.related_units || []);
           renderProjectionTable(json.projections || []);
           renderPagination(json.pagination || {});
         } else {
@@ -544,61 +530,175 @@
       container.innerHTML = html;
     }
 
-    // Render Ledger Table (Mutasi Harian)
-    function renderLedgerTable(items) {
+    // Render Ledger Table (Mutasi Harian & Rincian Unit Terkait Sesuai Format Matriks)
+    function renderLedgerTable(items, relatedUnits) {
+      const thead = document.getElementById('tableHeadLedger');
       const tbody = document.getElementById('tableBodyLedger');
-      if (!items || items.length === 0) {
+      const tfoot = document.getElementById('tableFootLedger');
+
+      if (!thead || !tbody) return;
+
+      // 1. KASUS TAB ALL: "Jadi pas Tab nya diklik 'All', ga usa munculin data row nya."
+      if (!selectedTangki) {
+        thead.innerHTML = `
+          <tr class="bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+            <th class="py-2 px-3 text-center">Status Pemilihan Tangki</th>
+          </tr>
+        `;
         tbody.innerHTML = `
           <tr>
-            <td colspan="9" class="py-4 text-center text-slate-400 font-medium">
-              <i class="fa-solid fa-inbox text-xl mb-1 block text-slate-300"></i>
-              Tidak ada data mutasi tangki pada rentang filter ini.
+            <td class="py-12 text-center text-slate-500 bg-slate-50/50">
+              <div class="max-w-md mx-auto flex flex-col items-center">
+                <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-lg mb-2 shadow-2xs">
+                  <i class="fa-solid fa-oil-well"></i>
+                </div>
+                <h4 class="text-xs font-bold text-slate-800 mb-1">Pilih Tab Tangki untuk Menampilkan Data Mutasi</h4>
+                <p class="text-[11px] text-slate-500 mb-3">Silakan klik salah satu Tab Tangki di atas (<b>TANGKI-CCK</b> atau <b>TANGKI-PION</b>) untuk menampilkan tabel rincian mutasi BBM tangki beserta data pemakaian dan pengisian unit-unit terkait.</p>
+                <div class="flex items-center gap-2">
+                  <button onclick="selectTankTab('TANGKI-CCK')" class="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-md text-[11px] shadow-2xs transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-gas-pump text-[10px]"></i>
+                    <span>TANGKI-CCK (Cicangkal)</span>
+                  </button>
+                  <button onclick="selectTankTab('TANGKI-PION')" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-md text-[11px] shadow-2xs transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-gas-pump text-[10px]"></i>
+                    <span>TANGKI-PION (Pion)</span>
+                  </button>
+                </div>
+              </div>
             </td>
           </tr>
         `;
+        if (tfoot) tfoot.innerHTML = '';
+        document.getElementById('tableInfo').textContent = 'Pilih tab tangki (Cicangkal / Pion) untuk melihat rincian mutasi & pemakaian unit terkait.';
         return;
       }
 
-      let html = '';
-      items.forEach((row, idx) => {
-        const no = (currentPage - 1) * 50 + idx + 1;
-        const isiClass = row.isi > 0 ? "font-bold text-emerald-700 bg-emerald-50/50" : "text-slate-400";
-        const pakaiClass = row.pakai > 0 ? "font-bold text-rose-700 bg-rose-50/50" : "text-slate-400";
+      // 2. KASUS TAB TANGKI SPESIFIK DIPILIH (TANGKI-CCK atau TANGKI-PION)
+      relatedUnits = relatedUnits || [];
 
-        // Format rincian unit jika ada
-        let rincianHtml = '-';
-        if (row.rincian_unit && row.rincian_unit !== '-') {
-          const pills = row.rincian_unit.split(', ').map(p => {
-            const isTankRefill = p.includes('TANGKI-PION');
-            const pillClass = isTankRefill 
-              ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold' 
-              : 'bg-blue-50 border-blue-200 text-blue-800 font-semibold';
-            return `<span class="inline-block ${pillClass} border text-[9.5px] px-1.5 py-0.2 rounded mr-1 mb-0.5">${p}</span>`;
-          }).join('');
-          rincianHtml = `<div class="flex flex-wrap">${pills}</div>`;
-        }
+      // Render Dynamic 2-Row Header persis seperti gambar request user
+      let headHtml = `
+        <!-- Baris Header 1 -->
+        <tr class="border-b border-slate-300 bg-slate-100 text-slate-800 font-extrabold select-none">
+          <th rowspan="2" class="py-1 px-2 border-r border-slate-300 text-center whitespace-nowrap w-24">Tanggal</th>
+          <th rowspan="2" class="py-1 px-2 border-r border-slate-300 text-center whitespace-nowrap w-28">Tangki</th>
+          <th colspan="4" class="py-1 px-2 border-r border-slate-300 text-center bg-amber-100/70 text-amber-900 font-black tracking-wide">
+            Mutasi BBM Tangki
+          </th>
+          <th colspan="2" class="py-1 px-2 border-r border-slate-300 text-center bg-blue-100/70 text-blue-900 font-black tracking-wide">
+            Total Unit Terkait
+          </th>
+          ${relatedUnits.map(u => `
+            <th colspan="2" class="py-1 px-2 border-r border-slate-300 text-center bg-slate-200/80 text-slate-800 font-black whitespace-nowrap tracking-wide">
+              ${u}
+            </th>
+          `).join('')}
+        </tr>
 
-        html += `
-          <tr class="hover:bg-amber-50/40 transition">
-            <td class="py-0.5 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
-            <td class="py-0.5 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">${row.tgl}</td>
-            <td class="py-0.5 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
-              <i class="fa-solid fa-oil-well text-amber-600 text-[9px]"></i>
-              <span>${row.unit}</span>
+        <!-- Baris Header 2 (Sub-Kolom: SaldoAwal, In, Out, SaldoAkhir, Total Isi, Total Pakai, Isi, Pakai) -->
+        <tr class="bg-slate-50 text-[9.5px] border-b border-slate-300 font-bold select-none">
+          <!-- Mutasi BBM Tangki -->
+          <th class="py-0.5 px-2 text-right border-r border-slate-200 text-slate-700 whitespace-nowrap w-24">SaldoAwal</th>
+          <th class="py-0.5 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-50/50 whitespace-nowrap w-20">In</th>
+          <th class="py-0.5 px-2 text-right border-r border-slate-200 text-rose-800 bg-rose-50/50 whitespace-nowrap w-20">Out</th>
+          <th class="py-0.5 px-2 text-right border-r border-slate-300 text-blue-900 bg-blue-50/50 whitespace-nowrap w-24">SaldoAkhir</th>
+
+          <!-- Total Unit Terkait -->
+          <th class="py-0.5 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-50/40 whitespace-nowrap w-20">Total Isi</th>
+          <th class="py-0.5 px-2 text-right border-r border-slate-300 text-rose-800 bg-rose-50/40 whitespace-nowrap w-20">Total Pakai</th>
+
+          <!-- Per Unit Terkait -->
+          ${relatedUnits.map(u => `
+            <th class="py-0.5 px-2 text-right border-r border-slate-200 text-emerald-700 whitespace-nowrap w-16">Isi</th>
+            <th class="py-0.5 px-2 text-right border-r border-slate-300 text-rose-700 whitespace-nowrap w-16">Pakai</th>
+          `).join('')}
+        </tr>
+      `;
+      thead.innerHTML = headHtml;
+
+      // Render Body Rows
+      if (!items || items.length === 0) {
+        const totalCol = 8 + (relatedUnits.length * 2);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${totalCol}" class="py-8 text-center text-slate-400 font-medium">
+              <i class="fa-solid fa-inbox text-2xl mb-1 block text-slate-300"></i>
+              Tidak ada data mutasi untuk tangki ${selectedTangki} pada periode tanggal ini.
             </td>
-            <td class="py-0.5 px-2 text-center border-r border-slate-100 whitespace-nowrap">
-              <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${row.area}</span>
-            </td>
+          </tr>
+        `;
+        if (tfoot) tfoot.innerHTML = '';
+        return;
+      }
+
+      let sumIn = 0;
+      let sumOut = 0;
+      let sumTotalIsi = 0;
+      let sumTotalPakai = 0;
+      const unitSums = {};
+      relatedUnits.forEach(u => {
+        unitSums[u] = { isi: 0, pakai: 0 };
+      });
+
+      let bodyHtml = '';
+      items.forEach(row => {
+        sumIn += (row.isi || 0);
+        sumOut += (row.pakai || 0);
+        sumTotalIsi += (row.total_isi_unit || 0);
+        sumTotalPakai += (row.total_pakai_unit || 0);
+
+        const inClass = row.isi > 0 ? 'font-bold text-emerald-700 bg-emerald-50/40' : 'text-slate-400';
+        const outClass = row.pakai > 0 ? 'font-bold text-rose-700 bg-rose-50/40' : 'text-slate-400';
+        const totIsiClass = row.total_isi_unit > 0 ? 'font-bold text-emerald-700 bg-emerald-50/30' : 'text-slate-400';
+        const totPakaiClass = row.total_pakai_unit > 0 ? 'font-bold text-rose-700 bg-rose-50/30' : 'text-slate-400';
+
+        bodyHtml += `
+          <tr class="hover:bg-amber-50/30 transition">
+            <td class="py-0.5 px-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap text-center">${row.tgl}</td>
+            <td class="py-0.5 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap text-center">${row.unit}</td>
             <td class="py-0.5 px-2 text-right border-r border-slate-100 font-medium text-slate-700">${formatNum(row.saldo_awal, 1)}</td>
-            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.isi, 1)}</td>
-            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.pakai, 1)}</td>
-            <td class="py-0.5 px-2 text-right border-r border-slate-100 font-bold text-slate-900 bg-blue-50/20">${formatNum(row.saldo_akhir, 1)}</td>
-            <td class="py-0.5 px-2 border-r border-slate-100">${rincianHtml}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${inClass}">${formatNum(row.isi, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${outClass}">${formatNum(row.pakai, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-300 font-bold text-slate-900 bg-blue-50/20">${formatNum(row.saldo_akhir, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-100 ${totIsiClass}">${formatNum(row.total_isi_unit, 1)}</td>
+            <td class="py-0.5 px-2 text-right border-r border-slate-300 ${totPakaiClass}">${formatNum(row.total_pakai_unit, 1)}</td>
+            ${relatedUnits.map(u => {
+              const val = row.units_detail?.[u] || { isi: 0, pakai: 0 };
+              unitSums[u].isi += (val.isi || 0);
+              unitSums[u].pakai += (val.pakai || 0);
+
+              const isiText = val.isi > 0 ? formatNum(val.isi, 1) : '-';
+              const pakaiText = val.pakai > 0 ? formatNum(val.pakai, 1) : '-';
+              const isiClass = val.isi > 0 ? 'font-bold text-emerald-700 bg-emerald-50/20' : 'text-slate-300';
+              const pakaiClass = val.pakai > 0 ? 'font-bold text-rose-700 bg-rose-50/20' : 'text-slate-300';
+              return `
+                <td class="py-0.5 px-2 text-right border-r border-slate-100 ${isiClass}">${isiText}</td>
+                <td class="py-0.5 px-2 text-right border-r border-slate-300 ${pakaiClass}">${pakaiText}</td>
+              `;
+            }).join('')}
           </tr>
         `;
       });
+      tbody.innerHTML = bodyHtml;
 
-      tbody.innerHTML = html;
+      // Render Table Footer (Summary Totals)
+      if (tfoot) {
+        tfoot.innerHTML = `
+          <tr class="bg-slate-200 text-slate-900 border-t-2 border-slate-300 font-extrabold select-none">
+            <td colspan="2" class="py-1 px-2 text-center border-r border-slate-300 uppercase tracking-wider text-[10px]">TOTAL</td>
+            <td class="py-1 px-2 text-right border-r border-slate-200 text-slate-500 font-mono">-</td>
+            <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/60 font-mono">${formatNum(sumIn, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-200 text-rose-800 bg-rose-100/60 font-mono">${formatNum(sumOut, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-300 text-blue-900 bg-blue-100/40 font-mono">-</td>
+            <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/60 font-mono">${formatNum(sumTotalIsi, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-300 text-rose-800 bg-rose-100/60 font-mono">${formatNum(sumTotalPakai, 1)}</td>
+            ${relatedUnits.map(u => `
+              <td class="py-1 px-2 text-right border-r border-slate-200 text-emerald-800 bg-emerald-100/40 font-mono">${formatNum(unitSums[u].isi, 1)}</td>
+              <td class="py-1 px-2 text-right border-r border-slate-300 text-rose-800 bg-rose-100/40 font-mono">${formatNum(unitSums[u].pakai, 1)}</td>
+            `).join('')}
+          </tr>
+        `;
+      }
     }
 
     // Render Projection Table (14 Hari ke Depan)
@@ -703,14 +803,45 @@
         XLSX.utils.book_append_sheet(wb, wsSummary, "Status Tangki");
       }
 
-      // Sheet 2: Mutasi Harian (Ledger)
-      if (cachedData.items && cachedData.items.length > 0) {
+      // Sheet 2: Mutasi Harian & Unit Terkait (Ledger)
+      if (cachedData.items && cachedData.items.length > 0 && selectedTangki) {
+        const relUnits = cachedData.related_units || [];
+        const headerRow = [
+          'Tanggal', 'Tangki', 'SaldoAwal (L)', 'IN (L)', 'OUT (L)', 'SaldoAkhir (L)',
+          'Total Isi Unit (L)', 'Total Pakai Unit (L)'
+        ];
+        relUnits.forEach(u => {
+          headerRow.push(`${u} (Isi)`, `${u} (Pakai)`);
+        });
+
         const wsLedgerData = [
-          ['Tanggal', 'Tangki', 'Area', 'Saldo Awal (L)', 'IN (L)', 'OUT (L)', 'Saldo Akhir (L)', 'Rincian Penyaluran']
+          [`MUTASI BBM ${selectedTangki} & RINCIAN PENGGUNAAN UNIT TERKAIT`],
+          ['Tanggal Export', new Date().toLocaleString('id-ID')],
+          [],
+          headerRow
+        ];
+
+        cachedData.items.forEach(i => {
+          const rowData = [
+            i.tgl, i.unit, i.saldo_awal, i.isi, i.pakai, i.saldo_akhir,
+            i.total_isi_unit || 0, i.total_pakai_unit || 0
+          ];
+          relUnits.forEach(u => {
+            const val = i.units_detail?.[u] || { isi: 0, pakai: 0 };
+            rowData.push(val.isi || 0, val.pakai || 0);
+          });
+          wsLedgerData.push(rowData);
+        });
+
+        const wsLedger = XLSX.utils.aoa_to_sheet(wsLedgerData);
+        XLSX.utils.book_append_sheet(wb, wsLedger, `Mutasi ${selectedTangki}`);
+      } else if (cachedData.items && cachedData.items.length > 0) {
+        const wsLedgerData = [
+          ['Tanggal', 'Tangki', 'Area', 'Saldo Awal (L)', 'IN (L)', 'OUT (L)', 'Saldo Akhir (L)']
         ];
         cachedData.items.forEach(i => {
           wsLedgerData.push([
-            i.tgl, i.unit, i.area, i.saldo_awal, i.isi, i.pakai, i.saldo_akhir, i.rincian_unit
+            i.tgl, i.unit, i.area, i.saldo_awal, i.isi, i.pakai, i.saldo_akhir
           ]);
         });
         const wsLedger = XLSX.utils.aoa_to_sheet(wsLedgerData);
