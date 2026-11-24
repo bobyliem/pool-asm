@@ -1154,7 +1154,7 @@
       document.getElementById('colokan_tanggal').value = getYesterdayDateStr();
       document.getElementById('colokan_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('colokan_min_hm_label').textContent = formatHM(u.hm);
-      document.getElementById('colokan_cm_sesudah').value = '';
+      document.getElementById('colokan_cm_sesudah').value = Number(sisaCm || 0).toFixed(1);
 
       // Set Jam default to current hour (1-24) or next hour
       const currentHour = new Date().getHours() || 1;
