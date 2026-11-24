@@ -764,6 +764,15 @@
       return `${year}-${month}-${day}`;
     }
 
+    function getYesterdayDateStr() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     function formatNumber(num, decimals = 2) {
       if (num === null || num === undefined || isNaN(num)) return '0';
       return Number(num).toLocaleString('id-ID', {
@@ -1135,8 +1144,8 @@
       document.getElementById('colokan_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
       document.getElementById('colokan_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
-      // Prefill Inputs
-      document.getElementById('colokan_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('colokan_tanggal').value = getYesterdayDateStr();
       document.getElementById('colokan_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('colokan_min_hm_label').textContent = formatHM(u.hm);
       document.getElementById('colokan_cm_sesudah').value = '';
@@ -1261,8 +1270,8 @@
       document.getElementById('isi_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
       document.getElementById('isi_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
-      // Prefill Inputs
-      document.getElementById('isi_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tanggal').value = getYesterdayDateStr();
       document.getElementById('isi_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('isi_min_hm_label').textContent = formatHM(u.hm);
       document.getElementById('isi_cm_sebelum').value = sisaCm > 0 ? Number(sisaCm).toFixed(1) : '';
@@ -1404,8 +1413,8 @@
         }
       }
 
-      // Prefill Inputs
-      document.getElementById('isi_tangki_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tangki_tanggal').value = getYesterdayDateStr();
       document.getElementById('isi_tangki_liter').value = '';
 
       const currentHour = new Date().getHours() || 1;
