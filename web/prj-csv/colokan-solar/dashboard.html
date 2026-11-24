@@ -223,6 +223,9 @@
         <input type="hidden" id="colokan_current_hm" />
         <input type="hidden" id="colokan_last_jam" />
         <input type="hidden" id="colokan_last_date" />
+        <input type="hidden" id="colokan_sisa_solar" />
+        <input type="hidden" id="colokan_konsumsi" />
+        <input type="hidden" id="colokan_sisa_cm" />
 
         <!-- Info Unit Saat Ini -->
         <div class="bg-blue-50/70 border border-blue-200 rounded-lg p-2.5 text-[11px] text-slate-700 flex justify-between items-center">
@@ -1138,6 +1141,9 @@
       document.getElementById('colokan_current_hm').value = u.hm || 0;
       document.getElementById('colokan_last_jam').value = u.last_jam || 0;
       document.getElementById('colokan_last_date').value = u.last_tgl || '';
+      document.getElementById('colokan_sisa_solar').value = sisaLtr;
+      document.getElementById('colokan_konsumsi').value = u.konsumsi || 0;
+      document.getElementById('colokan_sisa_cm').value = sisaCm;
 
       document.getElementById('colokan_info_hm').textContent = formatHM(u.hm);
       document.getElementById('colokan_info_solar').textContent = `${formatNumber(sisaLtr, 1)} L (${formatNumber(sisaCm, 1)} cm)`;
@@ -1201,6 +1207,21 @@
       // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
       if (hm < currentHm) {
         showColokanAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showColokanAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        return;
+      }
+
+      // Validasi Colokan Solar (cm) tidak boleh lebih besar dari Sisa Solar sebelumnya
+      const sisaCm = parseFloat(document.getElementById('colokan_sisa_cm').value || '0');
+      if (cmSesudah > (sisaCm + 0.05)) {
+        alert("Colokan Solar lebih besar dari saldo sebelumnya!");
+        showColokanAlert("Colokan Solar lebih besar dari saldo sebelumnya!");
         return;
       }
 
@@ -1332,6 +1353,13 @@
       // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
       if (hm < currentHm) {
         showIsiAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showIsiAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
         return;
       }
 

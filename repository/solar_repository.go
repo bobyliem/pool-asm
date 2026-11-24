@@ -1313,13 +1313,14 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 func (r *solarRepository) SubmitColokan(req models.InputColokanRequest) error {
 	// 1. Cek unit di dt_solar_unit
 	type UnitCheck struct {
-		ID       int
-		Hm       float64
-		Tangki   string
-		Konsumsi float64
+		ID        int
+		Hm        float64
+		Tangki    string
+		Konsumsi  float64
+		Sisasolar float64
 	}
 	var u UnitCheck
-	err := r.db.Raw("SELECT id, hm, tangki, konsumsi FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
+	err := r.db.Raw("SELECT id, hm, tangki, konsumsi, sisasolar FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
 	if err != nil || u.ID == 0 {
 		return fmt.Errorf("unit '%s' tidak ditemukan di master dt_solar_unit", req.Unit)
 	}
@@ -1328,19 +1329,31 @@ func (r *solarRepository) SubmitColokan(req models.InputColokanRequest) error {
 		return fmt.Errorf("unit '%s' adalah tangki induk, transaksi colokan hanya untuk unit alat berat", req.Unit)
 	}
 
-	// 2. Validasi HM tidak boleh lebih kecil dari HM saat ini
+	// 2. Validasi Colokan Solar tidak boleh lebih besar dari saldo sebelumnya
+	sisaCm := 0.0
+	if u.Konsumsi > 0 {
+		sisaCm = u.Sisasolar / u.Konsumsi
+	}
+	if req.CmSesudah > (sisaCm + 0.05) {
+		return fmt.Errorf("Colokan Solar lebih besar dari saldo sebelumnya!")
+	}
+
+	// 3. Validasi HM
 	if req.Hm < u.Hm {
 		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
 	}
+	if u.Hm > 0 && req.Hm > (2*u.Hm) {
+		return fmt.Errorf("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!")
+	}
 
-	// 3. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
+	// 4. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
 	var lastJam int
 	_ = r.db.Raw("SELECT COALESCE(MAX(jam), 0) FROM dt_solar_his WHERE unit = ? AND tgl = ?", req.Unit, req.Tanggal).Row().Scan(&lastJam)
 	if lastJam > 0 && req.Jam <= lastJam {
 		return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
 	}
 
-	// 4. Eksekusi Stored Procedure
+	// 5. Eksekusi Stored Procedure
 	// CALL sp_solar(tanggal, jam, unit, hm, 0, 0, cm_sesudah)
 	callSQL := "CALL sp_solar(?, ?, ?, ?, 0, 0, ?)"
 	if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.Hm, req.CmSesudah).Error; err != nil {
@@ -1397,9 +1410,12 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		}
 	}
 
-	// 2. Validasi HM tidak boleh lebih kecil dari HM saat ini
+	// 2. Validasi HM
 	if req.Hm < u.Hm {
 		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
+	}
+	if u.Hm > 0 && req.Hm > (2*u.Hm) {
+		return fmt.Errorf("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!")
 	}
 
 	// 3. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
