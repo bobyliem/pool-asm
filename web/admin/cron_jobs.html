@@ -482,10 +482,17 @@
             </td>
             <td class="py-2 px-3 text-center">
               <div class="flex items-center justify-center gap-1.5">
-                <button onclick="runJob(${job.id}, '${escapeHtml(job.nama)}')" ${job.is_running === 1 ? 'disabled' : ''} class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 text-white disabled:text-slate-400 font-semibold rounded text-[10px] flex items-center gap-1 shadow-2xs transition cursor-pointer" title="Eksekusi job sekarang">
-                  <i class="fa-solid fa-play text-[9px]"></i>
-                  <span>Run</span>
-                </button>
+                ${job.is_running === 1 ? `
+                  <button onclick="resetJob(${job.id}, '${escapeHtml(job.nama)}')" class="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded text-[10px] flex items-center gap-1 shadow-2xs transition cursor-pointer" title="Reset status running jika proses nyangkut">
+                    <i class="fa-solid fa-rotate-left text-[9px]"></i>
+                    <span>Reset</span>
+                  </button>
+                ` : `
+                  <button onclick="runJob(${job.id}, '${escapeHtml(job.nama)}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded text-[10px] flex items-center gap-1 shadow-2xs transition cursor-pointer" title="Eksekusi job sekarang">
+                    <i class="fa-solid fa-play text-[9px]"></i>
+                    <span>Run</span>
+                  </button>
+                `}
                 <button onclick="openEditModal(${job.id})" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-[10px] flex items-center gap-1 border border-slate-300 shadow-2xs transition cursor-pointer" title="Edit konfigurasi">
                   <i class="fa-solid fa-pen text-[9px]"></i>
                   <span>Edit</span>
@@ -561,6 +568,22 @@
           setTimeout(handleGlobalRefresh, 800);
         } else {
           alert('Gagal menjalankan job: ' + json.message);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function resetJob(id, nama) {
+      if (!confirm(`Yakin ingin me-reset status job "${nama}"?\n\nGunakan fitur ini jika proses cron nyangkut (Running) akibat server sempat di-restart atau crash.`)) return;
+      try {
+        const res = await fetch(`/api/v1/admin/cron/jobs/${id}/reset`, { method: 'POST' });
+        const json = await res.json();
+        if (json.status === 'success') {
+          alert(`Status job "${nama}" berhasil di-reset kembali normal.`);
+          setTimeout(handleGlobalRefresh, 400);
+        } else {
+          alert('Gagal me-reset job: ' + json.message);
         }
       } catch (err) {
         alert('Error: ' + err.message);

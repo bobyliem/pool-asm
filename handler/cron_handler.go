@@ -76,6 +76,23 @@ func (h *CronHandler) RunJob(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": msg})
 }
 
+// ResetJob memaksa reset status running sebuah job yang nyangkut
+func (h *CronHandler) ResetJob(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "ID tidak valid"})
+		return
+	}
+
+	if err := h.cronService.ResetJob(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Status job berhasil di-reset"})
+}
+
 // UpdateJob memperbarui konfigurasi job
 func (h *CronHandler) UpdateJob(c *gin.Context) {
 	idStr := c.Param("id")
