@@ -326,6 +326,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 			api.GET("/admin/cron/jobs", authHandler.RequireMenuAuth(18), cronHandler.GetJobs)
 			api.POST("/admin/cron/jobs/:id/toggle", authHandler.RequireMenuAuth(18), cronHandler.ToggleJob)
 			api.POST("/admin/cron/jobs/:id/run", authHandler.RequireMenuAuth(18), cronHandler.RunJob)
+			api.POST("/admin/cron/jobs/:id/reset", authHandler.RequireMenuAuth(18), cronHandler.ResetJob)
 			api.PUT("/admin/cron/jobs/:id", authHandler.RequireMenuAuth(18), cronHandler.UpdateJob)
 			api.GET("/admin/cron/logs", authHandler.RequireMenuAuth(18), cronHandler.GetLogs)
 		}

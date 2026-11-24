@@ -26,6 +26,7 @@ type CronService interface {
 	GetJobs() ([]models.CronJob, error)
 	GetJobByID(id int) (*models.CronJob, error)
 	ToggleJob(id int) (bool, error)
+	ResetJob(id int) error
 	UpdateJob(id int, req models.UpdateCronJobRequest) error
 	GetLogs(tglAwal, tglAkhir string, limit int) ([]models.ScheduleTaskLog, error)
 }
@@ -136,6 +137,25 @@ func (s *cronService) Start() {
 		defer s.wg.Done()
 		log.Println("⏰ [CronService] In-App Scheduler started (Timezone: Asia/Jakarta)")
 
+		// Auto-recovery saat startup: bersihkan zombie running jobs dari session sebelumnya jika server sempat restart/crash
+		var zombieCount int64
+		s.db.Model(&models.CronJob{}).Where("is_running = 1").Count(&zombieCount)
+		if zombieCount > 0 {
+			log.Printf("⚠️ [CronService] Mendeteksi %d job dengan status 'is_running = 1' saat startup. Me-reset ke 0...", zombieCount)
+			now := time.Now().In(s.wibLoc)
+			s.db.Model(&models.CronJob{}).Where("is_running = 1").Updates(map[string]interface{}{
+				"is_running":   0,
+				"last_status":  "failed",
+				"last_message": "Auto-recovered: Server sempat di-restart atau crash saat job berjalan",
+			})
+			s.db.Model(&models.ScheduleTaskLog{}).
+				Where("flag = 0 AND finish_time IS NULL").
+				Updates(map[string]interface{}{
+					"finish_time": now,
+					"flag":        2,
+				})
+		}
+
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
@@ -173,6 +193,27 @@ func (s *cronService) Stop() {
 
 // checkAndTriggerJobs memeriksa setiap job aktif di DB apakah cocok dengan waktu sekarang
 func (s *cronService) checkAndTriggerJobs(currentMin time.Time) {
+	// Auto-recover stale jobs jika ada job yang masih is_running = 1 lebih dari 30 menit
+	staleThreshold := currentMin.Add(-30 * time.Minute)
+	var staleJobs []models.CronJob
+	if err := s.db.Where("is_running = 1 AND last_run_at < ?", staleThreshold).Find(&staleJobs).Error; err == nil && len(staleJobs) > 0 {
+		for _, sj := range staleJobs {
+			log.Printf("⚠️ [CronService] Job '%s' nyangkut > 30 menit (sejak %s). Melakukan auto-recovery...", sj.Nama, sj.LastRunAt.Format("15:04:05"))
+			s.db.Model(&sj).Updates(map[string]interface{}{
+				"is_running":   0,
+				"last_status":  "failed",
+				"last_message": fmt.Sprintf("Auto-recovered: Melebihi batas waktu 30 menit (stuck sejak %s)", sj.LastRunAt.Format("15:04:05")),
+			})
+			s.db.Model(&models.ScheduleTaskLog{}).
+				Where("nama = ? AND flag = 0 AND finish_time IS NULL", sj.Nama).
+				Order("id DESC").Limit(1).
+				Updates(map[string]interface{}{
+					"finish_time": currentMin,
+					"flag":        2,
+				})
+		}
+	}
+
 	var activeJobs []models.CronJob
 	if err := s.db.Where("is_active = 1 AND is_running = 0").Find(&activeJobs).Error; err != nil {
 		log.Printf("[CronService] Error query active jobs: %v", err)
@@ -267,6 +308,26 @@ func (s *cronService) executeJob(jobKey string) {
 	s.mu.Unlock()
 
 	log.Printf("🚀 [CronService] Memulai eksekusi: %s (Task ID: %d)", job.Nama, taskLog.ID)
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("🔥 [CronService] PANIC recovered in executeJob(%s): %v", jobKey, r)
+			finishTime := time.Now().In(s.wibLoc)
+			durationSec := int(finishTime.Sub(now).Seconds())
+			s.db.Model(&models.CronJob{}).Where("id = ?", job.ID).Updates(map[string]interface{}{
+				"is_running":        0,
+				"last_status":       "failed",
+				"last_duration_sec": durationSec,
+				"last_message":      fmt.Sprintf("Panic error: %v", r),
+			})
+			if taskLog.ID > 0 {
+				s.db.Model(&models.ScheduleTaskLog{}).Where("id = ?", taskLog.ID).Updates(map[string]interface{}{
+					"finish_time": finishTime,
+					"flag":        2,
+				})
+			}
+		}
+	}()
 
 	var (
 		success   bool
@@ -566,6 +627,30 @@ func (s *cronService) ToggleJob(id int) (bool, error) {
 
 	err := s.db.Model(&job).Update("is_active", newStatus).Error
 	return newStatus == 1, err
+}
+
+func (s *cronService) ResetJob(id int) error {
+	var job models.CronJob
+	if err := s.db.First(&job, id).Error; err != nil {
+		return err
+	}
+
+	now := time.Now().In(s.wibLoc)
+
+	// Tutup task log jika masih ada yang running/flag=0 di zz_schedule_task
+	s.db.Model(&models.ScheduleTaskLog{}).
+		Where("nama = ? AND flag = 0 AND finish_time IS NULL", job.Nama).
+		Order("id DESC").Limit(1).
+		Updates(map[string]interface{}{
+			"finish_time": now,
+			"flag":        2,
+		})
+
+	return s.db.Model(&job).Updates(map[string]interface{}{
+		"is_running":   0,
+		"last_status":  "failed",
+		"last_message": fmt.Sprintf("Direset secara manual via Web Dashboard pada %s", now.Format("02/01/2006 15:04:05")),
+	}).Error
 }
 
 func (s *cronService) UpdateJob(id int, req models.UpdateCronJobRequest) error {
