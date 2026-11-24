@@ -223,6 +223,9 @@
         <input type="hidden" id="colokan_current_hm" />
         <input type="hidden" id="colokan_last_jam" />
         <input type="hidden" id="colokan_last_date" />
+        <input type="hidden" id="colokan_sisa_solar" />
+        <input type="hidden" id="colokan_konsumsi" />
+        <input type="hidden" id="colokan_sisa_cm" />
 
         <!-- Info Unit Saat Ini -->
         <div class="bg-blue-50/70 border border-blue-200 rounded-lg p-2.5 text-[11px] text-slate-700 flex justify-between items-center">
@@ -573,21 +576,25 @@
     let selectedArea = 'ALL';
     let selectedDate = '';
 
-    // Excavator SVG Generator: Merah jika input terakhir bukan hari ini. Jika sudah input hari ini: Hitam jika aktif (BEROPERASI), Abu-abu jika standby
+    // Excavator SVG Generator:
+    // - Standby: Selalu abu-abu monokrom (icon abu-abu, frame abu-abu), tidak ada alert merah.
+    // - Aktif: Frame icon selalu HIJAU (bg-emerald-100 border-emerald-300).
+    //   - Jika belum input hari ini: Icon excavator merah (peringatan belum update).
+    //   - Jika sudah input hari ini: Icon excavator hitam pekat.
     function getExcavatorSVG(isActive, isNotToday) {
-      if (isNotToday) {
-        // Mode Merah (Peringatan: Belum input hari ini)
-        const mainColor = '#dc2626'; // Red-600
-        const secondaryColor = '#ef4444'; // Red-500
-        const trackColor = '#7f1d1d'; // Red-900
-        const wheelColor = '#fecaca'; // Rose-200
-        const armColor = '#dc2626';
-        const bucketColor = '#991b1b'; // Red-800
-        const windowColor = '#fee2e2'; // Rose-100
-        const bgClass = 'bg-rose-50 border-rose-300 text-rose-600';
+      if (!isActive) {
+        // Mode Standby: Abu-abu monokrom
+        const mainColor = '#94a3b8';
+        const secondaryColor = '#cbd5e1';
+        const trackColor = '#64748b';
+        const wheelColor = '#e2e8f0';
+        const armColor = '#94a3b8';
+        const bucketColor = '#64748b';
+        const windowColor = '#e2e8f0';
+        const bgClass = 'bg-slate-100 border-slate-200 text-slate-400';
 
         return `
-          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Perhatian: Belum ada input hari ini!">
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Standby">
             <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
               <!-- Tracks Base -->
               <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
@@ -616,18 +623,60 @@
         `;
       }
 
-      // Mode Normal: Hitam pekat jika aktif vs Abu-abu jika standby
-      const mainColor = isActive ? '#0f172a' : '#94a3b8';
-      const secondaryColor = isActive ? '#334155' : '#cbd5e1';
-      const trackColor = isActive ? '#1e293b' : '#64748b';
-      const wheelColor = isActive ? '#475569' : '#e2e8f0';
-      const armColor = isActive ? '#0f172a' : '#94a3b8';
-      const bucketColor = isActive ? '#020617' : '#64748b';
-      const windowColor = isActive ? '#94a3b8' : '#e2e8f0';
-      const bgClass = isActive ? 'bg-slate-100 border-slate-300' : 'bg-slate-50 border-slate-200';
+      // Unit Aktif: Background frame icon HIJAU
+      const bgClass = 'bg-emerald-100 border-emerald-300 text-emerald-800';
+
+      if (isNotToday) {
+        // Aktif & belum input hari ini: Icon excavator merah (peringatan) di dalam frame hijau
+        const mainColor = '#dc2626'; // Red-600
+        const secondaryColor = '#ef4444'; // Red-500
+        const trackColor = '#7f1d1d'; // Red-900
+        const wheelColor = '#fecaca'; // Rose-200
+        const armColor = '#dc2626';
+        const bucketColor = '#991b1b'; // Red-800
+        const windowColor = '#fee2e2'; // Rose-100
+
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Aktif - Belum ada input hari ini!">
+            <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Tracks Base -->
+              <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+              <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+              <!-- Rotating Cabin Platform -->
+              <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+              <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+              <!-- Window -->
+              <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+              <!-- Counterweight -->
+              <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+              <!-- Boom (Main Arm) -->
+              <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+              <!-- Hydraulic Cylinder -->
+              <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+              <!-- Arm (Stick) -->
+              <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+              <!-- Bucket Joint & Bucket -->
+              <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+              <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Aktif & sudah input hari ini: Icon excavator hitam di dalam frame hijau
+      const mainColor = '#0f172a';
+      const secondaryColor = '#334155';
+      const trackColor = '#1e293b';
+      const wheelColor = '#475569';
+      const armColor = '#0f172a';
+      const bucketColor = '#020617';
+      const windowColor = '#94a3b8';
 
       return `
-        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs">
+        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Aktif">
           <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
             <!-- Tracks Base -->
             <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
@@ -656,17 +705,18 @@
       `;
     }
 
-    // Tank Icon Generator (Merah jika input terakhir bukan hari ini)
+    // Tank Icon Generator (Frame Kuning)
     function getTankSVG(isNotToday) {
+      const bgClass = 'bg-amber-100 border-amber-300';
       if (isNotToday) {
         return `
-          <div class="w-9 h-9 rounded-md bg-rose-50 border border-rose-300 flex items-center justify-center text-rose-600 shadow-2xs shrink-0" title="Perhatian: Belum ada input hari ini!">
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center text-rose-600 shadow-2xs shrink-0" title="Perhatian: Belum ada input hari ini!">
             <i class="fa-solid fa-oil-well text-base"></i>
           </div>
         `;
       }
       return `
-        <div class="w-9 h-9 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
+        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
           <i class="fa-solid fa-oil-well text-base"></i>
         </div>
       `;
@@ -714,6 +764,15 @@
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getYesterdayDateStr() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
 
@@ -875,8 +934,13 @@
         const sisaLtr = u.sisa_solar || 0;
         const sisaCm = (u.konsumsi && u.konsumsi > 0) ? (sisaLtr / u.konsumsi) : 0;
         let fuelColor = 'text-emerald-600';
-        if (sisaLtr < 100) fuelColor = 'text-rose-600';
-        else if (sisaLtr < 250) fuelColor = 'text-amber-600';
+        if (!isActive && !isTangki) {
+          fuelColor = 'text-slate-700 font-bold'; // Unit standby: sisa liter hitam/abu2
+        } else if (sisaLtr < 100) {
+          fuelColor = 'text-rose-600';
+        } else if (sisaLtr < 250) {
+          fuelColor = 'text-amber-600';
+        }
 
         // Status badge
         let statusBadge = '';
@@ -886,6 +950,26 @@
           statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.2 rounded">AKTIF</span>';
         } else {
           statusBadge = '<span class="bg-slate-100 text-slate-500 text-[9px] font-semibold px-1.5 py-0.2 rounded">STANDBY</span>';
+        }
+
+        // Styling Input Terakhir:
+        // - Unit Standby: Selalu abu-abu monokrom (background, teks, icon tanda seru abu-abu)
+        // - Unit Aktif / Tangki: Jika belum input hari ini (isNotToday), beri warna merah peringatan
+        let lastInputBoxClass = 'bg-slate-50/70 border border-slate-100 text-slate-500';
+        let lastInputIconClass = 'fa-clock text-slate-400 text-[9px]';
+        let lastInputLabelClass = 'text-slate-400';
+        let lastInputTimeClass = 'text-slate-700';
+
+        if (!isActive && !isTangki) {
+          lastInputBoxClass = 'bg-slate-50 border border-slate-200 text-slate-500';
+          lastInputIconClass = isNotToday ? 'fa-triangle-exclamation text-slate-400 text-[10px]' : 'fa-clock text-slate-400 text-[9px]';
+          lastInputLabelClass = 'text-slate-400';
+          lastInputTimeClass = 'text-slate-600';
+        } else if (isNotToday) {
+          lastInputBoxClass = 'bg-rose-50/80 border border-rose-200 text-rose-700';
+          lastInputIconClass = 'fa-triangle-exclamation text-rose-500 text-[10px]';
+          lastInputLabelClass = 'text-rose-600 font-bold';
+          lastInputTimeClass = 'text-rose-700';
         }
 
         html += `
@@ -960,7 +1044,7 @@
                 </div>
               ` : `
                 <!-- Unit Alat Berat: Icon Beko (Merah jika belum input hari ini; Hitam jika aktif, Abu-abu jika standby) + HM + Sisa Solar -->
-                <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1.5 border border-slate-200/70 mb-1.5">
+                <div class="flex items-center gap-2 ${isActive ? 'bg-emerald-50/40 border-emerald-200/70' : 'bg-slate-50 border-slate-200/70'} rounded-lg p-1.5 border mb-1.5">
                   ${getExcavatorSVG(isActive, isNotToday)}
                   <div class="flex-1 min-w-0 space-y-0.5">
                     <div class="flex items-baseline justify-between">
@@ -992,13 +1076,13 @@
                 </div>
               ` : ''}
 
-              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59, Merah jika bukan hari ini) -->
-              <div class="flex justify-between items-center text-[9.5px] mb-1.5 px-1.5 py-0.5 rounded transition ${isNotToday ? 'bg-rose-50/80 border border-rose-200 text-rose-700' : 'bg-slate-50/70 border border-slate-100 text-slate-500'}">
-                <span class="flex items-center gap-1 ${isNotToday ? 'text-rose-600 font-bold' : 'text-slate-400'}">
-                  <i class="fa-solid ${isNotToday ? 'fa-triangle-exclamation text-rose-500 text-[10px]' : 'fa-clock text-slate-400 text-[9px]'}"></i>
+              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59) -->
+              <div class="flex justify-between items-center text-[9.5px] mb-1.5 px-1.5 py-0.5 rounded transition ${lastInputBoxClass}">
+                <span class="flex items-center gap-1 ${lastInputLabelClass}">
+                  <i class="fa-solid ${lastInputIconClass}"></i>
                   <span>Input Terakhir:</span>
                 </span>
-                <span class="font-bold font-mono ${isNotToday ? 'text-rose-700' : 'text-slate-700'}">
+                <span class="font-bold font-mono ${lastInputTimeClass}">
                   ${formatLastInputDateTime(u.last_tgl, u.last_jam)}
                 </span>
               </div>
@@ -1057,17 +1141,20 @@
       document.getElementById('colokan_current_hm').value = u.hm || 0;
       document.getElementById('colokan_last_jam').value = u.last_jam || 0;
       document.getElementById('colokan_last_date').value = u.last_tgl || '';
+      document.getElementById('colokan_sisa_solar').value = sisaLtr;
+      document.getElementById('colokan_konsumsi').value = u.konsumsi || 0;
+      document.getElementById('colokan_sisa_cm').value = sisaCm;
 
       document.getElementById('colokan_info_hm').textContent = formatHM(u.hm);
       document.getElementById('colokan_info_solar').textContent = `${formatNumber(sisaLtr, 1)} L (${formatNumber(sisaCm, 1)} cm)`;
       document.getElementById('colokan_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
       document.getElementById('colokan_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
-      // Prefill Inputs
-      document.getElementById('colokan_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('colokan_tanggal').value = getYesterdayDateStr();
       document.getElementById('colokan_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('colokan_min_hm_label').textContent = formatHM(u.hm);
-      document.getElementById('colokan_cm_sesudah').value = '';
+      document.getElementById('colokan_cm_sesudah').value = Number(sisaCm || 0).toFixed(1);
 
       // Set Jam default to current hour (1-24) or next hour
       const currentHour = new Date().getHours() || 1;
@@ -1120,6 +1207,21 @@
       // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
       if (hm < currentHm) {
         showColokanAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showColokanAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        return;
+      }
+
+      // Validasi Colokan Solar (cm) tidak boleh lebih besar dari Sisa Solar sebelumnya
+      const sisaCm = parseFloat(document.getElementById('colokan_sisa_cm').value || '0');
+      if (cmSesudah > (sisaCm + 0.05)) {
+        alert("Colokan Solar lebih besar dari saldo sebelumnya!");
+        showColokanAlert("Colokan Solar lebih besar dari saldo sebelumnya!");
         return;
       }
 
@@ -1189,8 +1291,8 @@
       document.getElementById('isi_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
       document.getElementById('isi_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
 
-      // Prefill Inputs
-      document.getElementById('isi_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tanggal').value = getYesterdayDateStr();
       document.getElementById('isi_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
       document.getElementById('isi_min_hm_label').textContent = formatHM(u.hm);
       document.getElementById('isi_cm_sebelum').value = sisaCm > 0 ? Number(sisaCm).toFixed(1) : '';
@@ -1251,6 +1353,13 @@
       // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
       if (hm < currentHm) {
         showIsiAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showIsiAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
         return;
       }
 
@@ -1332,8 +1441,8 @@
         }
       }
 
-      // Prefill Inputs
-      document.getElementById('isi_tangki_tanggal').value = selectedDate || getTodayDateStr();
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tangki_tanggal').value = getYesterdayDateStr();
       document.getElementById('isi_tangki_liter').value = '';
 
       const currentHour = new Date().getHours() || 1;
