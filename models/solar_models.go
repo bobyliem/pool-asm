@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// PemakaianSolar represents the record for daily fuel consumption per shift per unit
+// PemakaianSolar represents the record for daily fuel consumption per shift per unit (legacy table)
 type PemakaianSolar struct {
 	ID                uint       `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	Unit              string     `gorm:"column:unit;size:50;not null;uniqueIndex:idx_unit_tgl_shift,priority:1" json:"unit"`
@@ -28,14 +28,31 @@ func (PemakaianSolar) TableName() string {
 	return "pemakaian_solar"
 }
 
-// PemakaianSolarFilter holds request filter parameters
+// PemakaianSolarFilter holds request filter parameters for Pemakaian Solar (now reads dt_solar_his)
 type PemakaianSolarFilter struct {
 	TglAwal  string `form:"tglAwal"`
 	TglAkhir string `form:"tglAkhir"`
 	Unit     string `form:"unit"`
-	Shift    string `form:"shift"`
+	Note     string `form:"note"`
 	Page     int    `form:"page,default=1"`
 	Limit    int    `form:"limit,default=50"`
+}
+
+// DtSolarHisItem represents a single row response from dt_solar_his for the Pemakaian Solar page
+type DtSolarHisItem struct {
+	ID             int     `json:"id"`
+	Tanggal        string  `json:"tanggal"`
+	Jam            int     `json:"jam"`
+	Unit           string  `json:"unit"`
+	HmAwal         float64 `json:"hm_awal"`
+	HmAkhir        float64 `json:"hm_akhir"`
+	TotalHm        float64 `json:"total_hm"`
+	SaldoAwal      float64 `json:"saldo_awal"`
+	Isi            float64 `json:"isi"`
+	IsiInput       float64 `json:"isi_input"`
+	SaldoAkhir     float64 `json:"saldo_akhir"`
+	Note           string  `json:"note"`
+	Created        string  `json:"created"`
 }
 
 // SolarSummary holds aggregate KPIs
@@ -43,7 +60,7 @@ type SolarSummary struct {
 	TotalRows       int64   `json:"total_rows"`
 	TotalPakaiLiter float64 `json:"total_pakai_liter"`
 	TotalIsiLiter   float64 `json:"total_isi_liter"`
-	TotalJamHm     float64 `json:"total_jam_hm"`
+	TotalJamHm      float64 `json:"total_jam_hm"`
 	AvgLiterPerHm   float64 `json:"avg_liter_per_hm"`
 }
 
