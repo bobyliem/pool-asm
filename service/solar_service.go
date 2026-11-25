@@ -74,14 +74,14 @@ func (s *solarService) GetPemakaianSolar(filter models.PemakaianSolarFilter) (ma
 }
 
 func (s *solarService) GetFilterOptions() (map[string]interface{}, error) {
-	units, shifts, minTgl, maxTgl, err := s.repo.GetFilterOptions()
+	units, notes, minTgl, maxTgl, err := s.repo.GetFilterOptions()
 	if err != nil {
 		return nil, err
 	}
 
 	return map[string]interface{}{
 		"units":   units,
-		"shifts":  shifts,
+		"notes":   notes,
 		"min_tgl": minTgl,
 		"max_tgl": maxTgl,
 	}, nil
