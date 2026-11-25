@@ -14,7 +14,7 @@ import (
 )
 
 type SolarRepository interface {
-	GetPemakaianSolar(filter models.PemakaianSolarFilter) ([]models.PemakaianSolar, int64, error)
+	GetPemakaianSolar(filter models.PemakaianSolarFilter) ([]models.DtSolarHisItem, int64, error)
 	GetSummary(filter models.PemakaianSolarFilter) (models.SolarSummary, error)
 	GetFilterOptions() ([]string, []string, string, string, error)
 
@@ -48,39 +48,47 @@ func NewSolarRepository(db *gorm.DB) SolarRepository {
 	return &solarRepository{db: db}
 }
 
-func (r *solarRepository) buildQuery(filter models.PemakaianSolarFilter) *gorm.DB {
-	q := r.db.Model(&models.PemakaianSolar{})
+func (r *solarRepository) buildPemakaianWhere(filter models.PemakaianSolarFilter) (string, []interface{}) {
+	where := "WHERE 1=1"
+	var args []interface{}
 
 	if filter.TglAwal != "" {
-		q = q.Where("tanggal >= ?", filter.TglAwal)
+		where += " AND h.tgl >= ?"
+		args = append(args, filter.TglAwal)
 	}
 	if filter.TglAkhir != "" {
-		q = q.Where("tanggal <= ?", filter.TglAkhir)
+		where += " AND h.tgl <= ?"
+		args = append(args, filter.TglAkhir)
 	}
 
 	cleanUnit := strings.TrimSpace(filter.Unit)
 	if cleanUnit != "" && !strings.EqualFold(cleanUnit, "all") && !strings.EqualFold(cleanUnit, "Semua Unit") {
-		q = q.Where("unit = ?", cleanUnit)
+		where += " AND h.unit = ?"
+		args = append(args, cleanUnit)
 	}
 
-	cleanShift := strings.TrimSpace(filter.Shift)
-	if cleanShift != "" && !strings.EqualFold(cleanShift, "all") && !strings.EqualFold(cleanShift, "Semua Shift") {
-		q = q.Where("shift = ?", cleanShift)
+	cleanNote := strings.TrimSpace(filter.Note)
+	if cleanNote != "" && !strings.EqualFold(cleanNote, "all") && !strings.EqualFold(cleanNote, "Semua Note") {
+		where += " AND h.note = ?"
+		args = append(args, cleanNote)
 	}
 
-	return q
+	return where, args
 }
 
-func (r *solarRepository) GetPemakaianSolar(filter models.PemakaianSolarFilter) ([]models.PemakaianSolar, int64, error) {
-	var results []models.PemakaianSolar
+func (r *solarRepository) GetPemakaianSolar(filter models.PemakaianSolarFilter) ([]models.DtSolarHisItem, int64, error) {
+	var results []models.DtSolarHisItem
 	var totalRows int64
 
-	q := r.buildQuery(filter)
+	whereClause, args := r.buildPemakaianWhere(filter)
 
-	if err := q.Count(&totalRows).Error; err != nil {
-		return nil, 0, err
+	// Count total rows
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM dt_solar_his h %s`, whereClause)
+	if err := r.db.Raw(countSQL, args...).Scan(&totalRows).Error; err != nil {
+		return nil, 0, fmt.Errorf("gagal menghitung total data: %w", err)
 	}
 
+	// Paginated data
 	page := filter.Page
 	if page < 1 {
 		page = 1
@@ -91,31 +99,60 @@ func (r *solarRepository) GetPemakaianSolar(filter models.PemakaianSolarFilter) 
 	}
 	offset := (page - 1) * limit
 
-	err := q.Order("tanggal DESC, unit ASC, shift ASC").
-		Limit(limit).
-		Offset(offset).
-		Find(&results).Error
+	querySQL := fmt.Sprintf(`
+SELECT
+    h.id,
+    DATE_FORMAT(h.tgl, '%%Y-%%m-%%d') AS tanggal,
+    h.jam,
+    h.unit,
+    h.hm AS hm_awal,
+    h.hm_end AS hm_akhir,
+    ROUND(GREATEST(h.hm_end - h.hm, 0), 2) AS total_hm,
+    ROUND(h.awal, 2) AS saldo_awal,
+    ROUND(h.isi, 2) AS isi,
+    ROUND(h.isi_input, 2) AS isi_input,
+    ROUND(h.akhir, 2) AS saldo_akhir,
+    COALESCE(h.note, '') AS note,
+    DATE_FORMAT(h.created, '%%Y-%%m-%%d %%H:%%i:%%s') AS created
+FROM dt_solar_his h
+%s
+ORDER BY h.tgl DESC, h.jam DESC, h.id DESC
+LIMIT ? OFFSET ?
+`, whereClause)
 
-	return results, totalRows, err
+	queryArgs := append(args, limit, offset)
+	if err := r.db.Raw(querySQL, queryArgs...).Scan(&results).Error; err != nil {
+		return nil, 0, fmt.Errorf("gagal mengambil data pemakaian solar: %w", err)
+	}
+
+	return results, totalRows, nil
 }
 
 func (r *solarRepository) GetSummary(filter models.PemakaianSolarFilter) (models.SolarSummary, error) {
 	var summary models.SolarSummary
-	q := r.buildQuery(filter)
+
+	whereClause, args := r.buildPemakaianWhere(filter)
+
+	summarySQL := fmt.Sprintf(`
+SELECT
+    COUNT(*) AS total_rows,
+    ROUND(COALESCE(SUM(CASE WHEN h.isi < 0 THEN -h.isi ELSE 0 END), 0), 2) AS total_pakai_liter,
+    ROUND(COALESCE(SUM(CASE WHEN h.isi > 0 THEN h.isi ELSE 0 END), 0), 2) AS total_isi_liter,
+    ROUND(COALESCE(SUM(CASE WHEN h.hm_end > h.hm THEN h.hm_end - h.hm ELSE 0 END), 0), 2) AS total_jam_hm
+FROM dt_solar_his h
+%s
+`, whereClause)
 
 	type AggResult struct {
 		TotalRows       int64   `gorm:"column:total_rows"`
 		TotalPakaiLiter float64 `gorm:"column:total_pakai_liter"`
 		TotalIsiLiter   float64 `gorm:"column:total_isi_liter"`
-		TotalJamHm     float64 `gorm:"column:total_jam_hm"`
+		TotalJamHm      float64 `gorm:"column:total_jam_hm"`
 	}
 
 	var agg AggResult
-	err := q.Select("COUNT(*) as total_rows, COALESCE(SUM(pakai_liter), 0) as total_pakai_liter, COALESCE(SUM(isi_liter), 0) as total_isi_liter, COALESCE(SUM(total_jam_hm), 0) as total_jam_hm").
-		Scan(&agg).Error
-
-	if err != nil {
-		return summary, err
+	if err := r.db.Raw(summarySQL, args...).Scan(&agg).Error; err != nil {
+		return summary, fmt.Errorf("gagal menghitung summary: %w", err)
 	}
 
 	summary.TotalRows = agg.TotalRows
@@ -133,54 +170,20 @@ func (r *solarRepository) GetSummary(filter models.PemakaianSolarFilter) (models
 }
 
 func (r *solarRepository) GetFilterOptions() ([]string, []string, string, string, error) {
+	// Unique units from dt_solar_his
 	var units []string
-	var minDate *time.Time
-	var maxDate *time.Time
+	r.db.Raw("SELECT DISTINCT unit FROM dt_solar_his ORDER BY unit ASC").Scan(&units)
 
-	// Unique units
-	r.db.Model(&models.PemakaianSolar{}).
-		Distinct("unit").
-		Order("unit ASC").
-		Pluck("unit", &units)
+	// Unique notes from dt_solar_his (excluding empty notes)
+	var notes []string
+	r.db.Raw("SELECT DISTINCT note FROM dt_solar_his WHERE note != '' ORDER BY note ASC").Scan(&notes)
 
-	// Master units terdaftar
-	masterUnits := []string{
-		"SK330-8", "SK330-8 02", "SK330-8 03", "SK330-8 04", "SK330-8 05", "SK330-8 06",
-		"SK200-10 05", "CAT 966G", "CAT 950G", "CAT 950G 02", "KOB 03", "PC200-8", "KOB 04",
-	}
+	// Min and Max tanggal
+	var minTglStr, maxTglStr string
+	r.db.Raw("SELECT COALESCE(MIN(DATE_FORMAT(tgl, '%Y-%m-%d')), '') FROM dt_solar_his").Scan(&minTglStr)
+	r.db.Raw("SELECT COALESCE(MAX(DATE_FORMAT(tgl, '%Y-%m-%d')), '') FROM dt_solar_his").Scan(&maxTglStr)
 
-	unitMap := make(map[string]bool)
-	var finalUnits []string
-	for _, u := range masterUnits {
-		if !unitMap[u] {
-			unitMap[u] = true
-			finalUnits = append(finalUnits, u)
-		}
-	}
-	for _, u := range units {
-		cleanU := strings.TrimSpace(u)
-		if cleanU != "" && !unitMap[cleanU] {
-			unitMap[cleanU] = true
-			finalUnits = append(finalUnits, cleanU)
-		}
-	}
-
-	shifts := []string{"Pagi", "Malam"}
-
-	// Min and Max Tanggal
-	r.db.Model(&models.PemakaianSolar{}).Select("MIN(tanggal)").Scan(&minDate)
-	r.db.Model(&models.PemakaianSolar{}).Select("MAX(tanggal)").Scan(&maxDate)
-
-	minTglStr := ""
-	maxTglStr := ""
-	if minDate != nil {
-		minTglStr = minDate.Format("2006-01-02")
-	}
-	if maxDate != nil {
-		maxTglStr = maxDate.Format("2006-01-02")
-	}
-
-	return finalUnits, shifts, minTglStr, maxTglStr, nil
+	return units, notes, minTglStr, maxTglStr, nil
 }
 
 // ==========================================
