@@ -1394,23 +1394,13 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 			return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
 		}
 
-		// TANGKI CCK: CALL sp_tangki_sedot(tanggal, jam, 14, isi_liter, 0);
-		// TANGKI PION: CALL sp_solar(tanggal, jam, unit, 0, 0, isi_liter, 0);
-		if req.Unit == "TANGKI-CCK" {
-			callSQL := "CALL sp_tangki_sedot(?, ?, ?, ?, 0)"
-			if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, u.ID, req.IsiLiter).Error; err != nil {
-				return fmt.Errorf("gagal mengeksekusi sp_tangki_sedot: %w", err)
-			}
-			return nil
-		} else if req.Unit == "TANGKI-PION" {
-			callSQL := "CALL sp_solar(?, ?, ?, 0, 0, ?, 0)"
-			if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.IsiLiter).Error; err != nil {
-				return fmt.Errorf("gagal mengeksekusi sp_solar: %w", err)
-			}
-			return nil
-		} else {
-			return fmt.Errorf("unit tangki '%s' belum didukung untuk transaksi pengisian ini", req.Unit)
+		// CALL sp_tangki_sedot(tanggal, jam, 14, isi_liter, isi_liter, 15, 'FillUnit');
+		// 14 = default value; 15 = dt_solar_unit.id (TANGKI-PION=15, TANGKI-CCK=14)
+		callSQL := "CALL sp_tangki_sedot(?, ?, 14, ?, ?, ?, 'FillUnit')"
+		if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.IsiLiter, req.IsiLiter, u.ID).Error; err != nil {
+			return fmt.Errorf("gagal mengeksekusi sp_tangki_sedot: %w", err)
 		}
+		return nil
 	}
 
 	// 2. Validasi HM
