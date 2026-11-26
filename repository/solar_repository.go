@@ -1370,13 +1370,14 @@ func (r *solarRepository) SubmitColokan(req models.InputColokanRequest) error {
 func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error {
 	// 1. Cek unit di dt_solar_unit
 	type UnitCheck struct {
-		ID       int
-		Hm       float64
-		Tangki   string
-		Konsumsi float64
+		ID        int
+		Hm        float64
+		Tangki    string
+		Konsumsi  float64
+		Sisasolar float64
 	}
 	var u UnitCheck
-	err := r.db.Raw("SELECT id, hm, tangki, konsumsi FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
+	err := r.db.Raw("SELECT id, hm, tangki, konsumsi, sisasolar FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
 	if err != nil || u.ID == 0 {
 		return fmt.Errorf("unit '%s' tidak ditemukan di master dt_solar_unit", req.Unit)
 	}
@@ -1403,7 +1404,20 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		return nil
 	}
 
-	// 2. Validasi HM
+	// 2. Validasi Colokan Awal tidak boleh lebih besar dari saldo sebelumnya di dt_solar_unit
+	cmSebelum := req.CmAwal
+	if cmSebelum == 0 && req.CmSebelum != 0 {
+		cmSebelum = req.CmSebelum
+	}
+	sisaCm := 0.0
+	if u.Konsumsi > 0 {
+		sisaCm = u.Sisasolar / u.Konsumsi
+	}
+	if cmSebelum > (sisaCm + 0.05) {
+		return fmt.Errorf("Colokan Awal lebih besar dari saldo sebelumnya!")
+	}
+
+	// 3. Validasi HM
 	if req.Hm < u.Hm {
 		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
 	}
@@ -1411,18 +1425,14 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		return fmt.Errorf("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!")
 	}
 
-	// 3. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
+	// 4. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
 	var lastJam int
 	_ = r.db.Raw("SELECT COALESCE(MAX(jam), 0) FROM dt_solar_his WHERE unit = ? AND tgl = ?", req.Unit, req.Tanggal).Row().Scan(&lastJam)
 	if lastJam > 0 && req.Jam <= lastJam {
 		return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
 	}
 
-	// 4. Eksekusi Stored Procedure
-	cmSebelum := req.CmAwal
-	if cmSebelum == 0 && req.CmSebelum != 0 {
-		cmSebelum = req.CmSebelum
-	}
+	// 5. Eksekusi Stored Procedure
 	cmSesudah := req.CmAkhir
 	if cmSesudah == 0 && req.CmSesudah != 0 {
 		cmSesudah = req.CmSesudah
