@@ -1417,7 +1417,20 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		return fmt.Errorf("Colokan Awal lebih besar dari saldo sebelumnya!")
 	}
 
-	// 3. Validasi HM
+	// 3. Validasi selisih antara Colokan (Akhir - Awal) dalam Liter dengan Isi (Liter)
+	cmSesudah := req.CmAkhir
+	if cmSesudah == 0 && req.CmSesudah != 0 {
+		cmSesudah = req.CmSesudah
+	}
+	if u.Konsumsi > 0 {
+		literColokan := (cmSesudah - cmSebelum) * u.Konsumsi
+		selisihLiter := math.Abs(literColokan - req.IsiLiter)
+		if cmSesudah <= cmSebelum || (selisihLiter-3) > 0.001 {
+			return fmt.Errorf("Cek kembali Isi Solar atau Colokan awal dan akhir")
+		}
+	}
+
+	// 4. Validasi HM
 	if req.Hm < u.Hm {
 		return fmt.Errorf("HM input (%.3f) tidak boleh lebih kecil dari HM unit saat ini (%.3f)", req.Hm, u.Hm)
 	}
@@ -1425,19 +1438,14 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		return fmt.Errorf("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!")
 	}
 
-	// 4. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
+	// 5. Validasi Jam terhadap pengisian data terakhir di dt_solar_his
 	var lastJam int
 	_ = r.db.Raw("SELECT COALESCE(MAX(jam), 0) FROM dt_solar_his WHERE unit = ? AND tgl = ?", req.Unit, req.Tanggal).Row().Scan(&lastJam)
 	if lastJam > 0 && req.Jam <= lastJam {
 		return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
 	}
 
-	// 5. Eksekusi Stored Procedure
-	cmSesudah := req.CmAkhir
-	if cmSesudah == 0 && req.CmSesudah != 0 {
-		cmSesudah = req.CmSesudah
-	}
-
+	// 6. Eksekusi Stored Procedure
 	// CALL sp_solar(tanggal, jam, unit, hm, cm_sebelum, isi_liter, cm_sesudah)
 	callSQL := "CALL sp_solar(?, ?, ?, ?, ?, ?, ?)"
 	if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.Hm, cmSebelum, req.IsiLiter, cmSesudah).Error; err != nil {

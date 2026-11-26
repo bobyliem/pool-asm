@@ -404,7 +404,7 @@
               Colokan Awal <span class="text-rose-500">*</span>
             </label>
             <div class="relative">
-              <input type="number" step="0.1" id="isi_cm_sebelum" required placeholder="0.0"
+              <input type="number" step="0.1" id="isi_cm_sebelum" required placeholder="0.0" oninput="updateIsiCalcHint()"
                 class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
               <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">cm</span>
             </div>
@@ -416,7 +416,7 @@
               Isi (Liter) <span class="text-rose-500">*</span>
             </label>
             <div class="relative">
-              <input type="number" step="0.1" id="isi_liter" required placeholder="0"
+              <input type="number" step="0.1" id="isi_liter" required placeholder="0" oninput="updateIsiCalcHint()"
                 class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-700" />
               <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">L</span>
             </div>
@@ -428,12 +428,15 @@
               Colokan Akhir <span class="text-rose-500">*</span>
             </label>
             <div class="relative">
-              <input type="number" step="0.1" id="isi_cm_sesudah" required placeholder="0.0"
+              <input type="number" step="0.1" id="isi_cm_sesudah" required placeholder="0.0" oninput="updateIsiCalcHint()"
                 class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
               <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">cm</span>
             </div>
           </div>
         </div>
+
+        <!-- Live hint perbandingan colokan vs isi liter -->
+        <div id="isi_calc_hint" class="hidden"></div>
 
         <p class="text-[9.5px] text-slate-400">
           <i class="fa-solid fa-circle-info text-emerald-600 mr-0.5"></i>
@@ -1310,12 +1313,15 @@
       jamSelect.value = currentHour;
 
       hideIsiAlert();
+      updateIsiCalcHint();
       document.getElementById('modalIsiSolar').classList.remove('hidden');
     }
 
     function closeModalIsiSolar() {
       document.getElementById('modalIsiSolar').classList.add('hidden');
       hideIsiAlert();
+      const hintEl = document.getElementById('isi_calc_hint');
+      if (hintEl) hintEl.classList.add('hidden');
     }
 
     function showIsiAlert(msg) {
@@ -1327,6 +1333,31 @@
 
     function hideIsiAlert() {
       document.getElementById('isiAlertBox').classList.add('hidden');
+    }
+
+    function updateIsiCalcHint() {
+      const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
+      const cmSesudah = parseFloat(document.getElementById('isi_cm_sesudah').value);
+      const isiLiter = parseFloat(document.getElementById('isi_liter').value);
+      const konsumsi = parseFloat(document.getElementById('isi_konsumsi').value || '0');
+      const hintEl = document.getElementById('isi_calc_hint');
+      if (!hintEl) return;
+
+      if (!isNaN(cmSebelum) && !isNaN(cmSesudah) && !isNaN(isiLiter) && konsumsi > 0) {
+        const deltaCm = cmSesudah - cmSebelum;
+        const literColokan = deltaCm * konsumsi;
+        const selisih = Math.abs(literColokan - isiLiter);
+        hintEl.classList.remove('hidden');
+        if (cmSesudah <= cmSebelum || (selisih - 3) > 0.001) {
+          hintEl.className = 'text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5 flex items-center justify-between font-medium';
+          hintEl.innerHTML = `<span><i class="fa-solid fa-triangle-exclamation mr-1"></i>Colokan: <b>${formatNumber(literColokan, 1)} L</b> (${formatNumber(deltaCm, 1)} cm) vs Isi: <b>${formatNumber(isiLiter, 1)} L</b></span> <span class="font-bold text-rose-600">Selisih: ${formatNumber(selisih, 1)} L (&gt; 3 L)</span>`;
+        } else {
+          hintEl.className = 'text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1.5 flex items-center justify-between font-medium';
+          hintEl.innerHTML = `<span><i class="fa-solid fa-circle-check mr-1"></i>Colokan: <b>${formatNumber(literColokan, 1)} L</b> (${formatNumber(deltaCm, 1)} cm) vs Isi: <b>${formatNumber(isiLiter, 1)} L</b></span> <span class="font-bold text-emerald-600">Selisih: ${formatNumber(selisih, 1)} L (OK)</span>`;
+        }
+      } else {
+        hintEl.classList.add('hidden');
+      }
     }
 
     async function handleIsiSolarSubmit(e) {
@@ -1375,6 +1406,18 @@
         alert("Colokan Awal lebih besar dari saldo sebelumnya!");
         showIsiAlert("Colokan Awal lebih besar dari saldo sebelumnya!");
         return;
+      }
+
+      // Validasi selisih antara Colokan (Akhir - Awal) dalam Liter dengan Isi (Liter)
+      const konsumsi = parseFloat(document.getElementById('isi_konsumsi').value || '0');
+      if (konsumsi > 0) {
+        const literColokan = (cmSesudah - cmSebelum) * konsumsi;
+        const selisihLiter = Math.abs(literColokan - isiLiter);
+        if (cmSesudah <= cmSebelum || (selisihLiter - 3) > 0.001) {
+          alert("Cek kembali Isi Solar atau Colokan awal dan akhir");
+          showIsiAlert("Cek kembali Isi Solar atau Colokan awal dan akhir");
+          return;
+        }
       }
 
       // Validasi 2: Jam cek ke dt_solar_his pengisian terakhir pada tanggal yang sama
