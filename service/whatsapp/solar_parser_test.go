@@ -216,3 +216,33 @@ func TestGroupFilter(t *testing.T) {
 	}
 	t.Logf("Cleaned up successfully, current target group: '%s'", cleared)
 }
+
+
+func TestParseDateWithTypo(t *testing.T) {
+	dsn := "root:P@ssw0rd@tcp(127.0.0.1:3307)/imp_sampurna?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to connect DB: %v", err)
+	}
+
+	testWA := `Laporan solar
+Tgl: 26 NOV 026
+Unit: sk05
+Hm: 20865,0
+Colokan 35cm
+Isi solar: (jerigen)
+Sesudah: (cm)`
+
+	now := time.Now()
+	res := whatsapp.ParseSolarWA(db, testWA, &now)
+	if len(res.Reports) != 1 {
+		t.Fatalf("Expected 1 report, got %d, errors: %v", len(res.Reports), res.Errors)
+	}
+
+	r := res.Reports[0]
+	expectedDate := "2026-11-26"
+	if r.Tanggal.Format("2006-01-02") != expectedDate {
+		t.Errorf("Expected date %s, got %s", expectedDate, r.Tanggal.Format("2006-01-02"))
+	}
+	t.Logf("Successfully parsed date with typo '26 NOV 026' -> %s", r.Tanggal.Format("2006-01-02"))
+}

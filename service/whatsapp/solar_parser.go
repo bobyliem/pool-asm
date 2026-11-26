@@ -659,8 +659,8 @@ func parseDate(raw string) (time.Time, error) {
 		"des": "12", "desember": "12", "dec": "12",
 	}
 
-	// Try pattern: "24nov.2026" or "24.nov.2026" or "24 nov 2026" or "24nov2026"
-	reMonthName := regexp.MustCompile(`(?i)(\d{1,2})\s*[.\s]?\s*(jan(?:uari)?|feb(?:ruari)?|mar(?:et)?|apr(?:il)?|mei|may|jun(?:i)?|jul(?:i)?|agu(?:stus)?|aug|sep(?:tember)?|okt(?:ober)?|oct|nov(?:ember)?|des(?:ember)?|dec)\s*[.\s]?\s*(\d{4,5})`)
+	// Try pattern: "24nov.2026" or "24.nov.2026" or "24 nov 2026" or "24nov2026" or "26 NOV 026"
+	reMonthName := regexp.MustCompile(`(?i)(\d{1,2})\s*[.\s\-/]?\s*(jan(?:uari)?|feb(?:ruari)?|mar(?:et)?|apr(?:il)?|mei|may|jun(?:i)?|jul(?:i)?|agu(?:stus)?|aug|sep(?:tember)?|okt(?:ober)?|oct|nov(?:ember)?|des(?:ember)?|dec)\s*[.\s\-/]?\s*(\d{2,5})`)
 	if m := reMonthName.FindStringSubmatch(raw); m != nil {
 		day, _ := strconv.Atoi(m[1])
 		monthStr := strings.ToLower(m[2])
@@ -670,12 +670,22 @@ func parseDate(raw string) (time.Time, error) {
 		return time.Parse("2006-01-02", dateStr)
 	}
 
-	// Try pattern: "dd/mm/yy" or "dd/mm/yyyy"
-	reSlash := regexp.MustCompile(`(\d{1,2})/(\d{1,2})/(\d{2,5})`)
+	// Try pattern: "dd/mm/yy" or "dd-mm-yyyy" or "dd/mm/026"
+	reSlash := regexp.MustCompile(`(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,5})`)
 	if m := reSlash.FindStringSubmatch(raw); m != nil {
 		day, _ := strconv.Atoi(m[1])
 		month, _ := strconv.Atoi(m[2])
 		year := normalizeYear(m[3])
+		dateStr := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
+		return time.Parse("2006-01-02", dateStr)
+	}
+
+	// Try pattern: YYYY-MM-DD
+	reISO := regexp.MustCompile(`(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})`)
+	if m := reISO.FindStringSubmatch(raw); m != nil {
+		year, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		day, _ := strconv.Atoi(m[3])
 		dateStr := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
 		return time.Parse("2006-01-02", dateStr)
 	}

@@ -612,7 +612,7 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 		"/omset": true, "/omsetpending": true, "/infolelang": true,
 		"/updatelelang": true, "/pendingharian": true, "/tarikdata": true, "/sync": true,
 		"/help": true, "/bantuan": true, "/helpadmin": true, "/bantuanadmin": true,
-		"/idgrup": true, "/infogrup": true, "/setgrupsolar": true, "/unsetgrupsolar": true,
+		"/setgrupsolar": true, "/unsetgrupsolar": true,
 	}
 
 	if protectedCommands[command] {
@@ -674,7 +674,7 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 		reply = b.handleCommandIdGrup(chatJID, senderPhone)
 
 	case "/setgrupsolar":
-		reply = b.handleCommandSetGrupSolar(chatJID, senderPhone)
+		reply = b.handleCommandSetGrupSolar(chatJID, senderPhone, parameter)
 
 	case "/unsetgrupsolar":
 		reply = b.handleCommandUnsetGrupSolar(chatJID, senderPhone)
@@ -814,20 +814,43 @@ func (b *WhatsAppBot) handleCommandIdGrup(chatJID types.JID, senderPhone string)
 	return sb.String()
 }
 
-// handleCommandSetGrupSolar: /setgrupsolar (Khusus Admin)
-func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone string) string {
-	if !IsAdmin(b.dbCsv, senderPhone) {
-		return "⛔ Perintah */setgrupsolar* hanya dapat dijalankan oleh Admin."
+// handleCommandSetGrupSolar: /setgrupsolar [id_grup_opsional / passkey] (Khusus Admin)
+func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone, parameter string) string {
+	param := strings.TrimSpace(parameter)
+
+	// Cek otorisasi admin (via nomor HP atau passkey di tabel settings)
+	isAdmin := IsAdmin(b.dbCsv, senderPhone)
+	if !isAdmin && param != "" {
+		// Cek apakah parameter berisi getpass dari tabel settings
+		var count int64
+		_ = b.dbCsv.Table("settings").Where("getpass = ?", param).Count(&count)
+		if count > 0 {
+			isAdmin = true
+			param = "" // consume passkey
+		}
 	}
-	if chatJID.Server != types.GroupServer {
-		return "⚠️ Perintah */setgrupsolar* hanya bisa dijalankan di dalam WhatsApp Group."
+
+	if !isAdmin {
+		return "⛔ Perintah */setgrupsolar* hanya dapat dijalankan oleh Admin.\n(Gunakan: `/setgrupsolar [password_admin]` jika nomor belum terdaftar)"
+	}
+
+	targetJID := chatJID
+	if param != "" && strings.Contains(param, "@g.us") {
+		parsed, err := types.ParseJID(param)
+		if err == nil && parsed.Server == types.GroupServer {
+			targetJID = parsed
+		}
+	}
+
+	if targetJID.Server != types.GroupServer {
+		return "⚠️ Perintah */setgrupsolar* harus dijalankan di dalam WhatsApp Group atau menyertakan ID Grup: `/setgrupsolar <id_grup@g.us>`."
 	}
 
 	groupName := "Grup WhatsApp"
 	if b.client != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if info, err := b.client.GetGroupInfo(ctx, chatJID); err == nil && info != nil {
+		if info, err := b.client.GetGroupInfo(ctx, targetJID); err == nil && info != nil {
 			if info.Name != "" {
 				groupName = info.Name
 			}
@@ -839,7 +862,7 @@ func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone s
 		INSERT INTO wa_config (conf_key, conf_value)
 		VALUES ('wa_solar_group_id', ?)
 		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
-	`, chatJID.String()).Error
+	`, targetJID.String()).Error
 	if err != nil {
 		return "❌ Gagal menyimpan konfigurasi grup solar: " + err.Error()
 	}
@@ -850,7 +873,7 @@ func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone s
 		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
 	`, groupName).Error
 
-	return fmt.Sprintf("✅ *SUKSES!*\n------------------------------\nGrup *%s* telah ditetapkan sebagai *Grup Resmi Laporan Solar*.\n🆔 ID: `%s`\n\nMulai sekarang, bot hanya akan memproses laporan solar yang dikirimkan di dalam grup ini.", groupName, chatJID.String())
+	return fmt.Sprintf("✅ *SUKSES!*\n------------------------------\nGrup *%s* telah ditetapkan sebagai *Grup Resmi Laporan Solar*.\n🆔 ID: `%s`\n\nMulai sekarang, bot hanya akan memproses laporan solar yang dikirimkan di dalam grup ini.", groupName, targetJID.String())
 }
 
 // handleCommandUnsetGrupSolar: /unsetgrupsolar (Khusus Admin)
