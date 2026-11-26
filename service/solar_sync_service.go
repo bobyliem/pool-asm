@@ -474,31 +474,83 @@ func getFloat(row []string, idx int) float64 {
 // parseDate handles formats such as "1 Sep 2026", "01 Sep 2026", "2026-09-01", etc.
 func parseDate(val string) (time.Time, error) {
 	s := strings.TrimSpace(val)
+	if s == "" {
+		return time.Time{}, fmt.Errorf("tanggal kosong")
+	}
 
-	// Normalisasi singkatan bulan bahasa Indonesia ke Inggris
+	// Cek jika serial number Excel (contoh: 46268)
+	if serial, err := strconv.ParseFloat(s, 64); err == nil && serial > 30000 && serial < 60000 {
+		base := time.Date(1899, 12, 30, 0, 0, 0, 0, time.Local)
+		return base.AddDate(0, 0, int(serial)), nil
+	}
+
+	// Normalisasi nama bulan bahasa Indonesia ke Inggris
 	replacer := strings.NewReplacer(
+		"Januari", "January", "Februari", "February", "Maret", "March", "Mei", "May",
+		"Juni", "June", "Juli", "July", "Agustus", "August", "September", "September",
+		"Oktober", "October", "November", "November", "Desember", "December",
+		"Peb", "Feb",
 		"Agu", "Aug",
+		"Agt", "Aug",
 		"Okt", "Oct",
+		"Nop", "Nov",
 		"Des", "Dec",
-		"Mei", "May",
 	)
 	sNorm := replacer.Replace(s)
 
 	formats := []string{
+		"2-Jan-06",
+		"02-Jan-06",
+		"2-Jan-2006",
+		"02-Jan-2006",
 		"2 Jan 2006",
 		"02 Jan 2006",
 		"2 Jan 06",
 		"02 Jan 06",
+		"2/Jan/06",
+		"02/Jan/06",
+		"2/Jan/2006",
+		"02/Jan/2006",
 		"2006-01-02",
+		"2006/01/02",
+		"2006.01.02",
 		"02-01-2006",
 		"02/01/2006",
+		"02.01.2006",
 		"2/1/2006",
 		"2-1-2006",
+		"2.1.2006",
+		"02/01/06",
+		"2/1/06",
+		"02-01-06",
+		"2-1-06",
+		"02.01.06",
+		"2.1.06",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+		"2006-01-02T15:04:05",
+		"02/01/2006 15:04:05",
+		"02/01/2006 15:04",
+		"02-01-2006 15:04:05",
+		"02-01-2006 15:04",
+		"2006/01/02 15:04:05",
+		"2006/01/02 15:04",
+		"02/01/06 15:04",
+		"02/01/06 15:04:05",
 	}
 
 	for _, fmtStr := range formats {
 		if t, err := time.ParseInLocation(fmtStr, sNorm, time.Local); err == nil {
 			return t, nil
+		}
+	}
+
+	// Coba ambil hanya bagian tanggal sebelum spasi jika ada format tanggal + jam
+	if parts := strings.Fields(sNorm); len(parts) > 1 {
+		for _, fmtStr := range formats {
+			if t, err := time.ParseInLocation(fmtStr, parts[0], time.Local); err == nil {
+				return t, nil
+			}
 		}
 	}
 

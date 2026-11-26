@@ -6,12 +6,13 @@ import (
 	"asm/handler"
 	"asm/repository"
 	"asm/service"
+	"asm/service/whatsapp"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
+func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gin.Engine {
 	r := gin.Default()
 
 	// CORS Middleware
@@ -33,53 +34,99 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	r.Static("/components", "./web/components")
 	r.StaticFile("/favicon.ico", "./web/images/logo-sar.png")
 
-	// Root Route: Redirects to /prj-ho/operation-dashboard
+	// Auth Handler (diinisialisasi lebih awal agar bisa memproteksi halaman web)
+	var authHandler *handler.AuthHandler
+	if dbCsv != nil {
+		authRepo := repository.NewAuthRepository(dbCsv)
+		authSvc := service.NewAuthService(authRepo)
+		authHandler = handler.NewAuthHandler(authSvc)
+	}
+
+	// Public Auth Page
+	r.StaticFile("/login", "./web/login.html")
+
+	// Root Route: Redirects to /prj-csv
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusTemporaryRedirect, "/prj-ho/operation-dashboard")
+		c.Redirect(http.StatusTemporaryRedirect, "/prj-csv")
 	})
 
-	// PRJ-HO Routes (Dashboard dari project HO)
-	r.StaticFile("/prj-ho", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/prj-ho/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
-	r.StaticFile("/prj-ho/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
+	// Protected Web Pages (Wajib punya session login, jika tidak redirect ke /login)
+	pages := r.Group("/")
+	if authHandler != nil {
+		pages.Use(authHandler.RequirePageAuth())
+	}
+	{
+		// PRJ-HO Routes (Dashboard dari project HO)
+		pages.StaticFile("/prj-ho", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/prj-ho/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
+		pages.StaticFile("/prj-ho/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
 
-	// Backwards compatibility for root paths
-	r.StaticFile("/dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
-	r.StaticFile("/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
-	r.StaticFile("/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
+		// Backwards compatibility for root paths
+		pages.StaticFile("/dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/operation-dashboard", "./web/prj-ho/operation-dashboard.html")
+		pages.StaticFile("/spk-per-cust", "./web/prj-ho/spk-per-cust.html")
+		pages.StaticFile("/warehouse/critical-inventory", "./web/prj-ho/critical-inventory.html")
 
-	// PRJ-CSV Routes (Dashboard project CSV)
-	r.StaticFile("/prj-csv", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/dashboard", "./web/prj-csv/index.html")
-	r.StaticFile("/prj-csv/spk-per-cust", "./web/prj-csv/spk-per-cust.html")
-	r.StaticFile("/prj-csv/summary-per-cust", "./web/prj-csv/summary-per-cust.html")
-	r.StaticFile("/prj-csv/resume-per-kategori", "./web/prj-csv/resume-per-kategori.html")
-	r.StaticFile("/prj-csv/resume-per-kategori/detail", "./web/prj-csv/resume-per-kategori-detail.html")
-	r.StaticFile("/prj-csv/resume-per-kategori-detail", "./web/prj-csv/resume-per-kategori-detail.html")
-	r.StaticFile("/prj-csv/spk-detail", "./web/prj-csv/spk-detail.html")
-	r.StaticFile("/prj-csv/produksi/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
-	r.StaticFile("/prj-csv/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
-	r.StaticFile("/prj-csv/produksi/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
-	r.StaticFile("/prj-csv/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
-	r.StaticFile("/prj-csv/produksi/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
-	r.StaticFile("/prj-csv/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
-	r.StaticFile("/prj-csv/master-data/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
-	r.StaticFile("/prj-csv/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
-	r.StaticFile("/prj-csv/master-data/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
-	r.StaticFile("/prj-csv/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
-	r.StaticFile("/prj-csv/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
-	r.StaticFile("/prj-csv/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
-	r.StaticFile("/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		// PRJ-CSV Routes (Dashboard project CSV)
+		pages.StaticFile("/prj-csv", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/dashboard", "./web/prj-csv/index.html")
+		pages.StaticFile("/prj-csv/spk-per-cust", "./web/prj-csv/spk-per-cust.html")
+		pages.StaticFile("/prj-csv/spk-slash-cust", "./web/prj-csv/spk-slash-cust.html")
+		pages.StaticFile("/prj-csv/spk-cust", "./web/prj-csv/spk-slash-cust.html")
+		pages.StaticFile("/prj-csv/summary-per-cust", "./web/prj-csv/summary-per-cust.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori", "./web/prj-csv/resume-per-kategori.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori/detail", "./web/prj-csv/resume-per-kategori-detail.html")
+		pages.StaticFile("/prj-csv/resume-per-kategori-detail", "./web/prj-csv/resume-per-kategori-detail.html")
+		pages.StaticFile("/prj-csv/spk-detail", "./web/prj-csv/spk-detail.html")
+		pages.StaticFile("/prj-csv/produksi/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
+		pages.StaticFile("/prj-csv/resume-per-hari", "./web/prj-csv/produksi/resume-per-hari.html")
+		pages.StaticFile("/prj-csv/produksi/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
+		pages.StaticFile("/prj-csv/summary-per-driver", "./web/prj-csv/produksi/summary-per-driver.html")
+		pages.StaticFile("/prj-csv/produksi/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
+		pages.StaticFile("/prj-csv/monitoring-ritase", "./web/prj-csv/produksi/monitoring-ritase.html")
+		pages.StaticFile("/prj-csv/produksi/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
+		pages.StaticFile("/prj-csv/transfer-out", "./web/prj-csv/produksi/transfer-out.html")
+		pages.StaticFile("/prj-csv/master-data/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
+		pages.StaticFile("/prj-csv/prior-unit", "./web/prj-csv/master-data/prior-unit.html")
+		pages.StaticFile("/prj-csv/master-data/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
+		pages.StaticFile("/prj-csv/closing-finance", "./web/prj-csv/master-data/closing-finance.html")
+		pages.StaticFile("/prj-csv/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/prj-csv/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/colokan-solar/pemakaian-solar", "./web/prj-csv/colokan-solar/pemakaian-solar.html")
+		pages.StaticFile("/prj-csv/colokan-solar/import-data", "./web/prj-csv/colokan-solar/import-data.html")
+		pages.StaticFile("/prj-csv/import-data", "./web/prj-csv/colokan-solar/import-data.html")
+		pages.StaticFile("/colokan-solar/import-data", "./web/prj-csv/colokan-solar/import-data.html")
 
-	// Authentication & Administrator Routes
-	r.StaticFile("/login", "./web/login.html")
-	r.StaticFile("/admin/users", "./web/admin/users.html")
-	r.StaticFile("/admin/groups", "./web/admin/groups.html")
+		// Laporan Colokan Solar
+		pages.StaticFile("/prj-csv/colokan-solar/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+		pages.StaticFile("/prj-csv/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+		pages.StaticFile("/colokan-solar/detail-harian", "./web/prj-csv/colokan-solar/detail-harian.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+		pages.StaticFile("/prj-csv/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+		pages.StaticFile("/colokan-solar/rekap-unit", "./web/prj-csv/colokan-solar/rekap-unit.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
+		pages.StaticFile("/prj-csv/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
+		pages.StaticFile("/colokan-solar/rekonsiliasi-anomali", "./web/prj-csv/colokan-solar/rekonsiliasi-anomali.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+		pages.StaticFile("/prj-csv/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+		pages.StaticFile("/colokan-solar/monitoring-tangki", "./web/prj-csv/colokan-solar/monitoring-tangki.html")
+
+		pages.StaticFile("/prj-csv/colokan-solar/dashboard", "./web/prj-csv/colokan-solar/dashboard.html")
+		pages.StaticFile("/prj-csv/dashboard-solar", "./web/prj-csv/colokan-solar/dashboard.html")
+		pages.StaticFile("/colokan-solar/dashboard", "./web/prj-csv/colokan-solar/dashboard.html")
+
+		// Administrator Routes
+		pages.StaticFile("/admin/users", "./web/admin/users.html")
+		pages.StaticFile("/admin/groups", "./web/admin/groups.html")
+		pages.StaticFile("/admin/cron-jobs", "./web/admin/cron_jobs.html")
+	}
 
 	// HO Repositories, Services, and Handlers
 	var hoDashboardHandler *handler.HoDashboardHandler
@@ -111,7 +158,8 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 	var priorUnitHandler *handler.PriorUnitHandler
 	var closingFinanceHandler *handler.ClosingFinanceHandler
 	var solarHandler *handler.SolarHandler
-	var authHandler *handler.AuthHandler
+	var stockpileSyncHandler *handler.StockpileSyncHandler
+	var cronHandler *handler.CronHandler
 
 	csvSyncSvc := service.NewCsvSyncService(dbCsv)
 	csvSyncHandler := handler.NewCsvSyncHandler(csvSyncSvc)
@@ -142,9 +190,13 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		solarSvc := service.NewSolarService(solarRepo)
 		solarHandler = handler.NewSolarHandler(solarSvc, solarSyncSvc)
 
-		authRepo := repository.NewAuthRepository(dbCsv)
-		authSvc := service.NewAuthService(authRepo)
-		authHandler = handler.NewAuthHandler(authSvc)
+
+		stockpileSyncSvc := service.NewStockpileSyncService(dbCsv)
+		stockpileSyncHandler = handler.NewStockpileSyncHandler(stockpileSyncSvc)
+
+		cronSvc := service.NewCronService(dbCsv, csvSyncSvc, solarSyncSvc, stockpileSyncSvc, waBot)
+		cronSvc.Start()
+		cronHandler = handler.NewCronHandler(cronSvc)
 	}
 
 	// API Endpoints
@@ -153,8 +205,12 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 		// 1. HO Operation Dashboard, SPK, and Warehouse Endpoints
 		if operationHandler != nil {
 			api.GET("/dashboard/operation", operationHandler.GetOperationSummary)
+			api.GET("/dashboard/operation/sites", operationHandler.GetSites)
 		} else {
 			api.GET("/dashboard/operation", func(c *gin.Context) {
+				c.JSON(500, gin.H{"status": "error", "message": "Database HO (10.2.1.2) belum terhubung"})
+			})
+			api.GET("/dashboard/operation/sites", func(c *gin.Context) {
 				c.JSON(500, gin.H{"status": "error", "message": "Database HO (10.2.1.2) belum terhubung"})
 			})
 		}
@@ -193,6 +249,8 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 			api.GET("/csv/produksi/resume-per-hari", produksiHandler.GetResumePerHari)
 			api.GET("/csv/produksi/summary-per-driver", produksiHandler.GetSummaryPerDriver)
 			api.GET("/csv/produksi/monitoring-ritase", produksiHandler.GetMonitoringRitase)
+			api.GET("/csv/produksi/transfer-out", produksiHandler.GetTransferOut)
+			api.GET("/csv/produksi/transfer-out/filters", produksiHandler.GetTransferOutFilterOptions)
 		}
 
 		// Master Data: Prior Unit CRUD Endpoints
@@ -218,6 +276,26 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 			api.GET("/solar/filter-options", solarHandler.GetFilterOptions)
 			api.POST("/solar/sync", solarHandler.TriggerSync)
 			api.GET("/solar/sync/status", solarHandler.GetSyncStatus)
+
+			// dt_solar Endpoints
+			api.GET("/solar/dt-solar", solarHandler.GetDtSolar)
+			api.GET("/solar/dt-solar/filters", solarHandler.GetDtSolarFilterOptions)
+			api.POST("/solar/dt-solar/upload", solarHandler.UploadDtSolar)
+			api.POST("/solar/dt-solar/import-sample", solarHandler.ImportSampleDtSolar)
+			api.DELETE("/solar/dt-solar/truncate", solarHandler.TruncateDtSolar)
+
+			// Laporan Colokan Solar Endpoints
+			api.GET("/solar/laporan/detail-harian", solarHandler.GetLaporanDetailHarian)
+			api.GET("/solar/laporan/rekap-unit", solarHandler.GetLaporanRekapUnit)
+			api.GET("/solar/laporan/rekonsiliasi", solarHandler.GetLaporanRekonsiliasi)
+			api.GET("/solar/laporan/monitoring-tangki", solarHandler.GetLaporanMonitoringTangki)
+			api.GET("/solar/laporan/detail-points", solarHandler.GetDetailPoints)
+			api.GET("/solar/laporan/filters", solarHandler.GetLaporanFilterOptions)
+
+			// Dashboard Solar Endpoints
+			api.GET("/solar/dashboard/units", solarHandler.GetDashboardSolarUnits)
+			api.POST("/solar/dashboard/input-colokan", solarHandler.SubmitColokan)
+			api.POST("/solar/dashboard/input-isi", solarHandler.SubmitIsiSolar)
 		}
 
 		// Auth & Administrator Endpoints
@@ -225,26 +303,57 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB) *gin.Engine {
 			api.POST("/auth/login", authHandler.Login)
 			api.POST("/auth/logout", authHandler.Logout)
 			api.GET("/auth/me", authHandler.GetMe)
+			api.GET("/auth/user-menus", authHandler.GetUserMenus)
 			api.POST("/auth/change-password", authHandler.RequireAuth(), authHandler.ChangePassword)
 
-			// Master User
-			api.GET("/admin/users", authHandler.RequireAuth(), authHandler.GetAllUsers)
-			api.POST("/admin/users", authHandler.RequireAuth(), authHandler.CreateUser)
-			api.PUT("/admin/users/:id", authHandler.RequireAuth(), authHandler.UpdateUser)
-			api.DELETE("/admin/users/:id", authHandler.RequireAuth(), authHandler.DeleteUser)
+			// Master User (Menu ID: 14)
+			api.GET("/admin/users", authHandler.RequireMenuAuth(14), authHandler.GetAllUsers)
+			api.POST("/admin/users", authHandler.RequireMenuAuth(14), authHandler.CreateUser)
+			api.PUT("/admin/users/:id", authHandler.RequireMenuAuth(14), authHandler.UpdateUser)
+			api.DELETE("/admin/users/:id", authHandler.RequireMenuAuth(14), authHandler.DeleteUser)
 
-			// Master Group & Setup Menu
-			api.GET("/admin/groups", authHandler.RequireAuth(), authHandler.GetAllGroups)
-			api.POST("/admin/groups", authHandler.RequireAuth(), authHandler.CreateGroup)
-			api.PUT("/admin/groups/:id", authHandler.RequireAuth(), authHandler.UpdateGroup)
-			api.DELETE("/admin/groups/:id", authHandler.RequireAuth(), authHandler.DeleteGroup)
-			api.GET("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.GetGroupMenus)
-			api.POST("/admin/groups/:id/menus", authHandler.RequireAuth(), authHandler.SaveGroupMenus)
+			// Master Group & Setup Menu (Menu ID: 15)
+			api.GET("/admin/groups", authHandler.RequireMenuAuth(15), authHandler.GetAllGroups)
+			api.POST("/admin/groups", authHandler.RequireMenuAuth(15), authHandler.CreateGroup)
+			api.PUT("/admin/groups/:id", authHandler.RequireMenuAuth(15), authHandler.UpdateGroup)
+			api.DELETE("/admin/groups/:id", authHandler.RequireMenuAuth(15), authHandler.DeleteGroup)
+			api.GET("/admin/groups/:id/menus", authHandler.RequireMenuAuth(15), authHandler.GetGroupMenus)
+			api.POST("/admin/groups/:id/menus", authHandler.RequireMenuAuth(15), authHandler.SaveGroupMenus)
+		}
+
+		// Cron Job Endpoints (Menu ID: 18)
+		if cronHandler != nil {
+			api.GET("/admin/cron/jobs", authHandler.RequireMenuAuth(18), cronHandler.GetJobs)
+			api.POST("/admin/cron/jobs/:id/toggle", authHandler.RequireMenuAuth(18), cronHandler.ToggleJob)
+			api.POST("/admin/cron/jobs/:id/run", authHandler.RequireMenuAuth(18), cronHandler.RunJob)
+			api.POST("/admin/cron/jobs/:id/reset", authHandler.RequireMenuAuth(18), cronHandler.ResetJob)
+			api.PUT("/admin/cron/jobs/:id", authHandler.RequireMenuAuth(18), cronHandler.UpdateJob)
+			api.GET("/admin/cron/logs", authHandler.RequireMenuAuth(18), cronHandler.GetLogs)
 		}
 
 		// CSV Background Sync Endpoints
 		api.POST("/csv/sync", csvSyncHandler.TriggerSync)
 		api.GET("/csv/sync/status", csvSyncHandler.GetSyncStatus)
+
+		// WhatsApp Bot Endpoints
+		if waBot != nil {
+			waHandler := handler.NewWhatsAppHandler(waBot)
+			r.GET("/wa/qr", waHandler.ShowQRPage)
+			r.GET("/wa/qr/image", waHandler.GetQRImage)
+			r.GET("/wa/status", waHandler.GetStatus)
+			r.GET("/wa/reconnect", waHandler.Reconnect)
+			r.POST("/wa/reconnect", waHandler.Reconnect)
+			r.GET("/wa/reset", waHandler.Reset)
+			r.POST("/wa/reset", waHandler.Reset)
+			r.POST("/wa/pair-phone", waHandler.PairPhone)
+			api.POST("/wa/send", waHandler.SendMessage)
+		}
+
+		// Stockpile Sync Endpoints (Metabase -> api_stockpile)
+		if stockpileSyncHandler != nil {
+			api.POST("/stockpile/sync", stockpileSyncHandler.TriggerSync)
+			api.GET("/stockpile/sync/status", stockpileSyncHandler.GetSyncStatus)
+		}
 	}
 
 	return r

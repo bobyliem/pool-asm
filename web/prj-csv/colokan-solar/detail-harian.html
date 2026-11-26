@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Harian - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=21" defer></script>
+  <script src="/web/components/sidebar.js?v=21" defer></script>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Resume Harian"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header, Filter Area (Kanan Atas) & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        <!-- Left: Title & Subtitle -->
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-calendar-day text-xs"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h2 class="text-xs font-bold text-slate-800 leading-none">Resume Harian</h2>
+              <span class="bg-blue-100 text-blue-800 text-[9px] font-bold px-1.5 py-0.2 rounded">dt_solar_summary</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-medium">Crosscheck Input Colokan, Saldo Awal/Akhir, Jam Kerja HM & Pengisian Solar</span>
+          </div>
+        </div>
+
+        <!-- Right: Filter Area Dropdown (Kanan Atas) & Action Buttons -->
+        <div class="flex items-center gap-2">
+          <!-- Filter Area (Identik Dashboard) -->
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="fetchData(1)" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+              <option value="">Semua Area</option>
+            </select>
+          </div>
+
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[10px]"></i>
+            <span>Refresh</span>
+          </button>
+
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
+            <i class="fa-solid fa-file-excel text-[10px]"></i>
+            <span>Export Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI SUMMARY CARDS (COMPACT HEIGHT) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
+        <!-- 1. Total Records -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-blue-400 transition min-h-[46px]" title="Total Catatan Harian Terfilter">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-slate-500 tracking-wider">Total Records</span>
+            <span id="kpiTotalRecords" class="text-sm font-extrabold text-slate-800">0</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+            <i class="fa-solid fa-list-check text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total HM -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-amber-400 transition min-h-[46px]" title="Total Jam Kerja (HM Akhir - HM Awal)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
+            <span id="kpiTotalHm" class="text-sm font-extrabold text-amber-700">0 Jam</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <i class="fa-solid fa-clock text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 3. Total Pemakaian -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-rose-400 transition min-h-[46px]" title="Total Pemakaian Solar (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
+            <span id="kpiTotalPakaiLiter" class="text-sm font-extrabold text-rose-700">0 Ltr</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+            <i class="fa-solid fa-gas-pump text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 4. Total Pengisian -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-emerald-400 transition min-h-[46px]" title="Total Pengisian Solar Resmi (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
+            <span id="kpiTotalIsiLiter" class="text-sm font-extrabold text-emerald-700">0 Ltr</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <i class="fa-solid fa-oil-can text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 5. Rasio Efisiensi -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-purple-400 transition min-h-[46px] col-span-2 sm:col-span-1" title="Rata-rata Rasio Konsumsi (Liter/HM)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
+            <span id="kpiAvgLtrPerHm" class="text-sm font-extrabold text-purple-700">0 L/HM</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+            <i class="fa-solid fa-gauge-high text-xs"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER BAR (1 BARIS, COMPACT & EYE-CATCHING GRAY DATE) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs">
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Periode Tgl Awal & Tgl Akhir (Background Abu-abu Eye Catching) -->
+            <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-400 rounded-lg px-2.5 py-1 shadow-inner">
+              <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
+              <span class="text-[11px] font-bold text-slate-700">Periode:</span>
+              <input type="date" id="filterTglAwal" onchange="saveDateSession()"
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+              <span class="text-slate-600 font-extrabold text-[11px]">s/d</span>
+              <input type="date" id="filterTglAkhir" onchange="saveDateSession()"
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+            </div>
+
+            <!-- Unit Dropdown -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1">
+              <i class="fa-solid fa-truck-pickup text-slate-500 text-xs"></i>
+              <span class="text-[11px] font-semibold text-slate-600">Unit:</span>
+              <select id="filterUnit" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer min-w-[130px]">
+                <option value="">Semua Unit</option>
+              </select>
+            </div>
+
+            <!-- Quick Search -->
+            <div class="relative min-w-[160px]">
+              <input type="text" id="filterSearch" placeholder="Cari unit / tgl..." 
+                class="w-full pl-7 pr-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                onkeydown="if(event.key==='Enter') applyFilter()" />
+              <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-2.5 top-1.5"></i>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex items-center gap-1.5">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1 transition cursor-pointer text-xs">
+              <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TABLE CONTAINER -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
+          <table class="w-full text-left border-collapse" id="detailHarianTable">
+            <thead class="bg-slate-100 text-slate-700 text-[10.5px] font-bold border-b border-slate-300 sticky top-0 z-10 select-none">
+              <!-- ROW 1 -->
+              <tr class="border-b border-slate-200">
+                <th rowspan="2" class="py-1 px-1.5 text-center w-8 border-r border-slate-200 bg-slate-100">No</th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition bg-slate-100" onclick="sortTable('tgl')">
+                  Tanggal <i class="fa-solid fa-sort text-[9px] text-slate-400 ml-0.5"></i>
+                </th>
+                <th rowspan="2" class="py-1 px-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition bg-slate-100" onclick="sortTable('unit')">
+                  Unit Alat <i class="fa-solid fa-sort text-[9px] text-slate-400 ml-0.5"></i>
+                </th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-slate-100">Area</th>
+                <th colspan="3" class="py-1 px-2 text-center border-r border-slate-200 bg-amber-50/70 text-amber-900">Hour Meter (HM)</th>
+                <th colspan="4" class="py-1 px-2 text-center border-r border-slate-200 bg-rose-50/70 text-rose-900">BBM Solar (Liter)</th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-purple-50/70 text-purple-900 cursor-pointer hover:bg-purple-100/70" onclick="sortTable('ltr_per_hm')">
+                  Rasio (L/HM) <i class="fa-solid fa-sort text-[9px] text-slate-400 ml-0.5"></i>
+                </th>
+                <th rowspan="2" class="py-1 px-1.5 text-center w-16 bg-slate-100">Aksi</th>
+              </tr>
+              <!-- ROW 2 -->
+              <tr class="text-[10px] bg-slate-100 text-slate-600">
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Hour Meter Awal Hari">Awal</th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Hour Meter Akhir Hari">Akhir</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-amber-50/50 text-amber-800 font-bold cursor-pointer hover:bg-amber-100/60" onclick="sortTable('total_hm')" title="Total Jam Kerja">Total <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200" title="Saldo Awal Tangki">Saldo Awal</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-rose-50/40 text-rose-800 font-bold cursor-pointer hover:bg-rose-100/60" onclick="sortTable('pakai_liter')" title="Pemakaian Solar Hari Ini">Pakai <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-emerald-50/40 text-emerald-800 font-bold cursor-pointer hover:bg-emerald-100/60" onclick="sortTable('isi_liter')" title="Pengisian Solar Hari Ini">Isi <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200" title="Saldo Akhir Tangki">Saldo Akhir</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
+              <!-- Loading State -->
+              <tr>
+                <td colspan="13" class="py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
+                    <span>Memuat data resume harian...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- BOTTOM PAGINATION & FOOTER -->
+        <div class="bg-slate-50 border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+          <div class="flex items-center gap-2">
+            <span>Menampilkan <b id="pageStart" class="text-slate-800">0</b> - <b id="pageEnd" class="text-slate-800">0</b> dari <b id="totalCount" class="text-slate-800">0</b> record</span>
+            <span class="text-slate-300">|</span>
+            <div class="flex items-center gap-1">
+              <span>Per halaman:</span>
+              <select id="pageSize" onchange="changePageSize()" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs focus:outline-hidden cursor-pointer">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Pagination Buttons -->
+          <div id="paginationControls" class="flex items-center gap-1">
+            <!-- Buttons Prev, Page Numbers, Next dynamically generated -->
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL RINCIAN 6 TITIK JAM COLOKAN (dt_solar) -->
+  <div id="pointsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 border border-slate-200 overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-4 py-3 bg-slate-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-blue-400 text-sm"></i>
+          <div>
+            <h3 class="font-bold text-sm" id="modalTitle">Rincian 6 Titik Jam Colokan</h3>
+            <p class="text-[10px] text-slate-300" id="modalSubtitle">Data mentah 6 titik pengukuran dari tabel dt_solar</p>
+          </div>
+        </div>
+        <button onclick="closePointsModal()" class="text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-3">
+        <div id="modalLoading" class="py-8 text-center text-slate-500">
+          <i class="fa-solid fa-circle-notch fa-spin text-xl text-blue-600 mb-1"></i>
+          <p>Memuat rincian titik pengukuran...</p>
+        </div>
+
+        <div id="modalContent" class="hidden overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-2 px-3 border-r border-slate-200">Jam & Keterangan</th>
+                <th class="py-2 px-3 text-right border-r border-slate-200">HM</th>
+                <th class="py-2 px-3 text-right border-r border-slate-200">Awal (cm)</th>
+                <th class="py-2 px-3 text-right border-r border-slate-200">Akhir (cm)</th>
+                <th class="py-2 px-3 text-right bg-emerald-50 text-emerald-800">Isi (Liter)</th>
+              </tr>
+            </thead>
+            <tbody id="modalTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded p-2.5 text-[11px] text-slate-600 flex items-start gap-2">
+          <i class="fa-solid fa-circle-info text-blue-600 mt-0.5"></i>
+          <div>
+            <b>Keterangan Titik Pengukuran:</b>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1 text-[10px] text-slate-500">
+              <span>&bull; <b>07:00</b> Shift Pagi Mulai (HM Awal & Colokan Pagi)</span>
+              <span>&bull; <b>18:00</b> Shift Malam Mulai (HM Awal & Colokan Malam)</span>
+              <span>&bull; <b>16:00</b> Shift Pagi Selesai (HM Akhir & Colokan Sore)</span>
+              <span>&bull; <b>22:00</b> Shift Malam Selesai (HM Akhir & Colokan Pagi)</span>
+              <span>&bull; <b>17:00</b> Pengisian Siang (Colokan Sore &rarr; Akhir Isi)</span>
+              <span>&bull; <b>23:00</b> Pengisian Malam (Colokan Pagi &rarr; Akhir Isi)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-4 py-2 bg-slate-100 border-t border-slate-200 flex justify-end">
+        <button onclick="closePointsModal()" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded text-xs transition cursor-pointer">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalRows = 0;
+    let tableData = [];
+    let sortColumn = "tgl";
+    let sortDirection = "desc";
+
+    // DOM Elements
+    const tableBody = document.getElementById("tableBody");
+    const kpiTotalRecords = document.getElementById("kpiTotalRecords");
+    const kpiTotalHm = document.getElementById("kpiTotalHm");
+    const kpiTotalPakaiLiter = document.getElementById("kpiTotalPakaiLiter");
+    const kpiTotalIsiLiter = document.getElementById("kpiTotalIsiLiter");
+    const kpiAvgLtrPerHm = document.getElementById("kpiAvgLtrPerHm");
+
+    const filterTglAwal = document.getElementById("filterTglAwal");
+    const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
+    const filterUnit = document.getElementById("filterUnit");
+    const filterSearch = document.getElementById("filterSearch");
+
+    const pageStart = document.getElementById("pageStart");
+    const pageEnd = document.getElementById("pageEnd");
+    const totalCount = document.getElementById("totalCount");
+    const paginationControls = document.getElementById("paginationControls");
+    const refreshIcon = document.getElementById("refreshIcon");
+
+    // Modal elements
+    const pointsModal = document.getElementById("pointsModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalSubtitle = document.getElementById("modalSubtitle");
+    const modalLoading = document.getElementById("modalLoading");
+    const modalContent = document.getElementById("modalContent");
+    const modalTableBody = document.getElementById("modalTableBody");
+
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Ambil tanggal dari session, jika belum ada set ke hari ini
+    function initDateFilters() {
+      const today = getTodayString();
+      let tglAwal = '';
+      let tglAkhir = '';
+
+      if (window.ASM_SESSION && typeof window.ASM_SESSION.getDateRange === 'function') {
+        const range = window.ASM_SESSION.getDateRange();
+        tglAwal = range.tglAwal;
+        tglAkhir = range.tglAkhir;
+      }
+
+      if (!tglAwal) {
+        tglAwal = sessionStorage.getItem('tgl_awal') ||
+                  sessionStorage.getItem('tglawal') ||
+                  sessionStorage.getItem('asm_tgl_awal') ||
+                  sessionStorage.getItem('csv_spk_tglawal') ||
+                  today;
+      }
+      if (!tglAkhir) {
+        tglAkhir = sessionStorage.getItem('tgl_akhir') ||
+                   sessionStorage.getItem('tglakhir') ||
+                   sessionStorage.getItem('asm_tgl_akhir') ||
+                   sessionStorage.getItem('csv_spk_tglakhir') ||
+                   today;
+      }
+
+      filterTglAwal.value = tglAwal;
+      filterTglAkhir.value = tglAkhir;
+      saveDateSession();
+    }
+
+    function saveDateSession() {
+      const tglAwal = filterTglAwal.value || getTodayString();
+      const tglAkhir = filterTglAkhir.value || getTodayString();
+      if (window.ASM_SESSION && typeof window.ASM_SESSION.setDateRange === 'function') {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      }
+      sessionStorage.setItem('tgl_awal', tglAwal);
+      sessionStorage.setItem('tgl_akhir', tglAkhir);
+      sessionStorage.setItem('tglawal', tglAwal);
+      sessionStorage.setItem('tglakhir', tglAkhir);
+      sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      sessionStorage.setItem('csv_spk_tglawal', tglAwal);
+      sessionStorage.setItem('csv_spk_tglakhir', tglAkhir);
+    }
+
+    // On Load
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDateFilters();
+      await loadFilterOptions();
+      fetchData(1);
+    });
+
+    // Load Filter Options
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch("/api/v1/solar/laporan/filters");
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          const { areas, units } = json.data;
+
+          // Populate areas
+          if (Array.isArray(areas)) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
+
+          // Populate units
+          if (Array.isArray(units)) {
+            filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
+              units.map(u => `<option value="${u}">${u}</option>`).join("");
+          }
+        }
+      } catch (err) {
+        console.error("Gagal load filter options:", err);
+      }
+    }
+
+    // Fetch Data from API
+    async function fetchData(page = 1) {
+      saveDateSession();
+      currentPage = page;
+      refreshIcon.classList.add("fa-spin");
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: pageSize,
+      });
+
+      if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
+      if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
+      if (filterUnit.value) params.append("unit", filterUnit.value);
+      if (filterSearch.value.trim()) params.append("search", filterSearch.value.trim());
+
+      try {
+        const res = await fetch(`/api/v1/solar/laporan/detail-harian?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === "success") {
+          tableData = json.data || [];
+          renderKPI(json.summary || {});
+          renderTable(tableData);
+          renderPagination(json.meta || {});
+        } else {
+          showEmptyTable(json.message || "Gagal memuat data");
+        }
+      } catch (err) {
+        console.error("Fetch data error:", err);
+        showEmptyTable("Terjadi kesalahan jaringan saat mengambil data.");
+      } finally {
+        setTimeout(() => refreshIcon.classList.remove("fa-spin"), 400);
+      }
+    }
+
+    // Render KPI Cards
+    function renderKPI(summary) {
+      kpiTotalRecords.textContent = (summary.total_records || 0).toLocaleString("id-ID");
+      kpiTotalHm.textContent = (summary.total_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jam";
+      kpiTotalPakaiLiter.textContent = (summary.total_pakai_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiTotalIsiLiter.textContent = (summary.total_isi_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiAvgLtrPerHm.textContent = (summary.avg_ltr_per_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " L/HM";
+    }
+
+    // Render Table Rows
+    function renderTable(data) {
+      if (!data || data.length === 0) {
+        showEmptyTable("Tidak ada data ditemukan untuk kriteria filter ini.");
+        return;
+      }
+
+      let html = "";
+      const startNo = (currentPage - 1) * pageSize;
+
+      data.forEach((row, idx) => {
+        const no = startNo + idx + 1;
+        const totalHmClass = row.total_hm > 0 ? "font-bold text-amber-700 bg-amber-50/40" : "text-slate-400";
+        const pakaiClass = row.pakai_liter > 0 ? "font-bold text-rose-700 bg-rose-50/40" : "text-slate-400";
+        const isiClass = row.isi_liter > 0 ? "font-bold text-emerald-700 bg-emerald-50/40" : "text-slate-400";
+
+        // Netto highlight
+        let nettoClass = "text-slate-500";
+        let nettoSign = "";
+        if (row.netto_liter > 0) {
+          nettoClass = "font-bold text-emerald-600";
+          nettoSign = "+";
+        } else if (row.netto_liter < 0) {
+          nettoClass = "font-bold text-rose-600";
+        }
+
+        // Rasio styling
+        let rasioBadge = `<span class="text-slate-400">-</span>`;
+        if (row.total_hm > 0) {
+          if (row.ltr_per_hm > 50) {
+            rasioBadge = `<span class="bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded text-[10px]" title="Konsumsi Sangat Tinggi">${row.ltr_per_hm.toFixed(1)}</span>`;
+          } else if (row.ltr_per_hm > 35) {
+            rasioBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[10px]" title="Konsumsi Moderat Tinggi">${row.ltr_per_hm.toFixed(1)}</span>`;
+          } else {
+            rasioBadge = `<span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[10px]">${row.ltr_per_hm.toFixed(1)}</span>`;
+          }
+        }
+
+        html += `
+          <tr class="hover:bg-blue-50/40 transition">
+            <td class="py-1 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            <td class="py-1 px-2 font-semibold text-slate-800 border-r border-slate-100 text-center whitespace-nowrap">${row.tgl}</td>
+            <td class="py-1 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
+              <i class="fa-solid fa-truck-pickup text-slate-400 text-[9px]"></i>
+              <span>${row.unit}</span>
+            </td>
+            <td class="py-1 px-1.5 text-center border-r border-slate-100 font-sans whitespace-nowrap">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${row.area || '-'}</span>
+            </td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_awal, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_akhir, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
+            <td class="py-1 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.saldo_awal, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.pakai_liter, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.isi_liter, 1)}</td>
+            <td class="py-1 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.saldo_akhir, 1)}</td>
+            <td class="py-1 px-2 text-center border-r border-slate-100 bg-purple-50/20">${rasioBadge}</td>
+            <td class="py-1 px-1.5 text-center">
+              <button onclick="viewPoints('${row.tgl}', '${row.unit}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 text-[9.5px] inline-flex items-center gap-1 transition cursor-pointer" title="Lihat 6 Titik Jam Colokan">
+                <i class="fa-solid fa-eye text-[8px]"></i>
+                <span>Detail</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tableBody.innerHTML = html;
+    }
+
+    function showEmptyTable(message) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="13" class="py-12 text-center text-slate-400">
+            <div class="flex flex-col items-center justify-center gap-2">
+              <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
+              <span>${message}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // View 6 Points Modal
+    async function viewPoints(tgl, unit) {
+      modalTitle.textContent = `Titik Jam Colokan: ${unit} (${tgl})`;
+      modalSubtitle.textContent = `Rincian 6 baris rekaman pengukuran solar untuk unit ${unit} pada ${tgl}`;
+      modalLoading.classList.remove("hidden");
+      modalContent.classList.add("hidden");
+      pointsModal.classList.remove("hidden");
+
+      try {
+        const res = await fetch(`/api/v1/solar/laporan/detail-points?tgl=${encodeURIComponent(tgl)}&unit=${encodeURIComponent(unit)}`);
+        const json = await res.json();
+
+        if (json.status === "success" && json.data) {
+          renderPointsTable(json.data);
+          modalLoading.classList.add("hidden");
+          modalContent.classList.remove("hidden");
+        } else {
+          modalTableBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400">Data titik jam tidak ditemukan</td></tr>`;
+          modalLoading.classList.add("hidden");
+          modalContent.classList.remove("hidden");
+        }
+      } catch (err) {
+        console.error("View points error:", err);
+        modalTableBody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-red-500">Gagal memuat rincian titik jam</td></tr>`;
+        modalLoading.classList.add("hidden");
+        modalContent.classList.remove("hidden");
+      }
+    }
+
+    function renderPointsTable(points) {
+      const jamDescriptions = {
+        7: { label: "07:00 Pagi", ket: "Shift Pagi Mulai", color: "bg-amber-100 text-amber-800" },
+        16: { label: "16:00 Sore", ket: "Shift Pagi Selesai", color: "bg-orange-100 text-orange-800" },
+        17: { label: "17:00 Sore", ket: "Pengisian Siang", color: "bg-blue-100 text-blue-800" },
+        18: { label: "18:00 Malam", ket: "Shift Malam Mulai", color: "bg-indigo-100 text-indigo-800" },
+        22: { label: "22:00 Malam", ket: "Shift Malam Selesai", color: "bg-slate-200 text-slate-800" },
+        23: { label: "23:00 Malam", ket: "Pengisian Malam", color: "bg-purple-100 text-purple-800" },
+      };
+
+      let html = "";
+      points.forEach(pt => {
+        const desc = jamDescriptions[pt.jam] || { label: `Jam ${pt.jam}`, ket: "Pengukuran", color: "bg-slate-100 text-slate-800" };
+        const isiClass = pt.isi > 0 ? "font-bold text-emerald-700 bg-emerald-50/50" : "text-slate-400";
+
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2 px-3 border-r border-slate-100">
+              <span class="${desc.color} font-bold px-2 py-0.5 rounded text-[10px] mr-1.5">${desc.label}</span>
+              <span class="text-slate-600 font-medium">${desc.ket}</span>
+            </td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(pt.hm, 1)}</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(pt.awal, 1)} cm</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(pt.akhir, 1)} cm</td>
+            <td class="py-2 px-3 text-right ${isiClass}">${formatNum(pt.isi, 1)} Ltr</td>
+          </tr>
+        `;
+      });
+
+      modalTableBody.innerHTML = html;
+    }
+
+    function closePointsModal() {
+      pointsModal.classList.add("hidden");
+    }
+
+    // Pagination
+    function renderPagination(meta) {
+      totalRows = meta.total_rows || 0;
+      const totalPages = Math.ceil(totalRows / pageSize) || 1;
+
+      const start = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+      const end = Math.min(currentPage * pageSize, totalRows);
+
+      pageStart.textContent = start.toLocaleString("id-ID");
+      pageEnd.textContent = end.toLocaleString("id-ID");
+      totalCount.textContent = totalRows.toLocaleString("id-ID");
+
+      let html = "";
+      html += `
+        <button onclick="fetchData(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
+      `;
+
+      const maxButtons = 5;
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+      }
+
+      if (startPage > 1) {
+        html += `<button onclick="fetchData(1)" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">1</button>`;
+        if (startPage > 2) html += `<span class="px-1 text-slate-400">...</span>`;
+      }
+
+      for (let p = startPage; p <= endPage; p++) {
+        const active = p === currentPage ? "bg-blue-600 text-white border-blue-600 font-bold" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100";
+        html += `<button onclick="fetchData(${p})" class="px-2 py-0.5 rounded border ${active} text-xs transition cursor-pointer">${p}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="px-1 text-slate-400">...</span>`;
+        html += `<button onclick="fetchData(${totalPages})" class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 text-xs transition cursor-pointer">${totalPages}</button>`;
+      }
+
+      html += `
+        <button onclick="fetchData(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      `;
+
+      paginationControls.innerHTML = html;
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById("pageSize").value);
+      fetchData(1);
+    }
+
+    function applyFilter() {
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function resetFilter() {
+      filterSearch.value = "";
+      filterArea.value = "";
+      filterUnit.value = "";
+      initDateFilters();
+      fetchData(1);
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    // Sort Table Client Side
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === "asc" ? "desc" : "asc";
+      } else {
+        sortColumn = column;
+        sortDirection = "asc";
+      }
+
+      tableData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+        if (typeof valA === "string") valA = valA.toLowerCase();
+        if (typeof valB === "string") valB = valB.toLowerCase();
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      renderTable(tableData);
+    }
+
+    // Export to Excel
+    function exportToExcel() {
+      if (!tableData || tableData.length === 0) {
+        alert("Tidak ada data untuk diekspor!");
+        return;
+      }
+
+      const rows = tableData.map((r, i) => ({
+        "No": i + 1,
+        "Tanggal": r.tgl,
+        "Unit Alat": r.unit,
+        "Area": r.area || "-",
+        "HM Awal": r.hm_awal,
+        "HM Akhir": r.hm_akhir,
+        "Total Jam HM": r.total_hm,
+        "Saldo Awal": r.saldo_awal,
+        "Pemakaian (Liter)": r.pakai_liter,
+        "Pengisian (Liter)": r.isi_liter,
+        "Saldo Akhir": r.saldo_akhir,
+        "Rasio (Liter/HM)": r.total_hm > 0 ? r.ltr_per_hm : 0,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Resume_Harian_Solar");
+      XLSX.writeFile(workbook, `Resume_Harian_Solar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function formatNum(val, dec = 1) {
+      if (val === undefined || val === null || isNaN(val)) return "0";
+      return Number(val).toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+  </script>
+</body>
+</html>

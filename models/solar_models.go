@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// PemakaianSolar represents the record for daily fuel consumption per shift per unit
+// PemakaianSolar represents the record for daily fuel consumption per shift per unit (legacy table)
 type PemakaianSolar struct {
 	ID                uint       `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	Unit              string     `gorm:"column:unit;size:50;not null;uniqueIndex:idx_unit_tgl_shift,priority:1" json:"unit"`
@@ -28,14 +28,31 @@ func (PemakaianSolar) TableName() string {
 	return "pemakaian_solar"
 }
 
-// PemakaianSolarFilter holds request filter parameters
+// PemakaianSolarFilter holds request filter parameters for Pemakaian Solar (now reads dt_solar_his)
 type PemakaianSolarFilter struct {
 	TglAwal  string `form:"tglAwal"`
 	TglAkhir string `form:"tglAkhir"`
 	Unit     string `form:"unit"`
-	Shift    string `form:"shift"`
+	Note     string `form:"note"`
 	Page     int    `form:"page,default=1"`
 	Limit    int    `form:"limit,default=50"`
+}
+
+// DtSolarHisItem represents a single row response from dt_solar_his for the Pemakaian Solar page
+type DtSolarHisItem struct {
+	ID             int     `json:"id"`
+	Tanggal        string  `json:"tanggal"`
+	Jam            int     `json:"jam"`
+	Unit           string  `json:"unit"`
+	HmAwal         float64 `json:"hm_awal"`
+	HmAkhir        float64 `json:"hm_akhir"`
+	TotalHm        float64 `json:"total_hm"`
+	SaldoAwal      float64 `json:"saldo_awal"`
+	Isi            float64 `json:"isi"`
+	IsiInput       float64 `json:"isi_input"`
+	SaldoAkhir     float64 `json:"saldo_akhir"`
+	Note           string  `json:"note"`
+	Created        string  `json:"created"`
 }
 
 // SolarSummary holds aggregate KPIs
@@ -43,7 +60,7 @@ type SolarSummary struct {
 	TotalRows       int64   `json:"total_rows"`
 	TotalPakaiLiter float64 `json:"total_pakai_liter"`
 	TotalIsiLiter   float64 `json:"total_isi_liter"`
-	TotalJamHm     float64 `json:"total_jam_hm"`
+	TotalJamHm      float64 `json:"total_jam_hm"`
 	AvgLiterPerHm   float64 `json:"avg_liter_per_hm"`
 }
 
@@ -59,4 +76,272 @@ type SolarSyncSnapshot struct {
 	Updated    int        `json:"updated"`
 	Total      int        `json:"total"`
 	Logs       []string   `json:"logs"`
+}
+
+// ==========================================
+// DT_SOLAR (MODUL IMPORT DATA SOLAR)
+// ==========================================
+
+// DtSolar represents a granular row in the dt_solar table (6 rows per 1 row file)
+type DtSolar struct {
+	ID      int        `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
+	Tgl     *time.Time `gorm:"column:tgl;type:date" json:"tgl"`
+	Unit    string     `gorm:"column:unit;size:25;not null;default:'0'" json:"unit"`
+	Jam     int        `gorm:"column:jam;not null;default:0" json:"jam"`
+	Hm      float64    `gorm:"column:hm;type:double;not null;default:0" json:"hm"`
+	Awal    float64    `gorm:"column:awal;type:double;not null;default:0" json:"awal"`
+	Akhir   float64    `gorm:"column:akhir;type:double;not null;default:0" json:"akhir"`
+	Isi     float64    `gorm:"column:isi;type:double;not null;default:0" json:"isi"`
+	Satuan  string     `gorm:"column:satuan;size:20;not null;default:'liter'" json:"satuan"`
+	Created *time.Time `gorm:"column:created" json:"created"`
+}
+
+func (DtSolar) TableName() string {
+	return "dt_solar"
+}
+
+type DtSolarFilter struct {
+	TglAwal  string `form:"tglAwal"`
+	TglAkhir string `form:"tglAkhir"`
+	Unit     string `form:"unit"`
+	Jam      string `form:"jam"`
+	Page     int    `form:"page,default=1"`
+	Limit    int    `form:"limit,default=50"`
+}
+
+type DtSolarSummary struct {
+	TotalRows int64   `json:"total_rows"`
+	TotalIsi  float64 `json:"total_isi"`
+	TotalHm   float64 `json:"total_hm"`
+	TotalUnit int64   `json:"total_unit"`
+}
+
+// ==========================================
+// LAPORAN SOLAR LAPORAN STRUCTS
+// ==========================================
+
+// 1. Laporan Detail Harian
+type LaporanDetailHarianFilter struct {
+	TglAwal  string `form:"tglAwal"`
+	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
+	Unit     string `form:"unit"`
+	Search   string `form:"search"`
+	Page     int    `form:"page,default=1"`
+	Limit    int    `form:"limit,default=50"`
+}
+
+type LaporanDetailHarianItem struct {
+	ID          int     `json:"id"`
+	Tgl         string  `json:"tgl"`
+	Area        string  `json:"area"`
+	Unit        string  `json:"unit"`
+	HmAwal      float64 `json:"hm_awal"`
+	HmAkhir     float64 `json:"hm_akhir"`
+	TotalHm     float64 `json:"total_hm"`
+	SaldoAwal   float64 `json:"saldo_awal"`
+	PakaiCm     float64 `json:"pakai_cm"`
+	Konsumsi    float64 `json:"konsumsi"`
+	PakaiLiter  float64 `json:"pakai_liter"`
+	IsiLiter    float64 `json:"isi_liter"`
+	SaldoAkhir  float64 `json:"saldo_akhir"`
+	LtrPerHm    float64 `json:"ltr_per_hm"`
+	NettoLiter  float64 `json:"netto_liter"`
+	Created     string  `json:"created"`
+}
+
+type LaporanDetailHarianSummary struct {
+	TotalRecords    int64   `json:"total_records"`
+	TotalHm         float64 `json:"total_hm"`
+	TotalPakaiCm    float64 `json:"total_pakai_cm"`
+	TotalPakaiLiter float64 `json:"total_pakai_liter"`
+	TotalIsiLiter   float64 `json:"total_isi_liter"`
+	AvgLtrPerHm     float64 `json:"avg_ltr_per_hm"`
+	NettoLiter      float64 `json:"netto_liter"`
+	TotalUnit       int64   `json:"total_unit"`
+}
+
+// 2. Laporan Rekap Bulanan / Periode per Unit
+type LaporanRekapUnitFilter struct {
+	TglAwal  string `form:"tglAwal"`
+	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
+	Unit     string `form:"unit"`
+	GroupBy  string `form:"groupBy,default=unit"` // "unit" or "month_unit"
+}
+
+type LaporanRekapUnitItem struct {
+	Period          string  `json:"period"`
+	Area            string  `json:"area"`
+	Unit            string  `json:"unit"`
+	HariKerja       int64   `json:"hari_kerja"`
+	MinHmAwal       float64 `json:"min_hm_awal"`
+	MaxHmAkhir      float64 `json:"max_hm_akhir"`
+	TotalHm         float64 `json:"total_hm"`
+	AvgHmPerHari    float64 `json:"avg_hm_per_hari"`
+	TotalPakaiCm    float64 `json:"total_pakai_cm"`
+	Konsumsi        float64 `json:"konsumsi"`
+	TotalPakaiLiter float64 `json:"total_pakai_liter"`
+	TotalIsiLiter   float64 `json:"total_isi_liter"`
+	NettoLiter      float64 `json:"netto_liter"`
+	AvgPakaiPerHari float64 `json:"avg_pakai_per_hari"`
+	LtrPerHm        float64 `json:"ltr_per_hm"`
+	EfisiensiStatus string  `json:"efisiensi_status"` // "Efisien", "Moderat", "Tinggi"
+}
+
+type LaporanRekapUnitSummary struct {
+	TotalUnit       int64   `json:"total_unit"`
+	TotalHariKerja  int64   `json:"total_hari_kerja"`
+	TotalHm         float64 `json:"total_hm"`
+	TotalPakaiLiter float64 `json:"total_pakai_liter"`
+	TotalIsiLiter   float64 `json:"total_isi_liter"`
+	AvgLtrPerHm     float64 `json:"avg_ltr_per_hm"`
+	NettoLiter      float64 `json:"netto_liter"`
+}
+
+// 3. Laporan Rekonsiliasi & Anomali
+type LaporanRekonsiliasiFilter struct {
+	TglAwal          string `form:"tglAwal"`
+	TglAkhir         string `form:"tglAkhir"`
+	Area             string `form:"area"`
+	Unit             string `form:"unit"`
+	KategoriAnomali  string `form:"kategoriAnomali"`
+	OnlyAnomali      bool   `form:"onlyAnomali"`
+	Page             int    `form:"page,default=1"`
+	Limit            int    `form:"limit,default=50"`
+}
+
+type LaporanRekonsiliasiItem struct {
+	ID              int     `json:"id"`
+	Tgl             string  `json:"tgl"`
+	Area            string  `json:"area"`
+	Unit            string  `json:"unit"`
+	HmAwal          float64 `json:"hm_awal"`
+	HmAkhir         float64 `json:"hm_akhir"`
+	TotalHm         float64 `json:"total_hm"`
+	PakaiCm         float64 `json:"pakai_cm"`
+	Konsumsi        float64 `json:"konsumsi"`
+	PakaiLiter      float64 `json:"pakai_liter"`
+	IsiLiter        float64 `json:"isi_liter"`
+	LtrPerHm        float64 `json:"ltr_per_hm"`
+	NettoLiter      float64 `json:"netto_liter"`
+	StatusAudit     string  `json:"status_audit"`     // "NORMAL", "PERINGATAN", "ANOMALI"
+	JenisAnomali    string  `json:"jenis_anomali"`    // Deskripsi jenis anomali
+	KeteranganAudit string  `json:"keterangan_audit"` // Penjelasan audit
+}
+
+type LaporanRekonsiliasiSummary struct {
+	TotalAuditRows         int64   `json:"total_audit_rows"`
+	TotalAnomaliRows       int64   `json:"total_anomali_rows"`
+	TotalPeringatanRows     int64   `json:"total_peringatan_rows"`
+	TotalNormalRows        int64   `json:"total_normal_rows"`
+	TotalPakaiAnomaliLiter float64 `json:"total_pakai_anomali_liter"`
+	TotalSelisihNettoLiter float64 `json:"total_selisih_netto_liter"`
+}
+
+// 4. Laporan Monitoring & Ketahanan Stok Tangki
+type LaporanMonitoringTangkiFilter struct {
+	TglAwal  string `form:"tglAwal"`
+	TglAkhir string `form:"tglAkhir"`
+	Area     string `form:"area"`
+	Tangki   string `form:"tangki"`
+	Page     int    `form:"page,default=1"`
+	Limit    int    `form:"limit,default=50"`
+}
+
+type TangkiStatusSummary struct {
+	Unit           string  `json:"unit"`
+	Area           string  `json:"area"`
+	CurrentStock   float64 `json:"current_stock"`
+	LastDate       string  `json:"last_date"`
+	AvgDailyBurn   float64 `json:"avg_daily_burn"`
+	ActiveDays     int     `json:"active_days"`
+	DaysOfSupply   float64 `json:"days_of_supply"`
+	RunOutDate     string  `json:"run_out_date"`
+	Status         string  `json:"status"`       // "AMAN", "WASPADA", "KRITIS"
+	StatusColor    string  `json:"status_color"` // "emerald", "amber", "rose"
+	UnitCount      int     `json:"unit_count"`
+	LastRefillDate string  `json:"last_refill_date"`
+	LastRefillQty  float64 `json:"last_refill_qty"`
+}
+
+type UnitIsiPakai struct {
+	Isi   float64 `json:"isi"`
+	Pakai float64 `json:"pakai"`
+}
+
+type LaporanMonitoringTangkiItem struct {
+	ID             int                     `json:"id"`
+	Tgl            string                  `json:"tgl"`
+	Unit           string                  `json:"unit"`
+	Area           string                  `json:"area"`
+	SaldoAwal      float64                 `json:"saldo_awal" gorm:"column:saldo_awal"`
+	Isi            float64                 `json:"isi" gorm:"column:isi"`
+	Pakai          float64                 `json:"pakai" gorm:"column:pakai"`
+	SaldoAkhir     float64                 `json:"saldo_akhir" gorm:"column:saldo_akhir"`
+	RincianUnit    string                  `json:"rincian_unit" gorm:"column:rincian_unit"`
+	TotalIsiUnit   float64                 `json:"total_isi_unit" gorm:"-"`
+	TotalPakaiUnit float64                 `json:"total_pakai_unit" gorm:"-"`
+	UnitsDetail    map[string]UnitIsiPakai `json:"units_detail" gorm:"-"`
+}
+
+type TangkiProjectionItem struct {
+	HariKe       int     `json:"hari_ke"`
+	Tanggal      string  `json:"tanggal"`
+	UnitTangki   string  `json:"unit_tangki"`
+	Area         string  `json:"area"`
+	SaldoAwal    float64 `json:"saldo_awal"`
+	EstimasiBurn float64 `json:"estimasi_burn"`
+	SaldoAkhir   float64 `json:"saldo_akhir"`
+	SisaHari     float64 `json:"sisa_hari"`
+	Status       string  `json:"status"`
+	StatusColor  string  `json:"status_color"`
+}
+
+// 5. Dashboard Solar
+type DashboardSolarFilter struct {
+	Area    string `form:"area"`
+	Tanggal string `form:"tanggal"`
+}
+
+type DashboardSolarUnitCard struct {
+	ID            int     `json:"id"`
+	Unit          string  `json:"unit"`
+	Area          string  `json:"area"`
+	Tangki        string  `json:"tangki"`
+	Induk         int     `json:"induk"`
+	IndukName     string  `json:"induk_name"`
+	Hm            float64 `json:"hm"`
+	SisaSolar     float64 `json:"sisa_solar"`
+	Konsumsi      float64 `json:"konsumsi"`
+	HariPakai     float64 `json:"hari_pakai"`
+	HariIsi       float64 `json:"hari_isi"`
+	AvgLiterPerHm float64 `json:"avg_liter_per_hm"`
+	AvgDailyBurn  float64 `json:"avg_daily_burn"`
+	DaysOfSupply  float64 `json:"days_of_supply"`
+	LastTgl       string  `json:"last_tgl"`
+	LastJam       int     `json:"last_jam"`
+	LastNote      string  `json:"last_note"`
+	Updated       string  `json:"updated"`
+	Status        string  `json:"status"`
+}
+
+type InputColokanRequest struct {
+	Tanggal   string  `json:"tanggal" binding:"required"`
+	Jam       int     `json:"jam" binding:"required,min=1,max=24"`
+	Unit      string  `json:"unit" binding:"required"`
+	Hm        float64 `json:"hm"`
+	CmSesudah float64 `json:"cm_sesudah"`
+}
+
+type InputIsiSolarRequest struct {
+	Tanggal   string  `json:"tanggal" binding:"required"`
+	Jam       int     `json:"jam" binding:"required,min=1,max=24"`
+	Unit      string  `json:"unit" binding:"required"`
+	Hm        float64 `json:"hm"`
+	CmAwal    float64 `json:"cm_awal"`
+	CmSebelum float64 `json:"cm_sebelum"`
+	IsiLiter  float64 `json:"isi_liter"`
+	CmAkhir   float64 `json:"cm_akhir"`
+	CmSesudah float64 `json:"cm_sesudah"`
 }

@@ -49,6 +49,8 @@ type Menu struct {
 	ID      int        `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	MmID    int        `gorm:"column:mm_id" json:"mm_id"`
 	Nama    string     `gorm:"column:nama" json:"nama"`
+	Url     string     `gorm:"column:url" json:"url"`
+	Icon    string     `gorm:"column:icon" json:"icon"`
 	Urut    string     `gorm:"column:urut" json:"urut"`
 	Aktif   int        `gorm:"column:aktif" json:"aktif"`
 	Created *time.Time `gorm:"column:created" json:"created"`
@@ -82,13 +84,27 @@ type LoginResponse struct {
 }
 
 type UserDetail struct {
-	ID        int        `json:"id"`
-	Username  string     `json:"username"`
-	Nama      string     `json:"nama"`
-	Aktif     int        `json:"aktif"`
-	GrpID     int        `json:"grp_id"`
-	GroupName string     `json:"group_name"`
-	LastLogin *time.Time `json:"last_login"`
+	ID             int            `json:"id"`
+	Username       string         `json:"username"`
+	Nama           string         `json:"nama"`
+	Aktif          int            `json:"aktif"`
+	GrpID          int            `json:"grp_id"`
+	GroupName      string         `json:"group_name"`
+	LastLogin      *time.Time     `json:"last_login"`
+	AllowedMenuIDs []int          `json:"allowed_menu_ids"`
+	Menus          []UserMenuItem `json:"menus"`
+}
+
+type UserMenuItem struct {
+	MenuID    int    `json:"menu_id"`
+	MenuNama  string `json:"menu_nama"`
+	Url       string `json:"url"`
+	Icon      string `json:"icon"`
+	MenuUrut  string `json:"menu_urut"`
+	MmID      int    `json:"mm_id"`
+	Modul     string `json:"modul"`
+	ModulNama string `json:"modul_nama"`
+	ModulUrut string `json:"modul_urut"`
 }
 
 type ChangePasswordRequest struct {

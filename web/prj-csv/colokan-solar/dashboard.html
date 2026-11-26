@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Solar - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=22" defer></script>
+  <script src="/web/components/sidebar.js?v=22" defer></script>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    /* Excavator SVG styling */
+    .excavator-icon {
+      transition: transform 0.2s ease-in-out;
+    }
+    .unit-card:hover .excavator-icon {
+      transform: scale(1.06);
+    }
+    /* Blinking animation for critical tank stock (<= 3 hari) */
+    @keyframes blinkStock {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.2;
+        transform: scale(0.97);
+      }
+    }
+    .blink-stock-alert {
+      animation: blinkStock 0.85s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN DASHBOARD) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Dashboard Solar"></app-sidebar>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-1 p-2 sm:p-3 overflow-y-auto bg-slate-50 custom-scrollbar flex flex-col">
+
+      <!-- TOP BAR: Header Title & Filter Area (Sesuai Layout Dashboard CSV) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-2xs">
+        <div>
+          <div class="flex items-center space-x-2">
+            <div class="w-6 h-6 rounded-md bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+              <i class="fa-solid fa-gauge-high text-[11px]"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-gray-800 tracking-tight leading-none">Dashboard Solar</h2>
+            <span class="bg-blue-100 text-blue-700 text-[9px] font-semibold px-2 py-0.2 rounded-full">Project CSV</span>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-[9px] text-slate-400"></i>
+            <span>Monitoring Stok & Input Colokan / Pengisian Unit Solar</span>
+            <span class="text-slate-300">•</span>
+            <span>Update: <span id="lastUpdateText" class="font-semibold text-slate-700">-</span></span>
+          </div>
+        </div>
+
+        <!-- Right Side: Filter Tanggal, Filter Area, Search & Refresh -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <!-- Filter Tanggal (Background abu-abu sesuai request) -->
+          <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-300 rounded-lg px-2 py-0.5 shadow-2xs">
+            <i class="fa-regular fa-calendar-days text-slate-700 text-[11px]"></i>
+            <span class="text-[11px] font-semibold text-slate-700">Tanggal:</span>
+            <input type="date" id="filterTanggal" onchange="onDateChange(this.value)"
+              class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer" />
+          </div>
+
+          <!-- Quick Search Unit -->
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-2 top-1.5 text-slate-400 text-[10px]"></i>
+            <input type="text" id="searchUnitInput" oninput="renderCards()" placeholder="Cari unit..."
+              class="pl-6 pr-2 py-0.5 text-xs border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-28 sm:w-36 transition" />
+          </div>
+
+          <!-- Filter Area Dropdown (Kanan Atas) -->
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-lg px-2 py-0.5 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-[11px]"></i>
+            <span class="text-[11px] font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="onAreaChange(this.value)" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+              <option value="ALL">Semua Area</option>
+              <option value="Cicangkal">Cicangkal</option>
+              <option value="Pion">Pion</option>
+            </select>
+          </div>
+
+          <!-- Refresh Button -->
+          <button onclick="loadDashboardUnits()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[10px]"></i>
+            <span class="hidden sm:inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- COMPACT KPI STATS CARDS (RINGKASAN TOTAL) -->
+      <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+        <!-- Total Unit -->
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Unit Terdata</div>
+            <div class="text-base font-bold text-slate-800 mt-0.5"><span id="statTotalUnit">0</span> <span class="text-[10px] font-normal text-slate-500">Unit</span></div>
+          </div>
+          <div class="w-7 h-7 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-truck-monster"></i>
+          </div>
+        </div>
+
+        <!-- Total Sisa Solar -->
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Total Sisa Solar</div>
+            <div class="text-base font-bold text-amber-600 mt-0.5"><span id="statTotalSisaSolar">0</span> <span class="text-[10px] font-normal text-slate-500">Liter</span></div>
+          </div>
+          <div class="w-7 h-7 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-gas-pump"></i>
+          </div>
+        </div>
+
+        <!-- Unit Alat Berat -->
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Unit Alat Berat</div>
+            <div class="text-base font-bold text-emerald-600 mt-0.5"><span id="statUnitOperasi">0</span> <span class="text-[10px] font-normal text-slate-500">Unit</span></div>
+          </div>
+          <div class="w-7 h-7 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-helmet-safety"></i>
+          </div>
+        </div>
+
+        <!-- Tangki Induk -->
+        <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-2xs flex items-center justify-between">
+          <div>
+            <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tangki Induk</div>
+            <div class="text-base font-bold text-indigo-600 mt-0.5"><span id="statTotalTangki">0</span> <span class="text-[10px] font-normal text-slate-500">Tangki</span></div>
+          </div>
+          <div class="w-7 h-7 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-oil-well"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN SECTION: GRID OF UNIT CARDS -->
+      <div class="flex-1">
+        <!-- Loading State -->
+        <div id="loadingContainer" class="hidden flex flex-col items-center justify-center py-16 text-slate-400">
+          <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500 mb-2"></i>
+          <span class="text-xs font-semibold">Memuat data unit solar...</span>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyContainer" class="hidden flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+          <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-2"></i>
+          <span class="text-sm font-semibold text-slate-600">Tidak ada unit ditemukan</span>
+          <span class="text-xs text-slate-400 mt-0.5">Coba sesuaikan filter area atau kata kunci pencarian.</span>
+        </div>
+
+        <!-- Grid Container -->
+        <div id="unitsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: INPUT COLOKAN SOLAR                -->
+  <!-- ========================================== -->
+  <div id="modalColokan" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-blue-600 px-4 py-3 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded bg-blue-500 flex items-center justify-center text-white">
+            <i class="fa-solid fa-ruler-vertical text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold leading-tight">Input Colokan Solar</h3>
+            <span id="colokanUnitBadge" class="text-[11px] text-blue-100 font-mono">-</span>
+          </div>
+        </div>
+        <button onclick="closeModalColokan()" class="text-blue-200 hover:text-white transition cursor-pointer text-lg leading-none">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="formColokan" onsubmit="handleColokanSubmit(event)" class="p-4 space-y-3">
+        <input type="hidden" id="colokan_unit" />
+        <input type="hidden" id="colokan_current_hm" />
+        <input type="hidden" id="colokan_last_jam" />
+        <input type="hidden" id="colokan_last_date" />
+        <input type="hidden" id="colokan_sisa_solar" />
+        <input type="hidden" id="colokan_konsumsi" />
+        <input type="hidden" id="colokan_sisa_cm" />
+
+        <!-- Info Unit Saat Ini -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-lg p-2.5 text-[11px] text-slate-700 flex justify-between items-center">
+          <div>
+            <div class="text-[10px] text-blue-600 font-bold uppercase">Data Master / Posisi Terakhir</div>
+            <div class="font-medium mt-0.5">
+              HM: <span id="colokan_info_hm" class="font-bold font-mono text-slate-900">-</span> |
+              Sisa Solar: <span id="colokan_info_solar" class="font-bold text-slate-900">-</span>
+            </div>
+          </div>
+          <div class="text-right text-[10px] text-slate-500">
+            <div>Terakhir Jam: <span id="colokan_info_last_jam" class="font-semibold text-slate-800">-</span></div>
+            <div id="colokan_info_last_date">-</div>
+          </div>
+        </div>
+
+        <!-- Input Tanggal & Jam -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Tanggal <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="colokan_tanggal" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Jam <span class="text-rose-500">*</span>
+            </label>
+            <select id="colokan_jam" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+              <!-- Options 01:00 - 24:00 generated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Input HM Baru -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-[11px] font-semibold text-slate-700">
+              Hour Meter (HM) <span class="text-rose-500">*</span>
+            </label>
+            <span class="text-[10px] text-slate-500">Minimal: <span id="colokan_min_hm_label" class="font-bold text-blue-700 font-mono">0</span></span>
+          </div>
+          <input type="number" step="0.001" id="colokan_hm" required onchange="checkColokanPemakaian()"
+            class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <p class="text-[9.5px] text-slate-400 mt-0.5">Format decimal 3 angka di belakang koma (contoh: 19491.200).</p>
+        </div>
+
+        <!-- Input Colokan Solar Sesudah (cm) -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+            Colokan Solar (cm) <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <input type="number" step="0.1" id="colokan_cm_sesudah" required placeholder="0.0" onchange="checkColokanPemakaian()"
+              class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2.5 pr-10 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <span class="absolute right-2.5 top-1.5 text-xs font-semibold text-slate-400">cm</span>
+          </div>
+          <p class="text-[9.5px] text-slate-400 mt-0.5">Tinggi colokan solar terukur di tangki unit saat ini.</p>
+        </div>
+
+        <!-- Alert Error Message Box -->
+        <div id="colokanAlertBox" class="hidden rounded-lg p-2.5 text-[11px] bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>
+          <div id="colokanAlertMsg"></div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          <button type="button" onclick="closeModalColokan()"
+            class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-slate-200">
+            Batal
+          </button>
+          <button type="submit" id="btnSubmitColokan"
+            class="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-[11px]"></i>
+            <span>Simpan Colokan</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: INPUT ISI SOLAR                    -->
+  <!-- ========================================== -->
+  <div id="modalIsiSolar" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-emerald-600 px-4 py-3 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded bg-emerald-500 flex items-center justify-center text-white">
+            <i class="fa-solid fa-gas-pump text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold leading-tight">Input Pengisian Solar</h3>
+            <span id="isiUnitBadge" class="text-[11px] text-emerald-100 font-mono">-</span>
+          </div>
+        </div>
+        <button onclick="closeModalIsiSolar()" class="text-emerald-200 hover:text-white transition cursor-pointer text-lg leading-none">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="formIsiSolar" onsubmit="handleIsiSolarSubmit(event)" class="p-4 space-y-3">
+        <input type="hidden" id="isi_unit" />
+        <input type="hidden" id="isi_current_hm" />
+        <input type="hidden" id="isi_last_jam" />
+        <input type="hidden" id="isi_last_date" />
+        <input type="hidden" id="isi_induk" />
+        <input type="hidden" id="isi_sisa_solar" />
+        <input type="hidden" id="isi_konsumsi" />
+        <input type="hidden" id="isi_sisa_cm" />
+
+        <!-- Info Unit & Tangki Sumber -->
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-lg p-2.5 text-[11px] text-slate-700 flex justify-between items-center">
+          <div>
+            <div class="text-[10px] text-emerald-700 font-bold uppercase flex items-center gap-1">
+              <span>Sumber Solar:</span>
+              <span id="isi_info_induk" class="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 rounded font-mono font-bold">-</span>
+            </div>
+            <div class="font-medium mt-0.5">
+              HM: <span id="isi_info_hm" class="font-bold font-mono text-slate-900">-</span> |
+              Sisa Solar: <span id="isi_info_solar" class="font-bold text-slate-900">-</span>
+            </div>
+          </div>
+          <div class="text-right text-[10px] text-slate-500">
+            <div>Terakhir Jam: <span id="isi_info_last_jam" class="font-semibold text-slate-800">-</span></div>
+            <div id="isi_info_last_date">-</div>
+          </div>
+        </div>
+
+        <!-- Input Tanggal & Jam -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Tanggal <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="isi_tanggal" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Jam <span class="text-rose-500">*</span>
+            </label>
+            <select id="isi_jam" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+              <!-- Options 01:00 - 24:00 generated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Input HM Baru -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-[11px] font-semibold text-slate-700">
+              Hour Meter (HM) <span class="text-rose-500">*</span>
+            </label>
+            <span class="text-[10px] text-slate-500">Minimal: <span id="isi_min_hm_label" class="font-bold text-emerald-700 font-mono">0</span></span>
+          </div>
+          <input type="number" step="0.001" id="isi_hm" required onchange="checkIsiPemakaian()"
+            class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+        </div>
+
+        <!-- Grid 3 Kolom: Colokan Awal, Isi Liter, Colokan Akhir -->
+        <div class="grid grid-cols-3 gap-2">
+          <!-- Colokan Awal (cm_sebelum) -->
+          <div>
+            <label class="block text-[10.5px] font-semibold text-slate-700 mb-1">
+              Colokan Awal <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" step="0.1" id="isi_cm_sebelum" required placeholder="0.0" oninput="updateIsiCalcHint()" onchange="checkIsiPemakaian(); updateIsiCalcHint();"
+                class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">cm</span>
+            </div>
+          </div>
+
+          <!-- Isi (Liter) -->
+          <div>
+            <label class="block text-[10.5px] font-semibold text-slate-700 mb-1">
+              Isi (Liter) <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" step="0.1" id="isi_liter" required placeholder="0" oninput="updateIsiCalcHint()"
+                class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-700" />
+              <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">L</span>
+            </div>
+          </div>
+
+          <!-- Colokan Akhir (cm_sesudah) -->
+          <div>
+            <label class="block text-[10.5px] font-semibold text-slate-700 mb-1">
+              Colokan Akhir <span class="text-rose-500">*</span>
+            </label>
+            <div class="relative">
+              <input type="number" step="0.1" id="isi_cm_sesudah" required placeholder="0.0" oninput="updateIsiCalcHint()"
+                class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+              <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">cm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live hint perbandingan colokan vs isi liter -->
+        <div id="isi_calc_hint" class="hidden"></div>
+
+        <p class="text-[9.5px] text-slate-400">
+          <i class="fa-solid fa-circle-info text-emerald-600 mr-0.5"></i>
+          Pengisian solar otomatis memotong stok tangki induk terkait.
+        </p>
+
+        <!-- Alert Error Message Box -->
+        <div id="isiAlertBox" class="hidden rounded-lg p-2.5 text-[11px] bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>
+          <div id="isiAlertMsg"></div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          <button type="button" onclick="closeModalIsiSolar()"
+            class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-slate-200">
+            Batal
+          </button>
+          <button type="submit" id="btnSubmitIsi"
+            class="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-[11px]"></i>
+            <span>Simpan Pengisian</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: INPUT ISI SOLAR KHUSUS TANGKI       -->
+  <!-- ========================================== -->
+  <div id="modalIsiSolarTangki" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-emerald-600 px-4 py-3 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded bg-emerald-500 flex items-center justify-center text-white">
+            <i class="fa-solid fa-gas-pump text-xs"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold leading-tight">Pengisian Solar Tangki</h3>
+            <span id="isiTangkiUnitBadge" class="text-[11px] text-emerald-100 font-mono">-</span>
+          </div>
+        </div>
+        <button onclick="closeModalIsiSolarTangki()" class="text-emerald-200 hover:text-white transition cursor-pointer text-lg leading-none">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="formIsiSolarTangki" onsubmit="handleIsiSolarTangkiSubmit(event)" class="p-4 space-y-3">
+        <input type="hidden" id="isi_tangki_unit" />
+        <input type="hidden" id="isi_tangki_last_jam" />
+        <input type="hidden" id="isi_tangki_last_date" />
+
+        <!-- Info Stok Tangki -->
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-lg p-2.5 text-[11px] text-slate-700 flex justify-between items-center">
+          <div>
+            <div class="text-[10px] text-emerald-700 font-bold uppercase flex items-center gap-1">
+              <span>Stok Terkini:</span>
+              <span id="isi_tangki_info_solar" class="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 rounded font-mono font-bold">-</span>
+            </div>
+            <div class="font-medium mt-0.5 text-[10px] text-slate-600">
+              Area: <span id="isi_tangki_info_area" class="font-semibold text-slate-800">-</span>
+            </div>
+          </div>
+          <div class="text-right text-[10px] text-slate-500">
+            <div>Terakhir Jam: <span id="isi_tangki_info_last_jam" class="font-semibold text-slate-800">-</span></div>
+            <div id="isi_tangki_info_last_date">-</div>
+          </div>
+        </div>
+
+        <!-- Input Tanggal & Jam -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Tanggal <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="isi_tangki_tanggal" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+              Jam <span class="text-rose-500">*</span>
+            </label>
+            <select id="isi_tangki_jam" required
+              class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
+              <!-- Options 01:00 - 24:00 generated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Input Isi (Liter) -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+            Isi (Liter) <span class="text-rose-500">*</span>
+          </label>
+          <div class="relative">
+            <input type="number" step="0.1" min="0.1" id="isi_tangki_liter" required placeholder="Contoh: 5000"
+              class="w-full text-sm font-mono font-bold border border-slate-300 rounded-lg pl-3 pr-8 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 text-emerald-700" />
+            <span class="absolute right-2.5 top-2 text-xs font-semibold text-slate-400">L</span>
+          </div>
+        </div>
+
+        <p id="isi_tangki_note" class="text-[10px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-200">
+          <i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i>
+          <span>Pengisian solar khusus tangki.</span>
+        </p>
+
+        <!-- Alert Error Message Box -->
+        <div id="isiTangkiAlertBox" class="hidden rounded-lg p-2.5 text-[11px] bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5"></i>
+          <div id="isiTangkiAlertMsg"></div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          <button type="button" onclick="closeModalIsiSolarTangki()"
+            class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer border border-slate-200">
+            Batal
+          </button>
+          <button type="submit" id="btnSubmitIsiTangki"
+            class="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-[11px]"></i>
+            <span>Simpan Pengisian</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State Data
+    let allUnitsData = [];
+    let selectedArea = 'ALL';
+    let selectedDate = '';
+
+    // Excavator SVG Generator:
+    // - Standby: Selalu abu-abu monokrom (icon abu-abu, frame abu-abu), tidak ada alert merah.
+    // - Aktif: Frame icon selalu HIJAU (bg-emerald-100 border-emerald-300).
+    //   - Jika belum input hari ini: Icon excavator merah (peringatan belum update).
+    //   - Jika sudah input hari ini: Icon excavator hitam pekat.
+    function getExcavatorSVG(isActive, isNotToday) {
+      if (!isActive) {
+        // Mode Standby: Abu-abu monokrom
+        const mainColor = '#94a3b8';
+        const secondaryColor = '#cbd5e1';
+        const trackColor = '#64748b';
+        const wheelColor = '#e2e8f0';
+        const armColor = '#94a3b8';
+        const bucketColor = '#64748b';
+        const windowColor = '#e2e8f0';
+        const bgClass = 'bg-slate-100 border-slate-200 text-slate-400';
+
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Standby">
+            <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Tracks Base -->
+              <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+              <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+              <!-- Rotating Cabin Platform -->
+              <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+              <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+              <!-- Window -->
+              <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+              <!-- Counterweight -->
+              <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+              <!-- Boom (Main Arm) -->
+              <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+              <!-- Hydraulic Cylinder -->
+              <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+              <!-- Arm (Stick) -->
+              <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+              <!-- Bucket Joint & Bucket -->
+              <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+              <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Unit Aktif: Background frame icon HIJAU
+      const bgClass = 'bg-emerald-100 border-emerald-300 text-emerald-800';
+
+      if (isNotToday) {
+        // Aktif & belum input hari ini: Icon excavator merah (peringatan) di dalam frame hijau
+        const mainColor = '#dc2626'; // Red-600
+        const secondaryColor = '#ef4444'; // Red-500
+        const trackColor = '#7f1d1d'; // Red-900
+        const wheelColor = '#fecaca'; // Rose-200
+        const armColor = '#dc2626';
+        const bucketColor = '#991b1b'; // Red-800
+        const windowColor = '#fee2e2'; // Rose-100
+
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Aktif - Belum ada input hari ini!">
+            <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Tracks Base -->
+              <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+              <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+              <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+              <!-- Rotating Cabin Platform -->
+              <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+              <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+              <!-- Window -->
+              <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+              <!-- Counterweight -->
+              <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+              <!-- Boom (Main Arm) -->
+              <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+              <!-- Hydraulic Cylinder -->
+              <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+              <!-- Arm (Stick) -->
+              <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+              <!-- Bucket Joint & Bucket -->
+              <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+              <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+            </svg>
+          </div>
+        `;
+      }
+
+      // Aktif & sudah input hari ini: Icon excavator hitam di dalam frame hijau
+      const mainColor = '#0f172a';
+      const secondaryColor = '#334155';
+      const trackColor = '#1e293b';
+      const wheelColor = '#475569';
+      const armColor = '#0f172a';
+      const bucketColor = '#020617';
+      const windowColor = '#94a3b8';
+
+      return `
+        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center shrink-0 shadow-2xs" title="Unit Aktif">
+          <svg class="w-7 h-7 excavator-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Tracks Base -->
+            <rect x="6" y="44" width="38" height="12" rx="6" fill="${trackColor}"/>
+            <circle cx="12" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="20" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="28" cy="50" r="2.5" fill="${wheelColor}"/>
+            <circle cx="36" cy="50" r="2.5" fill="${wheelColor}"/>
+            <!-- Rotating Cabin Platform -->
+            <rect x="10" y="32" width="28" height="12" rx="2" fill="${mainColor}"/>
+            <rect x="12" y="24" width="16" height="12" rx="2" fill="${secondaryColor}"/>
+            <!-- Window -->
+            <rect x="14" y="26" width="10" height="7" rx="1" fill="${windowColor}"/>
+            <!-- Counterweight -->
+            <rect x="28" y="28" width="8" height="8" rx="1" fill="${mainColor}"/>
+            <!-- Boom (Main Arm) -->
+            <path d="M 28 32 L 44 14" stroke="${armColor}" stroke-width="4.5" stroke-linecap="round"/>
+            <!-- Hydraulic Cylinder -->
+            <path d="M 32 34 L 40 22" stroke="${wheelColor}" stroke-width="2"/>
+            <!-- Arm (Stick) -->
+            <path d="M 44 14 L 54 28" stroke="${armColor}" stroke-width="4" stroke-linecap="round"/>
+            <!-- Bucket Joint & Bucket -->
+            <circle cx="54" cy="28" r="2.5" fill="${wheelColor}"/>
+            <path d="M 54 28 L 60 35 L 54 40 L 48 34 Z" fill="${bucketColor}"/>
+          </svg>
+        </div>
+      `;
+    }
+
+    // Tank Icon Generator (Frame Kuning)
+    function getTankSVG(isNotToday) {
+      const bgClass = 'bg-amber-100 border-amber-300';
+      if (isNotToday) {
+        return `
+          <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center text-rose-600 shadow-2xs shrink-0" title="Perhatian: Belum ada input hari ini!">
+            <i class="fa-solid fa-oil-well text-base"></i>
+          </div>
+        `;
+      }
+      return `
+        <div class="w-9 h-9 rounded-md ${bgClass} border flex items-center justify-center text-amber-700 shadow-2xs shrink-0">
+          <i class="fa-solid fa-oil-well text-base"></i>
+        </div>
+      `;
+    }
+
+    // Format "Input Terakhir": 31 Dec 2026 23:59
+    function formatLastInputDateTime(tglStr, jamInt) {
+      if (!tglStr) return '-';
+      const clean = tglStr.substring(0, 10);
+      const parts = clean.split('-');
+      if (parts.length !== 3) return tglStr;
+      const year = parts[0];
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const dayStr = String(day).padStart(2, '0');
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = months[monthIdx] || parts[1];
+
+      let timeStr = '00:00';
+      if (jamInt !== null && jamInt !== undefined && jamInt > 0) {
+        timeStr = `${String(jamInt).padStart(2, '0')}:00`;
+      }
+
+      return `${dayStr} ${monthName} ${year} ${timeStr}`;
+    }
+
+    // Initialize Hours Dropdown (01:00 - 24:00)
+    function populateHourOptions(selectId) {
+      const el = document.getElementById(selectId);
+      if (!el) return;
+      el.innerHTML = '';
+      for (let i = 1; i <= 24; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        const padHour = String(i).padStart(2, '0');
+        opt.textContent = `${padHour}:00 (Jam ${i})`;
+        el.appendChild(opt);
+      }
+    }
+
+    // Format Helpers
+    function getTodayDateStr() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getYesterdayDateStr() {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return '0';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatHM(num) {
+      if (num === null || num === undefined || isNaN(num)) return '0.000';
+      return Number(num).toLocaleString('id-ID', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3
+      });
+    }
+
+    // Area Filter Change
+    function onAreaChange(area) {
+      selectedArea = area;
+      loadDashboardUnits();
+    }
+
+    // Date Filter Change
+    function onDateChange(date) {
+      selectedDate = date;
+      loadDashboardUnits();
+    }
+
+    // Load Data from API
+    async function loadDashboardUnits() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      const loading = document.getElementById('loadingContainer');
+      const empty = document.getElementById('emptyContainer');
+      const grid = document.getElementById('unitsGrid');
+
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+      if (loading) loading.classList.remove('hidden');
+      if (empty) empty.classList.add('hidden');
+      if (grid) grid.innerHTML = '';
+
+      try {
+        let url = `/api/v1/solar/dashboard/units?area=${encodeURIComponent(selectedArea || 'ALL')}`;
+        if (selectedDate) {
+          url += `&tanggal=${encodeURIComponent(selectedDate)}`;
+        }
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if ((json.code === 200 || json.status === 'success') && Array.isArray(json.data)) {
+          allUnitsData = json.data;
+          updateTopStats(allUnitsData);
+          renderCards();
+          document.getElementById('lastUpdateText').textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } else {
+          showToast(json.message || 'Gagal memuat data unit', 'error');
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard solar units:', err);
+        showToast('Terjadi kesalahan jaringan saat mengambil data', 'error');
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+        if (loading) loading.classList.add('hidden');
+      }
+    }
+
+    // Update Top Summary Stats
+    function updateTopStats(units) {
+      let totalUnits = units.length;
+      let totalSisa = 0;
+      let totalUnitAlat = 0;
+      let totalTangki = 0;
+
+      units.forEach(u => {
+        totalSisa += (u.sisa_solar || 0);
+        if ((u.tangki || '').toUpperCase() === 'YES') {
+          totalTangki++;
+        } else {
+          totalUnitAlat++;
+        }
+      });
+
+      document.getElementById('statTotalUnit').textContent = totalUnits;
+      document.getElementById('statTotalSisaSolar').textContent = formatNumber(totalSisa, 0);
+      document.getElementById('statUnitOperasi').textContent = totalUnitAlat;
+      document.getElementById('statTotalTangki').textContent = totalTangki;
+    }
+
+    // Render Cards
+    function renderCards() {
+      const grid = document.getElementById('unitsGrid');
+      const empty = document.getElementById('emptyContainer');
+      const searchKeyword = (document.getElementById('searchUnitInput')?.value || '').trim().toLowerCase();
+
+      let filtered = allUnitsData.filter(u => {
+        // Area filter: Jika Cicangkal, tampilkan juga yang induknya TANGKI-CCK (termasuk Tangki Pion)
+        if (selectedArea && selectedArea !== 'ALL') {
+          if (selectedArea.toLowerCase() === 'cicangkal') {
+            const isCicangkalArea = (u.area || '').toLowerCase() === 'cicangkal';
+            const isIndukCck = (u.induk_name || '').toLowerCase() === 'tangki-cck';
+            if (!isCicangkalArea && !isIndukCck) return false;
+          } else {
+            if ((u.area || '').toLowerCase() !== selectedArea.toLowerCase()) {
+              return false;
+            }
+          }
+        }
+        // Search filter
+        if (searchKeyword) {
+          const matchUnit = (u.unit || '').toLowerCase().includes(searchKeyword);
+          const matchArea = (u.area || '').toLowerCase().includes(searchKeyword);
+          const matchInduk = (u.induk_name || '').toLowerCase().includes(searchKeyword);
+          if (!matchUnit && !matchArea && !matchInduk) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        if (grid) grid.innerHTML = '';
+        return;
+      } else {
+        if (empty) empty.classList.add('hidden');
+      }
+
+      // Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+      filtered.sort((a, b) => {
+        const getRank = (u) => {
+          if ((u.tangki || '').toUpperCase() === 'YES') return 1; // Tangki Induk di posisi atas
+          if ((u.status || '').toUpperCase() === 'STANDBY') return 3; // Standby di urutan bawah
+          return 2; // Aktif / Beroperasi
+        };
+        const rankA = getRank(a);
+        const rankB = getRank(b);
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      const todayStr = getTodayDateStr();
+      const targetDate = selectedDate || todayStr;
+
+      let html = '';
+      filtered.forEach((u, idx) => {
+        const isTangki = (u.tangki || '').toUpperCase() === 'YES';
+        const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
+        const isCriticalStock = isTangki && (u.days_of_supply !== undefined && u.days_of_supply !== null && u.days_of_supply <= 3);
+        const cardNum = `#${idx + 1}`;
+        const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
+
+        // Validasi input terakhir bukan hari ini (icon jadi merah jika bukan hari ini)
+        const cleanLastTgl = (u.last_tgl || '').substring(0, 10);
+        const isNotToday = (cleanLastTgl !== targetDate);
+
+        // Fuel visual indicator
+        const sisaLtr = u.sisa_solar || 0;
+        const sisaCm = (u.konsumsi && u.konsumsi > 0) ? (sisaLtr / u.konsumsi) : 0;
+        let fuelColor = 'text-emerald-600';
+        if (!isActive && !isTangki) {
+          fuelColor = 'text-slate-700 font-bold'; // Unit standby: sisa liter hitam/abu2
+        } else if (sisaLtr < 100) {
+          fuelColor = 'text-rose-600';
+        } else if (sisaLtr < 250) {
+          fuelColor = 'text-amber-600';
+        }
+
+        // Status badge
+        let statusBadge = '';
+        if (isTangki) {
+          statusBadge = '<span class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs">TANGKI</span>';
+        } else if (isActive) {
+          statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.2 rounded">AKTIF</span>';
+        } else {
+          statusBadge = '<span class="bg-slate-100 text-slate-500 text-[9px] font-semibold px-1.5 py-0.2 rounded">STANDBY</span>';
+        }
+
+        // Styling Input Terakhir:
+        // - Unit Standby: Selalu abu-abu monokrom (background, teks, icon tanda seru abu-abu)
+        // - Unit Aktif / Tangki: Jika belum input hari ini (isNotToday), beri warna merah peringatan
+        let lastInputBoxClass = 'bg-slate-50/70 border border-slate-100 text-slate-500';
+        let lastInputIconClass = 'fa-clock text-slate-400 text-[9px]';
+        let lastInputLabelClass = 'text-slate-400';
+        let lastInputTimeClass = 'text-slate-700';
+
+        if (!isActive && !isTangki) {
+          lastInputBoxClass = 'bg-slate-50 border border-slate-200 text-slate-500';
+          lastInputIconClass = isNotToday ? 'fa-triangle-exclamation text-slate-400 text-[10px]' : 'fa-clock text-slate-400 text-[9px]';
+          lastInputLabelClass = 'text-slate-400';
+          lastInputTimeClass = 'text-slate-600';
+        } else if (isNotToday) {
+          lastInputBoxClass = 'bg-rose-50/80 border border-rose-200 text-rose-700';
+          lastInputIconClass = 'fa-triangle-exclamation text-rose-500 text-[10px]';
+          lastInputLabelClass = 'text-rose-600 font-bold';
+          lastInputTimeClass = 'text-rose-700';
+        }
+
+        html += `
+          <div class="unit-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
+            
+            <!-- Card Header: Unit Name, Numbering & Badges -->
+            <div>
+              <div class="flex items-center justify-between pb-1 border-b border-slate-100 gap-1.5">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="text-[9.5px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded">${cardNum}</span>
+                  <h3 class="text-xs sm:text-[13px] font-black text-slate-800 tracking-tight truncate uppercase" title="${u.unit}">
+                    ${u.unit}
+                  </h3>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  ${statusBadge}
+                  <span class="text-[9.5px] font-bold px-1.5 py-0.2 rounded ${areaColor}">${u.area || '-'}</span>
+                </div>
+              </div>
+
+              <!-- Sub-header: Avg Konsumsi / AVG Tangki & Ketahanan Stok -->
+              <div class="flex items-center justify-between pt-1 pb-1">
+                ${isTangki ? `
+                  <div class="flex items-center gap-1 text-[10px] text-slate-700">
+                    <span class="text-slate-500 font-medium text-[9.5px]">AVG:</span>
+                    <span class="font-bold text-slate-800 font-mono">${formatNumber(u.avg_daily_burn, 1)}</span>
+                    <span class="text-[8.5px] text-slate-400">L/Hari</span>
+                  </div>
+                  <div class="text-[9.5px] font-bold ${isCriticalStock ? 'text-rose-600 font-black' : 'text-slate-500'}">
+                    <span>Ketahanan: </span>
+                    <span class="font-mono ${isCriticalStock ? 'text-rose-700 font-black blink-stock-alert' : 'text-amber-800'}">${u.days_of_supply > 0 ? formatNumber(u.days_of_supply, 1) : '0'} Hari</span>
+                  </div>
+                ` : `
+                  <div class="flex items-center gap-1 text-[10px] text-slate-700">
+                    <span class="text-slate-500 font-medium text-[9.5px]">Avg Konsumsi:</span>
+                    <span class="font-bold text-slate-800 font-mono">${formatNumber(u.avg_liter_per_hm, 2)}</span>
+                    <span class="text-[8.5px] text-slate-400">L/HM</span>
+                  </div>
+                  <div class="text-[9.5px] text-slate-400 font-mono">
+                    ${u.konsumsi > 0 ? `${formatNumber(u.konsumsi, 2)} L/cm` : ''}
+                  </div>
+                `}
+              </div>
+
+              <!-- Main Content: Icon + Core Metrics -->
+              ${isTangki ? `
+                <!-- Khusus Card Tangki: Sisa Solar + Ketahanan Stok (Kedip jika <= 3 Hari) -->
+                <div class="flex items-center gap-2 rounded-lg p-2 border mb-1.5 transition ${isCriticalStock ? 'bg-rose-50/90 border-rose-300 shadow-rose-100 shadow-sm' : 'bg-amber-50/70 border-amber-200/80'}">
+                  ${getTankSVG(isNotToday)}
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[9px] font-bold uppercase tracking-wider ${isCriticalStock ? 'text-rose-700' : 'text-amber-700'}">Sisa Stok Solar:</span>
+                      ${isCriticalStock ? `
+                        <span class="bg-rose-100 text-rose-700 border border-rose-300 font-black px-1.5 py-0.2 rounded text-[8.5px] tracking-wide blink-stock-alert">
+                          <i class="fa-solid fa-triangle-exclamation mr-0.5"></i>KRITIS
+                        </span>
+                      ` : ''}
+                    </div>
+                    <div class="flex items-baseline justify-between mt-0.5">
+                      <div class="flex items-baseline gap-1 ${isCriticalStock ? 'blink-stock-alert' : ''}">
+                        <span class="text-sm sm:text-base font-black ${isCriticalStock ? 'text-rose-600' : 'text-amber-900'}">${formatNumber(sisaLtr, 2)}</span>
+                        <span class="text-xs font-bold ${isCriticalStock ? 'text-rose-600' : 'text-amber-700'}">Liter</span>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-[8.5px] text-slate-400 font-medium">Ketahanan:</div>
+                        <div class="text-[11px] font-black font-mono ${isCriticalStock ? 'text-rose-700 blink-stock-alert' : 'text-slate-800'}">
+                          ${u.days_of_supply > 0 ? formatNumber(u.days_of_supply, 1) : '0'} <span class="text-[9px] font-semibold text-slate-500">Hari</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <!-- Unit Alat Berat: Icon Beko (Merah jika belum input hari ini; Hitam jika aktif, Abu-abu jika standby) + HM + Sisa Solar -->
+                <div class="flex items-center gap-2 ${isActive ? 'bg-emerald-50/40 border-emerald-200/70' : 'bg-slate-50 border-slate-200/70'} rounded-lg p-1.5 border mb-1.5">
+                  ${getExcavatorSVG(isActive, isNotToday)}
+                  <div class="flex-1 min-w-0 space-y-0.5">
+                    <div class="flex items-baseline justify-between">
+                      <span class="text-[9px] font-semibold text-slate-500 uppercase">Hour Meter:</span>
+                      <span class="text-xs font-black font-mono text-slate-800">${formatHM(u.hm)}</span>
+                    </div>
+                    <div class="flex items-baseline justify-between">
+                      <span class="text-[9px] font-semibold text-slate-500 uppercase">Sisa Solar:</span>
+                      <div class="text-right">
+                        <span class="text-xs font-black ${fuelColor}">${formatNumber(sisaLtr, 1)} L</span>
+                        ${sisaCm > 0 ? `<span class="text-[9px] font-semibold text-slate-400">(${formatNumber(sisaCm, 1)} cm)</span>` : ''}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `}
+
+              <!-- Refill & Pakai on selected date (Jika ada) -->
+              ${(u.hari_isi > 0 || u.hari_pakai > 0) ? `
+                <div class="grid grid-cols-2 gap-1 text-[9px] text-slate-600 mb-1.5 bg-amber-50/60 border border-amber-200/60 px-1.5 py-0.5 rounded">
+                  <div class="flex justify-between items-center pr-1 border-r border-amber-200/50">
+                    <span class="text-slate-500">Refill:</span>
+                    <span class="font-bold text-emerald-700">+${formatNumber(u.hari_isi, 1)} L</span>
+                  </div>
+                  <div class="flex justify-between items-center pl-1">
+                    <span class="text-slate-500">Pakai:</span>
+                    <span class="font-bold text-rose-700">-${formatNumber(u.hari_pakai, 1)} L</span>
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- Secondary Details: Terakhir Input (Format: 31 Dec 2026 23:59) -->
+              <div class="flex justify-between items-center text-[9.5px] mb-1.5 px-1.5 py-0.5 rounded transition ${lastInputBoxClass}">
+                <span class="flex items-center gap-1 ${lastInputLabelClass}">
+                  <i class="fa-solid ${lastInputIconClass}"></i>
+                  <span>Input Terakhir:</span>
+                </span>
+                <span class="font-bold font-mono ${lastInputTimeClass}">
+                  ${formatLastInputDateTime(u.last_tgl, u.last_jam)}
+                </span>
+              </div>
+            </div>
+
+            <!-- Footer: 2 Action Buttons (Colokan & IsiSolar) -->
+            <div class="pt-1.5 border-t border-slate-100">
+              ${isTangki ? `
+                <button onclick="openModalIsiSolarTangki('${escapeQuotes(u.unit)}')"
+                  class="w-full text-center py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1 cursor-pointer">
+                  <i class="fa-solid fa-gas-pump text-[10.5px]"></i>
+                  <span>IsiSolar</span>
+                </button>
+              ` : `
+                <div class="grid grid-cols-2 gap-1.5">
+                  <!-- Button Colokan -->
+                  <button onclick="openModalColokan('${escapeQuotes(u.unit)}')"
+                    class="py-1 px-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-ruler-vertical text-[9.5px]"></i>
+                    <span>Colokan</span>
+                  </button>
+
+                  <!-- Button IsiSolar -->
+                  <button onclick="openModalIsiSolar('${escapeQuotes(u.unit)}')"
+                    class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center justify-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-gas-pump text-[9.5px]"></i>
+                    <span>IsiSolar</span>
+                  </button>
+                </div>
+              `}
+            </div>
+
+          </div>
+        `;
+      });
+
+      grid.innerHTML = html;
+    }
+
+    function escapeQuotes(str) {
+      return (str || '').replace(/'/g, "\\'");
+    }
+
+    // ==========================================
+    // MODAL COLOKAN LOGIC
+    // ==========================================
+    function openModalColokan(unitName) {
+      const u = allUnitsData.find(item => item.unit === unitName);
+      if (!u) return;
+
+      const sisaLtr = u.sisa_solar || 0;
+      const sisaCm = (u.konsumsi && u.konsumsi > 0) ? (sisaLtr / u.konsumsi) : 0;
+
+      document.getElementById('colokan_unit').value = u.unit;
+      document.getElementById('colokanUnitBadge').textContent = `${u.unit} (${u.area || '-'})`;
+      document.getElementById('colokan_current_hm').value = u.hm || 0;
+      document.getElementById('colokan_last_jam').value = u.last_jam || 0;
+      document.getElementById('colokan_last_date').value = u.last_tgl || '';
+      document.getElementById('colokan_sisa_solar').value = sisaLtr;
+      document.getElementById('colokan_konsumsi').value = u.konsumsi || 0;
+      document.getElementById('colokan_sisa_cm').value = sisaCm;
+
+      document.getElementById('colokan_info_hm').textContent = formatHM(u.hm);
+      document.getElementById('colokan_info_solar').textContent = `${formatNumber(sisaLtr, 1)} L (${formatNumber(sisaCm, 1)} cm)`;
+      document.getElementById('colokan_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
+      document.getElementById('colokan_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
+
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('colokan_tanggal').value = getYesterdayDateStr();
+      document.getElementById('colokan_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
+      document.getElementById('colokan_min_hm_label').textContent = formatHM(u.hm);
+      document.getElementById('colokan_cm_sesudah').value = Number(sisaCm || 0).toFixed(1);
+
+      // Set Jam default to current hour (1-24) or next hour
+      const currentHour = new Date().getHours() || 1;
+      const jamSelect = document.getElementById('colokan_jam');
+      jamSelect.value = currentHour;
+
+      // Hide error alert
+      hideColokanAlert();
+
+      // Show Modal
+      document.getElementById('modalColokan').classList.remove('hidden');
+    }
+
+    function closeModalColokan() {
+      document.getElementById('modalColokan').classList.add('hidden');
+      hideColokanAlert();
+    }
+
+    function showColokanAlert(msg) {
+      const box = document.getElementById('colokanAlertBox');
+      const text = document.getElementById('colokanAlertMsg');
+      text.innerHTML = msg;
+      box.classList.remove('hidden');
+    }
+
+    function hideColokanAlert() {
+      document.getElementById('colokanAlertBox').classList.add('hidden');
+    }
+
+    function checkColokanPemakaian() {
+      const cmSesudah = parseFloat(document.getElementById('colokan_cm_sesudah').value);
+      const hm = parseFloat(document.getElementById('colokan_hm').value);
+      const currentHm = parseFloat(document.getElementById('colokan_current_hm').value || '0');
+      const sisaCm = parseFloat(document.getElementById('colokan_sisa_cm').value || '0');
+
+      if (!isNaN(cmSesudah) && !isNaN(hm) && sisaCm > 0) {
+        if (cmSesudah < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+          alert("Indikasi pemakaian unit, cek HM!");
+          showColokanAlert("Indikasi pemakaian unit, cek HM!");
+          return false;
+        } else {
+          hideColokanAlert();
+        }
+      }
+      return true;
+    }
+
+    async function handleColokanSubmit(e) {
+      e.preventDefault();
+      hideColokanAlert();
+
+      const unit = document.getElementById('colokan_unit').value;
+      const tanggal = document.getElementById('colokan_tanggal').value;
+      const jam = parseInt(document.getElementById('colokan_jam').value, 10);
+      const hm = parseFloat(document.getElementById('colokan_hm').value);
+      const cmSesudah = parseFloat(document.getElementById('colokan_cm_sesudah').value);
+
+      const currentHm = parseFloat(document.getElementById('colokan_current_hm').value || '0');
+      const lastJam = parseInt(document.getElementById('colokan_last_jam').value || '0', 10);
+      const lastDate = document.getElementById('colokan_last_date').value;
+
+      // Client Validations
+      if (isNaN(hm) || isNaN(cmSesudah)) {
+        showColokanAlert('Semua nilai angka (HM dan Colokan cm) wajib diisi.');
+        return;
+      }
+
+      // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
+      if (hm < currentHm) {
+        showColokanAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showColokanAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        return;
+      }
+
+      // Validasi Colokan Solar (cm) tidak boleh lebih besar dari Sisa Solar sebelumnya
+      const sisaCm = parseFloat(document.getElementById('colokan_sisa_cm').value || '0');
+      if (cmSesudah > (sisaCm + 0.05)) {
+        alert("Colokan Solar lebih besar dari saldo sebelumnya!");
+        showColokanAlert("Colokan Solar lebih besar dari saldo sebelumnya!");
+        return;
+      }
+
+      // Validasi: jika colokan berkurang (pemakaian), HM harus lebih besar dari HM sebelumnya
+      if (cmSesudah < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+        alert("Indikasi pemakaian unit, cek HM!");
+        showColokanAlert("Indikasi pemakaian unit, cek HM!");
+        return;
+      }
+
+      // Validasi 2: Jam cek ke dt_solar_his pengisian terakhir pada tanggal yang sama
+      if (lastDate && tanggal === lastDate && jam <= lastJam) {
+        showColokanAlert(`Jam tidak boleh lebih kecil atau sama dengan pengisian terakhir pada tanggal ini (Pengisian data terakhir jam ${lastJam}:00).`);
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitColokan');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Menyimpan...`;
+
+      try {
+        const payload = {
+          tanggal: tanggal,
+          jam: jam,
+          unit: unit,
+          hm: hm,
+          cm_sesudah: cmSesudah
+        };
+
+        const res = await fetch('/api/v1/solar/dashboard/input-colokan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (json.code === 200) {
+          showToast(`Colokan solar untuk unit ${unit} berhasil disimpan!`, 'success');
+          closeModalColokan();
+          await loadDashboardUnits();
+        } else {
+          showColokanAlert(json.message || 'Gagal menyimpan colokan solar.');
+        }
+      } catch (err) {
+        console.error('Error submitting colokan:', err);
+        showColokanAlert('Terjadi kesalahan jaringan saat mengirim data.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    // ==========================================
+    // MODAL ISI SOLAR LOGIC
+    // ==========================================
+    function openModalIsiSolar(unitName) {
+      const u = allUnitsData.find(item => item.unit === unitName);
+      if (!u) return;
+
+      const sisaLtr = u.sisa_solar || 0;
+      const sisaCm = (u.konsumsi && u.konsumsi > 0) ? (sisaLtr / u.konsumsi) : 0;
+
+      document.getElementById('isi_unit').value = u.unit;
+      document.getElementById('isiUnitBadge').textContent = `${u.unit} (${u.area || '-'})`;
+      document.getElementById('isi_current_hm').value = u.hm || 0;
+      document.getElementById('isi_last_jam').value = u.last_jam || 0;
+      document.getElementById('isi_last_date').value = u.last_tgl || '';
+      document.getElementById('isi_induk').value = u.induk_name || u.induk || '';
+      document.getElementById('isi_sisa_solar').value = sisaLtr;
+      document.getElementById('isi_konsumsi').value = u.konsumsi || 0;
+      document.getElementById('isi_sisa_cm').value = sisaCm;
+
+      document.getElementById('isi_info_induk').textContent = u.induk_name || (u.induk ? `ID ${u.induk}` : 'Supplier Luar');
+      document.getElementById('isi_info_hm').textContent = formatHM(u.hm);
+      document.getElementById('isi_info_solar').textContent = `${formatNumber(sisaLtr, 1)} L (${formatNumber(sisaCm, 1)} cm)`;
+      document.getElementById('isi_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
+      document.getElementById('isi_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
+
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tanggal').value = getYesterdayDateStr();
+      document.getElementById('isi_hm').value = (u.hm !== undefined && u.hm !== null) ? Number(u.hm).toFixed(3) : '0.000';
+      document.getElementById('isi_min_hm_label').textContent = formatHM(u.hm);
+      document.getElementById('isi_cm_sebelum').value = sisaCm > 0 ? Number(sisaCm).toFixed(1) : '';
+      document.getElementById('isi_liter').value = '';
+      document.getElementById('isi_cm_sesudah').value = '';
+
+      const currentHour = new Date().getHours() || 1;
+      const jamSelect = document.getElementById('isi_jam');
+      jamSelect.value = currentHour;
+
+      hideIsiAlert();
+      updateIsiCalcHint();
+      document.getElementById('modalIsiSolar').classList.remove('hidden');
+    }
+
+    function closeModalIsiSolar() {
+      document.getElementById('modalIsiSolar').classList.add('hidden');
+      hideIsiAlert();
+      const hintEl = document.getElementById('isi_calc_hint');
+      if (hintEl) hintEl.classList.add('hidden');
+    }
+
+    function showIsiAlert(msg) {
+      const box = document.getElementById('isiAlertBox');
+      const text = document.getElementById('isiAlertMsg');
+      text.innerHTML = msg;
+      box.classList.remove('hidden');
+    }
+
+    function hideIsiAlert() {
+      document.getElementById('isiAlertBox').classList.add('hidden');
+    }
+
+    function checkIsiPemakaian() {
+      const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
+      const hm = parseFloat(document.getElementById('isi_hm').value);
+      const currentHm = parseFloat(document.getElementById('isi_current_hm').value || '0');
+      const sisaCm = parseFloat(document.getElementById('isi_sisa_cm').value || '0');
+
+      if (!isNaN(cmSebelum) && !isNaN(hm) && sisaCm > 0) {
+        if (cmSebelum < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+          alert("Indikasi pemakaian unit, cek HM!");
+          showIsiAlert("Indikasi pemakaian unit, cek HM!");
+          return false;
+        } else {
+          hideIsiAlert();
+        }
+      }
+      return true;
+    }
+
+    function updateIsiCalcHint() {
+      const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
+      const cmSesudah = parseFloat(document.getElementById('isi_cm_sesudah').value);
+      const isiLiter = parseFloat(document.getElementById('isi_liter').value);
+      const konsumsi = parseFloat(document.getElementById('isi_konsumsi').value || '0');
+      const hintEl = document.getElementById('isi_calc_hint');
+      if (!hintEl) return;
+
+      if (!isNaN(cmSebelum) && !isNaN(cmSesudah) && !isNaN(isiLiter) && konsumsi > 0) {
+        const deltaCm = cmSesudah - cmSebelum;
+        const literColokan = deltaCm * konsumsi;
+        const selisih = Math.abs(literColokan - isiLiter);
+        hintEl.classList.remove('hidden');
+        if (cmSesudah <= cmSebelum || (selisih - 3) > 0.001) {
+          hintEl.className = 'text-[10px] text-rose-700 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5 flex items-center justify-between font-medium';
+          hintEl.innerHTML = `<span><i class="fa-solid fa-triangle-exclamation mr-1"></i>Colokan: <b>${formatNumber(literColokan, 1)} L</b> (${formatNumber(deltaCm, 1)} cm) vs Isi: <b>${formatNumber(isiLiter, 1)} L</b></span> <span class="font-bold text-rose-600">Selisih: ${formatNumber(selisih, 1)} L (&gt; 3 L)</span>`;
+        } else {
+          hintEl.className = 'text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2.5 py-1.5 flex items-center justify-between font-medium';
+          hintEl.innerHTML = `<span><i class="fa-solid fa-circle-check mr-1"></i>Colokan: <b>${formatNumber(literColokan, 1)} L</b> (${formatNumber(deltaCm, 1)} cm) vs Isi: <b>${formatNumber(isiLiter, 1)} L</b></span> <span class="font-bold text-emerald-600">Selisih: ${formatNumber(selisih, 1)} L (OK)</span>`;
+        }
+      } else {
+        hintEl.classList.add('hidden');
+      }
+    }
+
+    async function handleIsiSolarSubmit(e) {
+      e.preventDefault();
+      hideIsiAlert();
+
+      const unit = document.getElementById('isi_unit').value;
+      const tanggal = document.getElementById('isi_tanggal').value;
+      const jam = parseInt(document.getElementById('isi_jam').value, 10);
+      const hm = parseFloat(document.getElementById('isi_hm').value);
+      const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
+      const isiLiter = parseFloat(document.getElementById('isi_liter').value);
+      const cmSesudah = parseFloat(document.getElementById('isi_cm_sesudah').value);
+
+      const currentHm = parseFloat(document.getElementById('isi_current_hm').value || '0');
+      const lastJam = parseInt(document.getElementById('isi_last_jam').value || '0', 10);
+      const lastDate = document.getElementById('isi_last_date').value;
+
+      // Client Validations
+      if (isNaN(hm) || isNaN(cmSebelum) || isNaN(isiLiter) || isNaN(cmSesudah)) {
+        showIsiAlert('Semua nilai angka (HM, Colokan Awal, Isi Liter, Colokan Akhir) wajib diisi.');
+        return;
+      }
+
+      if (isiLiter <= 0) {
+        showIsiAlert('Jumlah isi solar (liter) harus lebih besar dari 0.');
+        return;
+      }
+
+      // Validasi 1: HM ga boleh diinput lebih kecil dari dt_solar_unit.hm
+      if (hm < currentHm) {
+        showIsiAlert(`HM tidak boleh lebih kecil dari HM terakhir unit (${formatHM(currentHm)}).`);
+        return;
+      }
+
+      // Validasi 1b: HM tidak normal jika selisihnya > 2x (lebih besar dari 2 * HM sebelumnya)
+      if (currentHm > 0 && hm > (2 * currentHm)) {
+        alert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        showIsiAlert("HM tidak normal, yang diinput lebih besar dari HM sebelumnya!");
+        return;
+      }
+
+      // Validasi Colokan Awal (cm) tidak boleh lebih besar dari Sisa Solar sebelumnya di dt_solar_unit
+      const sisaCm = parseFloat(document.getElementById('isi_sisa_cm').value || '0');
+      if (cmSebelum > (sisaCm + 0.05)) {
+        alert("Colokan Awal lebih besar dari saldo sebelumnya!");
+        showIsiAlert("Colokan Awal lebih besar dari saldo sebelumnya!");
+        return;
+      }
+
+      // Validasi: jika colokan awal berkurang (pemakaian), HM harus lebih besar dari HM sebelumnya
+      if (cmSebelum < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+        alert("Indikasi pemakaian unit, cek HM!");
+        showIsiAlert("Indikasi pemakaian unit, cek HM!");
+        return;
+      }
+
+      // Validasi selisih antara Colokan (Akhir - Awal) dalam Liter dengan Isi (Liter)
+      const konsumsi = parseFloat(document.getElementById('isi_konsumsi').value || '0');
+      if (konsumsi > 0) {
+        const literColokan = (cmSesudah - cmSebelum) * konsumsi;
+        const selisihLiter = Math.abs(literColokan - isiLiter);
+        if (cmSesudah <= cmSebelum || (selisihLiter - 3) > 0.001) {
+          alert("Cek kembali Isi Solar atau Colokan awal dan akhir");
+          showIsiAlert("Cek kembali Isi Solar atau Colokan awal dan akhir");
+          return;
+        }
+      }
+
+      // Validasi 2: Jam cek ke dt_solar_his pengisian terakhir pada tanggal yang sama
+      if (lastDate && tanggal === lastDate && jam <= lastJam) {
+        showIsiAlert(`Jam tidak boleh lebih kecil atau sama dengan pengisian terakhir pada tanggal ini (Pengisian data terakhir jam ${lastJam}:00).`);
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitIsi');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Menyimpan...`;
+
+      try {
+        const payload = {
+          tanggal: tanggal,
+          jam: jam,
+          unit: unit,
+          hm: hm,
+          cm_awal: cmSebelum,
+          cm_sebelum: cmSebelum,
+          isi_liter: isiLiter,
+          cm_akhir: cmSesudah,
+          cm_sesudah: cmSesudah
+        };
+
+        const res = await fetch('/api/v1/solar/dashboard/input-isi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (json.code === 200) {
+          showToast(`Pengisian solar untuk unit ${unit} sebanyak ${formatNumber(isiLiter, 1)} L berhasil disimpan!`, 'success');
+          closeModalIsiSolar();
+          await loadDashboardUnits();
+        } else {
+          showIsiAlert(json.message || 'Gagal menyimpan pengisian solar.');
+        }
+      } catch (err) {
+        console.error('Error submitting isi solar:', err);
+        showIsiAlert('Terjadi kesalahan jaringan saat mengirim data.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    // ==========================================
+    // MODAL ISI SOLAR TANGKI LOGIC
+    // ==========================================
+    function openModalIsiSolarTangki(unitName) {
+      const u = allUnitsData.find(item => item.unit === unitName);
+      if (!u) return;
+
+      const sisaLtr = u.sisa_solar || 0;
+
+      document.getElementById('isi_tangki_unit').value = u.unit;
+      document.getElementById('isiTangkiUnitBadge').textContent = `${u.unit} (${u.area || '-'})`;
+      document.getElementById('isi_tangki_last_jam').value = u.last_jam || 0;
+      document.getElementById('isi_tangki_last_date').value = u.last_tgl || '';
+
+      document.getElementById('isi_tangki_info_solar').textContent = `${formatNumber(sisaLtr, 1)} L`;
+      document.getElementById('isi_tangki_info_area').textContent = u.area || '-';
+      document.getElementById('isi_tangki_info_last_jam').textContent = u.last_jam ? `Jam ${u.last_jam}` : '-';
+      document.getElementById('isi_tangki_info_last_date').textContent = u.last_tgl ? u.last_tgl : 'Belum ada data';
+
+      // Tangki specific note
+      const noteEl = document.getElementById('isi_tangki_note');
+      if (noteEl) {
+        if (u.unit === 'TANGKI-CCK') {
+          noteEl.innerHTML = `<i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i><span>Pengisian ke <b>TANGKI-CCK</b> akan menambah stok tangki induk Cicangkal.</span>`;
+        } else if (u.unit === 'TANGKI-PION') {
+          noteEl.innerHTML = `<i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i><span>Pengisian ke <b>TANGKI-PION</b> akan menambah stok Pion dan memotong stok induk <b>TANGKI-CCK</b>.</span>`;
+        } else {
+          noteEl.innerHTML = `<i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i><span>Pengisian solar khusus tangki.</span>`;
+        }
+      }
+
+      // Prefill Inputs (default hari kemarin)
+      document.getElementById('isi_tangki_tanggal').value = getYesterdayDateStr();
+      document.getElementById('isi_tangki_liter').value = '';
+
+      const currentHour = new Date().getHours() || 1;
+      const jamSelect = document.getElementById('isi_tangki_jam');
+      jamSelect.value = currentHour;
+
+      hideIsiTangkiAlert();
+      document.getElementById('modalIsiSolarTangki').classList.remove('hidden');
+    }
+
+    function closeModalIsiSolarTangki() {
+      document.getElementById('modalIsiSolarTangki').classList.add('hidden');
+      hideIsiTangkiAlert();
+    }
+
+    function showIsiTangkiAlert(msg) {
+      const box = document.getElementById('isiTangkiAlertBox');
+      const text = document.getElementById('isiTangkiAlertMsg');
+      text.textContent = msg;
+      box.classList.remove('hidden');
+    }
+
+    function hideIsiTangkiAlert() {
+      document.getElementById('isiTangkiAlertBox').classList.add('hidden');
+    }
+
+    async function handleIsiSolarTangkiSubmit(e) {
+      e.preventDefault();
+      hideIsiTangkiAlert();
+
+      const unit = document.getElementById('isi_tangki_unit').value;
+      const tanggal = document.getElementById('isi_tangki_tanggal').value;
+      const jam = parseInt(document.getElementById('isi_tangki_jam').value, 10);
+      const isiLiter = parseFloat(document.getElementById('isi_tangki_liter').value);
+
+      if (!tanggal) {
+        showIsiTangkiAlert('Tanggal pengisian wajib diisi.');
+        return;
+      }
+      if (!jam || jam < 1 || jam > 24) {
+        showIsiTangkiAlert('Jam pengisian tidak valid (harus 01:00 - 24:00).');
+        return;
+      }
+      if (isNaN(isiLiter) || isiLiter <= 0) {
+        showIsiTangkiAlert('Isi (Liter) wajib diisi angka lebih besar dari 0.');
+        return;
+      }
+
+      // Client-side last input validation
+      const lastJam = parseInt(document.getElementById('isi_tangki_last_jam').value, 10) || 0;
+      const lastDate = document.getElementById('isi_tangki_last_date').value;
+      if (lastDate && lastDate === tanggal && lastJam > 0 && jam <= lastJam) {
+        const padLast = String(lastJam).padStart(2, '0');
+        showIsiTangkiAlert(`Pengisian data terakhir pada tanggal ${tanggal} adalah jam ${padLast}:00. Jam input harus lebih besar.`);
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitIsiTangki');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Menyimpan...</span>`;
+
+      try {
+        const payload = {
+          tanggal: tanggal,
+          jam: jam,
+          unit: unit,
+          isi_liter: isiLiter,
+          hm: 0,
+          cm_awal: 0,
+          cm_sebelum: 0,
+          cm_akhir: 0,
+          cm_sesudah: 0
+        };
+
+        const res = await fetch('/api/v1/solar/dashboard/input-isi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (json.code === 200) {
+          showToast(`Pengisian solar untuk ${unit} sebanyak ${formatNumber(isiLiter, 1)} L berhasil disimpan!`, 'success');
+          closeModalIsiSolarTangki();
+          await loadDashboardUnits();
+        } else {
+          showIsiTangkiAlert(json.message || 'Gagal menyimpan pengisian solar tangki.');
+        }
+      } catch (err) {
+        console.error('Submit Isi Solar Tangki Error:', err);
+        showIsiTangkiAlert('Terjadi kesalahan jaringan atau server.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    // ==========================================
+    // TOAST NOTIFICATION HELPER
+    // ==========================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `px-4 py-2.5 rounded-lg shadow-lg text-xs font-semibold text-white flex items-center gap-2 transform transition-all duration-300 pointer-events-auto ${
+        type === 'success' ? 'bg-emerald-600' :
+        type === 'error' ? 'bg-rose-600' :
+        type === 'warning' ? 'bg-amber-600' : 'bg-blue-600'
+      }`;
+
+      const icon = type === 'success' ? 'fa-check' :
+                   type === 'error' ? 'fa-circle-xmark' :
+                   type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info';
+
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Close modal on Escape key press
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        const mColokan = document.getElementById('modalColokan');
+        const mIsi = document.getElementById('modalIsiSolar');
+        const mTangki = document.getElementById('modalIsiSolarTangki');
+
+        if (mColokan && !mColokan.classList.contains('hidden')) {
+          closeModalColokan();
+        } else if (mIsi && !mIsi.classList.contains('hidden')) {
+          closeModalIsiSolar();
+        } else if (mTangki && !mTangki.classList.contains('hidden')) {
+          closeModalIsiSolarTangki();
+        }
+      }
+    });
+
+    // Page Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      populateHourOptions('colokan_jam');
+      populateHourOptions('isi_jam');
+      populateHourOptions('isi_tangki_jam');
+
+      const todayStr = getTodayDateStr();
+      const filterTgl = document.getElementById('filterTanggal');
+      if (filterTgl) {
+        filterTgl.value = todayStr;
+        selectedDate = todayStr;
+      }
+
+      loadDashboardUnits();
+    });
+  </script>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"asm/models"
@@ -6,7 +6,8 @@ import (
 )
 
 type OperationService interface {
-	GetOperationSummary() (*models.OperationSummary, error)
+	GetOperationSummary(siteId string) (*models.OperationSummary, error)
+	GetSites() ([]models.Site, error)
 }
 
 type operationService struct {
@@ -17,7 +18,10 @@ func NewOperationService(repo repository.OperationRepository) OperationService {
 	return &operationService{repo: repo}
 }
 
-func (s *operationService) GetOperationSummary() (*models.OperationSummary, error) {
-	return s.repo.GetOperationSummary()
+func (s *operationService) GetOperationSummary(siteId string) (*models.OperationSummary, error) {
+	return s.repo.GetOperationSummary(siteId)
 }
 
+func (s *operationService) GetSites() ([]models.Site, error) {
+	return s.repo.GetSites()
+}

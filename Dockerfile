@@ -3,7 +3,7 @@
 # ==========================================
 
 # 1. Builder Stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -36,6 +36,10 @@ COPY --from=builder /app/asm /app/asm
 
 # Copy static web assets
 COPY web/ /app/web/
+
+# Buat direktori data untuk session SQLite WhatsApp dan pasang Volume persisten
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
 
 # Set environment defaults
 ENV PORT=8080 \

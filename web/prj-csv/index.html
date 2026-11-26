@@ -1,6 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard (CSV) - ASM Workshop</title>
@@ -14,8 +17,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Modul Komponen Header & Sidebar -->
-  <script src="/web/components/header.js?v=8" defer></script>
-  <script src="/web/components/sidebar.js?v=8" defer></script>
+  <script src="/web/components/header.js?v=21" defer></script>
+  <script src="/web/components/sidebar.js?v=21" defer></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
 
@@ -223,56 +226,10 @@
 
       </div>
 
-      <!-- 2. BAGIAN BAWAH: 6 TABS NAVIGASI -->
+      <!-- 2. BAGIAN KEDUA: CARD JENIS UNIT (CDD, Tronton, Trailer, City Car, dll) -->
       <div class="bg-white border border-slate-300 rounded-xl p-1.5 shadow-xs mb-3">
-        <div class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
-          <!-- Tab Button 1: Perbaikan -->
-          <button onclick="switchTab('Perbaikan')" id="tabBtn_Perbaikan" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer bg-blue-600 text-white shadow-xs">
-            <i class="fa-solid fa-wrench"></i>
-            <span>Perbaikan</span>
-            <span id="tabBadge_Perbaikan" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
-          
-          <!-- Tab Button 2: Asuransi -->
-          <button onclick="switchTab('Asuransi')" id="tabBtn_Asuransi" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
-            <i class="fa-solid fa-shield-halved"></i>
-            <span>Asuransi</span>
-            <span id="tabBadge_Asuransi" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
-          
-          <!-- Tab Button 3: Storing -->
-          <button onclick="switchTab('Storing')" id="tabBtn_Storing" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
-            <i class="fa-solid fa-truck-pickup"></i>
-            <span>Storing</span>
-            <span id="tabBadge_Storing" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
-          
-          <!-- Tab Button 4: Standby -->
-          <button onclick="switchTab('Standby')" id="tabBtn_Standby" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
-            <i class="fa-solid fa-truck-front"></i>
-            <span>Standby</span>
-            <span id="tabBadge_Standby" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
-          
-          <!-- Tab Button 5: Bongkar Muat -->
-          <button onclick="switchTab('BongkarMuat')" id="tabBtn_BongkarMuat" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
-            <i class="fa-solid fa-dolly"></i>
-            <span>Bongkar Muat</span>
-            <span id="tabBadge_BongkarMuat" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
-          
-          <!-- Tab Button 6: Tunggu DO -->
-          <button onclick="switchTab('TungguDO')" id="tabBtn_TungguDO" 
-                  class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-            <span>Tunggu DO</span>
-            <span id="tabBadge_TungguDO" class="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
-          </button>
+        <div id="unitTypeContainer" class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold py-0.5">
+          <!-- Rendered dynamically by JavaScript -->
         </div>
       </div>
 
@@ -296,7 +253,137 @@
     };
 
     let activeTabKey = 'Perbaikan';
+    let activeUnitType = 'ALL';
     let currentCategoryData = {};
+
+    function getUnitType(item) {
+      if (item.tipe && typeof item.tipe === 'string' && item.tipe.trim().length > 0) {
+        return item.tipe.trim();
+      }
+      if (item.nopol) {
+        const m = item.nopol.match(/\[(.*?)\]/);
+        if (m && m[1] && m[1].trim().length > 0) {
+          return m[1].trim();
+        }
+      }
+      return 'Lainnya';
+    }
+
+    function getUnitTypeIcon(type) {
+      const t = (type || '').toLowerCase();
+      if (t.includes('cdd')) return 'fa-solid fa-truck';
+      if (t.includes('cde') || t.includes('engkel')) return 'fa-solid fa-truck-pickup';
+      if (t.includes('tronton')) return 'fa-solid fa-truck-front';
+      if (t.includes('trailer')) return 'fa-solid fa-trailer';
+      if (t.includes('wingbox') || t.includes('wing')) return 'fa-solid fa-truck-fast';
+      if (t.includes('city car') || t.includes('car') || t.includes('mobil')) return 'fa-solid fa-car';
+      if (t === 'all' || t === 'semua' || t.includes('semua')) return 'fa-solid fa-layer-group';
+      return 'fa-solid fa-truck-moving';
+    }
+
+    function isItemSelesai(item) {
+      if (!item) return false;
+      // Jika exitdate terisi dan bukan 'Belum Keluar'
+      if (item.exitdate && typeof item.exitdate === 'string' && item.exitdate.trim().length > 0 && item.exitdate.trim().toLowerCase() !== 'belum keluar') {
+        return true;
+      }
+      // Jika note atau notelate mengandung kata 'selesai'
+      const note = (item.note || '').toLowerCase();
+      const notelate = (item.notelate || '').toLowerCase();
+      if (note.includes('selesai') || notelate.includes('selesai')) {
+        return true;
+      }
+      return false;
+    }
+
+    function renderUnitTypeCards(key) {
+      const purpose = TAB_PURPOSE_MAP[key];
+      const items = currentCategoryData[purpose] || [];
+      const container = document.getElementById('unitTypeContainer');
+      if (!container) return;
+
+      // Filter hanya data yang statusnya BUKAN "Selesai" agar jumlahnya sama persis dengan card atas
+      const nonSelesaiItems = items.filter(item => !isItemSelesai(item));
+
+      const typeCounts = {};
+      nonSelesaiItems.forEach(item => {
+        const t = getUnitType(item);
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+      });
+
+      if (activeUnitType !== 'ALL' && !typeCounts[activeUnitType]) {
+        activeUnitType = 'ALL';
+      }
+
+      const totalCount = nonSelesaiItems.length;
+      if (totalCount === 0) {
+        container.innerHTML = `
+          <button onclick="filterByUnitType('ALL')" 
+                  class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 transition cursor-pointer shrink-0 bg-blue-600 text-white shadow-xs">
+            <i class="${getUnitTypeIcon('all')} text-xs"></i>
+            <span>Semua Unit</span>
+            <span class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center">0</span>
+          </button>
+        `;
+        return;
+      }
+
+      const sortedTypes = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a] || a.localeCompare(b));
+
+      let html = '';
+
+      // Tombol Semua Unit
+      const isAllActive = activeUnitType === 'ALL';
+      const allClass = isAllActive 
+        ? 'bg-blue-600 text-white shadow-xs' 
+        : 'text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200/80';
+      const allBadgeClass = isAllActive 
+        ? 'bg-white/20 text-white' 
+        : 'bg-slate-200 text-slate-700';
+
+      html += `
+        <button onclick="filterByUnitType('ALL')" 
+                class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 transition cursor-pointer shrink-0 ${allClass}">
+          <i class="${getUnitTypeIcon('all')} text-xs"></i>
+          <span>Semua Unit</span>
+          <span class="${allBadgeClass} text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center">${totalCount}</span>
+        </button>
+      `;
+
+      // Tombol per Jenis Unit
+      sortedTypes.forEach(t => {
+        const count = typeCounts[t];
+        const isActive = activeUnitType === t;
+        const btnClass = isActive 
+          ? 'bg-blue-600 text-white shadow-xs' 
+          : 'text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200/80';
+        const badgeClass = isActive 
+          ? 'bg-white/20 text-white' 
+          : 'bg-slate-200 text-slate-700';
+        const icon = getUnitTypeIcon(t);
+
+        html += `
+          <button onclick="filterByUnitType('${t.replace(/'/g, "\\'")}')" 
+                  class="px-3.5 py-1.5 rounded-lg flex items-center gap-2 transition cursor-pointer shrink-0 ${btnClass}">
+            <i class="${icon} text-xs"></i>
+            <span>${t}</span>
+            <span class="${badgeClass} text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center">${count}</span>
+          </button>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function filterByUnitType(type) {
+      if (activeUnitType === type && type !== 'ALL') {
+        activeUnitType = 'ALL';
+      } else {
+        activeUnitType = type;
+      }
+      renderUnitTypeCards(activeTabKey);
+      renderTabContent(activeTabKey);
+    }
 
     // Load filter area options from backend
     async function loadAreaOptions() {
@@ -390,7 +477,8 @@
             updateLastUpdateDisplay();
           }
 
-          // Render active tab table
+          // Render unit types cards and active tab table
+          renderUnitTypeCards(activeTabKey);
           renderTabContent(activeTabKey);
         }
       } catch (err) {
@@ -405,38 +493,26 @@
 
     function switchTab(activeKey) {
       activeTabKey = activeKey;
-      TAB_KEYS.forEach(key => {
-        const btn = document.getElementById(`tabBtn_${key}`);
-        const badge = document.getElementById(`tabBadge_${key}`);
-        const kpiCard = document.getElementById(`kpiCard_${key}`);
+      activeUnitType = 'ALL'; // Reset filter jenis unit saat kategori diubah
 
+      TAB_KEYS.forEach(key => {
+        const kpiCard = document.getElementById(`kpiCard_${key}`);
         if (key === activeKey) {
-          if (btn) {
-            btn.className = 'tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer bg-blue-600 text-white shadow-xs';
-          }
-          if (badge) {
-            badge.className = 'bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold';
-          }
           if (kpiCard) {
             kpiCard.classList.add('ring-2', 'ring-blue-500', 'border-blue-500');
           }
         } else {
-          if (btn) {
-            btn.className = 'tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100';
-          }
-          if (badge) {
-            badge.className = 'bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold';
-          }
           if (kpiCard) {
             kpiCard.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500');
           }
         }
       });
 
+      renderUnitTypeCards(activeKey);
       renderTabContent(activeKey);
     }
 
-    function getCardTheme(item) {
+    function getCardTheme(item, purpose) {
       const note = (item.note || '').toLowerCase();
       const notelate = (item.notelate || '').toLowerCase();
       
@@ -446,32 +522,93 @@
       if (note.includes('onprogress') || notelate.includes('onprogress')) {
         return { bg: 'bg-emerald-500 text-white', label: 'text-emerald-600' };
       }
+      
+      // Khusus Antrian:
+      // 1. Kategori Standby -> Warna Biru
+      if (purpose === 'Standby') {
+        return { bg: 'bg-blue-600 text-white', label: 'text-blue-600' };
+      }
+
+      // 2. Kategori Bongkar Muat -> Hijau (Bongkar) / Merah (Muat) / Orange (Bongkar/Muat)
+      const isBM = (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat');
+      if (isBM) {
+        const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
+        if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+          return { bg: 'bg-emerald-600 text-white', label: 'text-emerald-600' };
+        }
+        if (info.includes('muat') || info.includes('muqt')) {
+          return { bg: 'bg-rose-600 text-white', label: 'text-rose-600' };
+        }
+        // Tidak mengandung kata 'bongkar' ataupun 'muat' -> Orange
+        return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
+      }
+
       // Default: Antrian (Warna Orange)
       return { bg: 'bg-amber-400 text-slate-900', label: 'text-amber-600' };
     }
 
     function renderTabContent(key) {
       const purpose = TAB_PURPOSE_MAP[key];
-      const items = currentCategoryData[purpose] || [];
+      const allItems = currentCategoryData[purpose] || [];
+      const items = activeUnitType === 'ALL' 
+        ? allItems 
+        : allItems.filter(item => getUnitType(item) === activeUnitType);
       const container = document.getElementById('tabContainer');
       if (!container) return;
 
       if (items.length === 0) {
+        const emptyMsg = activeUnitType === 'ALL'
+          ? `Tidak ada data unit untuk kategori ${purpose}`
+          : `Tidak ada unit jenis "${activeUnitType}" untuk kategori ${purpose}`;
         container.innerHTML = `
           <div class="bg-white border border-slate-300 rounded-lg p-10 text-center text-slate-400 shadow-2xs">
             <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-2 block"></i>
-            <p class="font-semibold text-slate-700 text-xs">Tidak ada data unit untuk kategori ${purpose}</p>
-            <p class="text-[11px] text-slate-400 mt-1">Belum ada unit yang tercatat aktif pada filter area ini.</p>
+            <p class="font-semibold text-slate-700 text-xs">${emptyMsg}</p>
+            <p class="text-[11px] text-slate-400 mt-1">Belum ada unit yang tercatat aktif pada filter ini.</p>
           </div>
         `;
         return;
       }
 
-      const cardsHtml = items.map((item, idx) => {
-        const theme = getCardTheme(item);
+      const currentArea = sessionStorage.getItem('csv_dash_area') || (document.getElementById('filterArea') ? document.getElementById('filterArea').value : 'ALL') || 'ALL';
+      const isAllArea = !currentArea || currentArea === 'ALL' || currentArea === 'Semua Area' || currentArea.toLowerCase() === 'all area';
 
-        // Header status text: note + notelate (e.g. "Antrian [1 day/s late]" atau "OnProgress")
-        let headerStatus = item.note || 'Antrian';
+      const cardsHtml = items.map((item, idx) => {
+        const theme = getCardTheme(item, purpose);
+
+        // Header status text logic
+        let noteRaw = item.note || 'Antrian';
+        const isSelesai = noteRaw.toLowerCase().includes('selesai') || noteRaw.toLowerCase().includes('finished') || (item.notelate || '').toLowerCase().includes('selesai');
+        const isOnProgress = noteRaw.toLowerCase().includes('onprogress') || (item.notelate || '').toLowerCase().includes('onprogress');
+        const isAntrian = !isSelesai && !isOnProgress;
+
+        let headerStatus = noteRaw;
+        const isBM = (purpose === 'Bongkar Muat' || purpose === 'BongkarMuat' || item.purpose === 'Bongkar Muat');
+
+        if (isSelesai && isBM) {
+          const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
+          if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+            headerStatus = 'Selesai Bongkar';
+          } else if (info.includes('muat') || info.includes('muqt')) {
+            headerStatus = 'Selesai Muat';
+          } else {
+            headerStatus = 'Selesai Bongkar Muat';
+          }
+        } else if (isAntrian) {
+          if (purpose === 'Standby' || item.purpose === 'Standby') {
+            headerStatus = 'StandBy';
+          } else if (isBM) {
+            const info = ((item.information || '') + ' ' + (item.catt || '')).toLowerCase();
+            if (info.includes('bongkar') || info.includes('bomgkar') || info.includes('bonhkar')) {
+              headerStatus = 'Bongkar';
+            } else if (info.includes('muat') || info.includes('muqt')) {
+              headerStatus = 'Muat';
+            } else {
+              headerStatus = 'Bongkar/Muat';
+            }
+          }
+        }
+
         if (item.notelate && item.notelate.startsWith('[') && !headerStatus.includes('[')) {
           headerStatus = `${headerStatus} ${item.notelate}`;
         }
@@ -507,9 +644,17 @@
 
         return `
           <div class="border border-slate-300 rounded bg-white text-[11px] overflow-hidden shadow-2xs hover:shadow-xs transition shrink-0">
-              <div class="${theme.bg} font-bold px-2 py-0.5 text-[10px] flex justify-between items-center">
-                  <span class="truncate pr-1">${idx + 1}. ${headerStatus}</span>
-                  <span class="font-normal text-[9px] shrink-0">${item.tglmasuk || '-'}</span>
+              <div class="${theme.bg} font-bold px-2 py-1 text-[10px]">
+                  <div class="flex justify-between items-center">
+                      <span class="truncate pr-1">${idx + 1}. ${headerStatus}</span>
+                      <span class="font-normal text-[9px] shrink-0">${item.tglmasuk || '-'}</span>
+                  </div>
+                  ${isAllArea ? `
+                  <div class="flex items-center gap-1 text-[9px] font-semibold mt-0.5 pt-0.5 border-t border-current/20 opacity-95">
+                      <i class="fa-solid fa-location-dot text-[8px]"></i>
+                      <span class="truncate">${item.sitename || '-'}</span>
+                  </div>
+                  ` : ''}
               </div>
               <div class="px-2 pt-1.5 pb-2 flex gap-2 items-center">
                   <i onclick="openUnitSpkDetail('${(item.no_pol || '').replace(/'/g, "\\'")}', '${item.tgl_masuk || ''}')" class="fa-solid fa-truck ${truckIconColor} text-lg shrink-0 cursor-pointer" title="Buka Detail SPK"></i>
@@ -542,7 +687,7 @@
           <!-- Header Bar Tab -->
           <div class="flex items-center justify-between pb-1">
             <h3 class="font-bold text-slate-800 text-xs flex items-center gap-2">
-              <span>Kartu Unit: ${purpose}</span>
+              <span>Kartu Unit: ${purpose}${activeUnitType !== 'ALL' ? ` - ${activeUnitType}` : ''}</span>
               <span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">${items.length} Unit</span>
             </h3>
             <button onclick="exportTabToExcel('${purpose}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded shadow-2xs flex items-center gap-1.5 transition cursor-pointer">
@@ -559,7 +704,10 @@
     }
 
     function exportTabToExcel(purpose) {
-      const items = currentCategoryData[purpose] || [];
+      const allItems = currentCategoryData[purpose] || [];
+      const items = activeUnitType === 'ALL' 
+        ? allItems 
+        : allItems.filter(item => getUnitType(item) === activeUnitType);
       if (items.length === 0) {
         alert('Tidak ada data untuk diexport!');
         return;
@@ -568,6 +716,7 @@
         'No': i + 1,
         'Site': r.sitename || '',
         'Nopol [Tipe]': r.nopol || '',
+        'Jenis Unit': getUnitType(r),
         'Cust Code': r.cust_code || '',
         'Driver': r.driver || '',
         'Kategori': r.category || '',
@@ -580,7 +729,8 @@
       const ws = XLSX.utils.json_to_sheet(exportRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, purpose);
-      XLSX.writeFile(wb, `Dashboard_${purpose}_${sessionStorage.getItem('csv_dash_area') || 'ALL'}.xlsx`);
+      const typeSuffix = activeUnitType !== 'ALL' ? `_${activeUnitType}` : '';
+      XLSX.writeFile(wb, `Dashboard_${purpose}${typeSuffix}_${sessionStorage.getItem('csv_dash_area') || 'ALL'}.xlsx`);
     }
 
     // Buka Window SPK Detail untuk unit yang diklik

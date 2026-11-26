@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Summary Per Unit - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Chart.js for Visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=21" defer></script>
+  <script src="/web/components/sidebar.js?v=21" defer></script>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Summary Per Unit"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header, Filter Area (Kanan Atas) & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+        
+        <!-- Left: Title & Subtitle -->
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-2xs">
+            <i class="fa-solid fa-chart-column text-xs"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h2 class="text-xs font-bold text-slate-800 leading-none">Summary Per Unit</h2>
+              <span class="bg-blue-100 text-blue-800 text-[9px] font-bold px-1.5 py-0.2 rounded">Evaluasi Operasional</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-medium">Hari Kerja, Total Jam HM & Efisiensi Konsumsi Solar per Unit Alat</span>
+          </div>
+        </div>
+
+        <!-- Right: Filter Area Dropdown (Kanan Atas) & Action Buttons -->
+        <div class="flex items-center gap-2">
+          <!-- Filter Area (Identik Dashboard) -->
+          <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+            <i class="fa-solid fa-location-dot text-blue-600 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-600">Area:</span>
+            <select id="filterArea" onchange="fetchData()" class="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer">
+              <option value="">Semua Area</option>
+            </select>
+          </div>
+
+          <button onclick="toggleChart()" id="btnToggleChart" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Tampilkan/Sembunyikan Grafik">
+            <i class="fa-solid fa-chart-simple text-indigo-600 text-[10px]"></i>
+            <span id="chartToggleText">Grafik</span>
+          </button>
+
+          <button onclick="fetchData()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg border border-slate-300 shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[10px]"></i>
+            <span>Refresh</span>
+          </button>
+
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Tabel ke Excel">
+            <i class="fa-solid fa-file-excel text-[10px]"></i>
+            <span>Export Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI SUMMARY CARDS (COMPACT HEIGHT) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
+        <!-- 1. Total Unit Aktif -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-blue-400 transition min-h-[46px]" title="Jumlah Unit Aktif Beroperasi">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-slate-500 tracking-wider">Unit Aktif</span>
+            <span id="kpiTotalUnit" class="text-sm font-extrabold text-slate-800">0</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+            <i class="fa-solid fa-truck-pickup text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total HM -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-amber-400 transition min-h-[46px]" title="Total Akumulasi Jam Kerja HM">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-amber-700 tracking-wider">Total Jam HM</span>
+            <span id="kpiTotalHm" class="text-sm font-extrabold text-amber-700">0 Jam</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+            <i class="fa-solid fa-clock text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 3. Total Pemakaian -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-rose-400 transition min-h-[46px]" title="Total Pemakaian Solar (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-rose-700 tracking-wider">Pemakaian Solar</span>
+            <span id="kpiTotalPakaiLiter" class="text-sm font-extrabold text-rose-700">0 Ltr</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+            <i class="fa-solid fa-gas-pump text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 4. Total Pengisian -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-emerald-400 transition min-h-[46px]" title="Total Pengisian Solar Resmi (Liter)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-emerald-700 tracking-wider">Pengisian Solar</span>
+            <span id="kpiTotalIsiLiter" class="text-sm font-extrabold text-emerald-700">0 Ltr</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <i class="fa-solid fa-oil-can text-xs"></i>
+          </div>
+        </div>
+
+        <!-- 5. Rasio Efisiensi -->
+        <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs flex items-center justify-between hover:border-purple-400 transition min-h-[46px] col-span-2 sm:col-span-1" title="Rata-rata Konsumsi Armada (Liter/HM)">
+          <div class="leading-tight">
+            <span class="block text-[9px] uppercase font-bold text-purple-700 tracking-wider">Rasio Efisiensi</span>
+            <span id="kpiAvgLtrPerHm" class="text-sm font-extrabold text-purple-700">0 L/HM</span>
+          </div>
+          <div class="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+            <i class="fa-solid fa-gauge-high text-xs"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER BAR (1 BARIS, COMPACT & EYE-CATCHING GRAY DATE) -->
+      <div class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 mb-2 shadow-2xs">
+        <form id="filterForm" onsubmit="event.preventDefault(); fetchData();" class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Periode Tgl Awal & Tgl Akhir (Background Abu-abu Eye Catching) -->
+            <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-400 rounded-lg px-2.5 py-1 shadow-inner">
+              <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
+              <span class="text-[11px] font-bold text-slate-700">Periode:</span>
+              <input type="date" id="filterTglAwal"
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+              <span class="text-slate-600 font-extrabold text-[11px]">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
+            </div>
+
+            <!-- Unit Dropdown -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1">
+              <i class="fa-solid fa-truck-pickup text-slate-500 text-xs"></i>
+              <span class="text-[11px] font-semibold text-slate-600">Unit:</span>
+              <select id="filterUnit" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer min-w-[130px]">
+                <option value="">Semua Unit</option>
+              </select>
+            </div>
+
+            <!-- Mode Pengelompokan: Akumulasi Unit vs Bulanan -->
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1">
+              <i class="fa-solid fa-layer-group text-slate-500 text-xs"></i>
+              <span class="text-[11px] font-semibold text-slate-600">Mode:</span>
+              <select id="filterGroupBy" onchange="fetchData()" class="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer">
+                <option value="unit" selected>Total Per Unit</option>
+                <option value="month_unit">Breakdown Bulanan</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex items-center gap-1.5">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded-lg shadow-2xs flex items-center gap-1 transition cursor-pointer text-xs">
+              <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg border border-slate-300 transition cursor-pointer font-medium text-xs flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- VISUAL CHART CONTAINER (Collapsible) -->
+      <div id="chartContainer" class="hidden mb-2 bg-white border border-slate-300 rounded-lg p-3 shadow-2xs">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-chart-bar text-indigo-600"></i>
+            <h3 class="font-bold text-slate-800 text-xs">Perbandingan Konsumsi Solar per Jam Operasi (Liter / HM)</h3>
+          </div>
+          <span class="text-[10px] text-slate-400">Semakin rendah bar, semakin efisien penggunaan BBM unit tersebut</span>
+        </div>
+        <div class="h-44">
+          <canvas id="efficiencyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLE CONTAINER -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
+          <table class="w-full text-left border-collapse" id="rekapTable">
+            <thead class="bg-slate-100 text-slate-700 text-[10.5px] font-bold border-b border-slate-300 sticky top-0 z-10 select-none">
+              <!-- ROW 1 -->
+              <tr class="border-b border-slate-200">
+                <th rowspan="2" class="py-1 px-1.5 text-center w-8 border-r border-slate-200 bg-slate-100">No</th>
+                <th rowspan="2" id="thPeriod" class="py-1 px-2 text-center border-r border-slate-200 hidden bg-slate-100">Periode</th>
+                <th rowspan="2" class="py-1 px-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition bg-slate-100" onclick="sortTable('unit')">
+                  Unit Alat <i class="fa-solid fa-sort text-[9px] text-slate-400 ml-0.5"></i>
+                </th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-slate-100">Area</th>
+                <th rowspan="2" class="py-1 px-2 text-center border-r border-slate-200 bg-slate-100" title="Jumlah Hari Beroperasi">Hari Kerja</th>
+                <th colspan="4" class="py-1 px-2 text-center border-r border-slate-200 bg-amber-50/70 text-amber-900">Hour Meter (HM)</th>
+                <th colspan="4" class="py-1 px-2 text-center border-r border-slate-200 bg-rose-50/70 text-rose-900">Volume Solar (Liter)</th>
+                <th rowspan="2" class="py-1 px-2 text-center w-20 bg-slate-100">Status</th>
+              </tr>
+              <!-- ROW 2 -->
+              <tr class="text-[10px] bg-slate-100 text-slate-600">
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="HM Awal Min">Awal</th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="HM Akhir Max">Akhir</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-amber-50/50 text-amber-800 font-bold cursor-pointer hover:bg-amber-100/60" onclick="sortTable('total_hm')">Total <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Rata-rata HM per Hari">Avg/Hari</th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-rose-50/40 text-rose-800 font-bold cursor-pointer hover:bg-rose-100/60" onclick="sortTable('total_pakai_liter')">Pakai <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200 bg-emerald-50/40 text-emerald-800 font-bold cursor-pointer hover:bg-emerald-100/60" onclick="sortTable('total_isi_liter')">Isi <i class="fa-solid fa-sort text-[8px] text-slate-400 ml-0.5"></i></th>
+                <th class="py-1 px-2 text-right border-r border-slate-200" title="Netto = Pengisian - Pemakaian">Netto</th>
+                <th class="py-1 px-1.5 text-right border-r border-slate-200" title="Rata-rata Liter per Hari">Avg/Hari</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
+              <!-- Loading State -->
+              <tr>
+                <td colspan="14" class="py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
+                    <span>Memuat summary operasional per unit...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- TABLE FOOTER SUMMARY STATS -->
+        <div class="bg-slate-100 border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between text-[11px] text-slate-600 font-medium">
+          <div>
+            <span>Total Unit: <b id="footerUnitCount" class="text-slate-800">0</b></span>
+          </div>
+          <div class="flex items-center gap-4">
+            <span>Total HM: <b id="footerTotalHm" class="text-amber-700">0 Jam</b></span>
+            <span>Total Pemakaian: <b id="footerTotalPakai" class="text-rose-700">0 Ltr</b></span>
+            <span>Total Pengisian: <b id="footerTotalIsi" class="text-emerald-700">0 Ltr</b></span>
+            <span>Rata-rata Rasio: <b id="footerAvgLtrHm" class="text-purple-700">0 L/HM</b></span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let tableData = [];
+    let sortColumn = "unit";
+    let sortDirection = "asc";
+    let chartInstance = null;
+    let isChartVisible = false;
+
+    // DOM Elements
+    const tableBody = document.getElementById("tableBody");
+    const kpiTotalUnit = document.getElementById("kpiTotalUnit");
+    const kpiTotalHm = document.getElementById("kpiTotalHm");
+    const kpiTotalPakaiLiter = document.getElementById("kpiTotalPakaiLiter");
+    const kpiTotalIsiLiter = document.getElementById("kpiTotalIsiLiter");
+    const kpiAvgLtrPerHm = document.getElementById("kpiAvgLtrPerHm");
+
+    const filterTglAwal = document.getElementById("filterTglAwal");
+    const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
+    const filterUnit = document.getElementById("filterUnit");
+    const filterGroupBy = document.getElementById("filterGroupBy");
+    const thPeriod = document.getElementById("thPeriod");
+
+    const footerUnitCount = document.getElementById("footerUnitCount");
+    const footerTotalHm = document.getElementById("footerTotalHm");
+    const footerTotalPakai = document.getElementById("footerTotalPakai");
+    const footerTotalIsi = document.getElementById("footerTotalIsi");
+    const footerAvgLtrHm = document.getElementById("footerAvgLtrHm");
+
+    const refreshIcon = document.getElementById("refreshIcon");
+    const chartContainer = document.getElementById("chartContainer");
+    const chartToggleText = document.getElementById("chartToggleText");
+
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Ambil tanggal dari session, jika belum ada set ke hari ini
+    function initDateFilters() {
+      const today = getTodayString();
+      let tglAwal = sessionStorage.getItem('asm_tgl_awal') || sessionStorage.getItem('csv_spk_tglawal');
+      let tglAkhir = sessionStorage.getItem('asm_tgl_akhir') || sessionStorage.getItem('csv_spk_tglakhir');
+
+      if (!tglAwal) {
+        tglAwal = today;
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      }
+      if (!tglAkhir) {
+        tglAkhir = today;
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+
+      filterTglAwal.value = tglAwal;
+      filterTglAkhir.value = tglAkhir;
+    }
+
+    function saveDateSession() {
+      const tglAwal = filterTglAwal.value || getTodayString();
+      const tglAkhir = filterTglAkhir.value || getTodayString();
+      if (window.ASM_SESSION) {
+        window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+      } else {
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      }
+    }
+
+    // Urutan Status: Moderat paling atas, idle paling bawah
+    function getStatusPriority(row) {
+      if (row.total_hm <= 0) return 4; // Idle paling bawah
+      if (row.ltr_per_hm > 20 && row.ltr_per_hm <= 40) return 1; // Moderat paling atas
+      if (row.ltr_per_hm > 40) return 2; // Tinggi
+      return 3; // Efisien
+    }
+
+    function applyDefaultSort(data) {
+      data.sort((a, b) => {
+        // 1. Area ASC
+        const areaA = (a.area || "-").toLowerCase();
+        const areaB = (b.area || "-").toLowerCase();
+        if (areaA !== areaB) return areaA.localeCompare(areaB);
+
+        // 2. Status Priority (Moderat = 1, Tinggi = 2, Efisien = 3, Idle = 4)
+        const pA = getStatusPriority(a);
+        const pB = getStatusPriority(b);
+        if (pA !== pB) return pA - pB;
+
+        // 3. Unit ASC
+        return (a.unit || "").localeCompare(b.unit || "");
+      });
+    }
+
+    // On Load
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDateFilters();
+      await loadFilterOptions();
+      fetchData();
+    });
+
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch("/api/v1/solar/laporan/filters");
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          const { areas, units } = json.data;
+          if (Array.isArray(areas)) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
+          if (Array.isArray(units)) {
+            filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
+              units.map(u => `<option value="${u}">${u}</option>`).join("");
+          }
+        }
+      } catch (err) {
+        console.error("Gagal load filter options:", err);
+      }
+    }
+
+    async function fetchData() {
+      saveDateSession();
+      refreshIcon.classList.add("fa-spin");
+
+      const params = new URLSearchParams({
+        groupBy: filterGroupBy.value,
+      });
+
+      if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
+      if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
+      if (filterUnit.value) params.append("unit", filterUnit.value);
+
+      // Show/Hide Period column
+      if (filterGroupBy.value === "month_unit") {
+        thPeriod.classList.remove("hidden");
+      } else {
+        thPeriod.classList.add("hidden");
+      }
+
+      try {
+        const res = await fetch(`/api/v1/solar/laporan/rekap-unit?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === "success") {
+          tableData = json.data || [];
+          applyDefaultSort(tableData);
+          renderKPI(json.summary || {});
+          renderTable(tableData);
+          if (isChartVisible) {
+            renderChart(tableData);
+          }
+        } else {
+          showEmptyTable(json.message || "Gagal memuat data");
+        }
+      } catch (err) {
+        console.error("Fetch data error:", err);
+        showEmptyTable("Terjadi kesalahan jaringan saat mengambil data.");
+      } finally {
+        setTimeout(() => refreshIcon.classList.remove("fa-spin"), 400);
+      }
+    }
+
+    function renderKPI(summary) {
+      kpiTotalUnit.textContent = (summary.total_unit || 0).toLocaleString("id-ID");
+      kpiTotalHm.textContent = (summary.total_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jam";
+      kpiTotalPakaiLiter.textContent = (summary.total_pakai_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiTotalIsiLiter.textContent = (summary.total_isi_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiAvgLtrPerHm.textContent = (summary.avg_ltr_per_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " L/HM";
+
+      footerUnitCount.textContent = (summary.total_unit || 0).toLocaleString("id-ID");
+      footerTotalHm.textContent = (summary.total_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jam";
+      footerTotalPakai.textContent = (summary.total_pakai_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      footerTotalIsi.textContent = (summary.total_isi_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      footerAvgLtrHm.textContent = (summary.avg_ltr_per_hm || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " L/HM";
+    }
+
+    function renderTable(data) {
+      if (!data || data.length === 0) {
+        showEmptyTable("Tidak ada data rekap ditemukan untuk periode ini.");
+        return;
+      }
+
+      const isMonthly = filterGroupBy.value === "month_unit";
+      let html = "";
+
+      data.forEach((row, idx) => {
+        const no = idx + 1;
+        const totalHmClass = row.total_hm > 0 ? "font-bold text-amber-700 bg-amber-50/40" : "text-slate-400";
+        const pakaiClass = row.total_pakai_liter > 0 ? "font-bold text-rose-700 bg-rose-50/40" : "text-slate-400";
+        const isiClass = row.total_isi_liter > 0 ? "font-bold text-emerald-700 bg-emerald-50/40" : "text-slate-400";
+
+        // Netto highlight
+        let nettoClass = "text-slate-500";
+        let nettoSign = "";
+        if (row.netto_liter > 0) {
+          nettoClass = "font-bold text-emerald-600";
+          nettoSign = "+";
+        } else if (row.netto_liter < 0) {
+          nettoClass = "font-bold text-rose-600";
+        }
+
+        // Status badge
+        let statusBadge = "";
+        if (row.total_hm <= 0) {
+          statusBadge = `<span class="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[10px]">Idle</span>`;
+        } else if (row.ltr_per_hm <= 20) {
+          statusBadge = `<span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Efisien</span>`;
+        } else if (row.ltr_per_hm <= 40) {
+          statusBadge = `<span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Moderat</span>`;
+        } else {
+          statusBadge = `<span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Tinggi</span>`;
+        }
+
+        html += `
+          <tr class="hover:bg-blue-50/40 transition">
+            <td class="py-1 px-1.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            ${isMonthly ? `<td class="py-1 px-2 font-semibold text-slate-700 border-r border-slate-100 text-center whitespace-nowrap">${row.period}</td>` : ""}
+            <td class="py-1 px-2 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap flex items-center gap-1">
+              <i class="fa-solid fa-truck-pickup text-slate-400 text-[9px]"></i>
+              <span>${row.unit}</span>
+            </td>
+            <td class="py-1 px-1.5 text-center border-r border-slate-100 font-sans whitespace-nowrap">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[9.5px]">${row.area || '-'}</span>
+            </td>
+            <td class="py-1 px-1.5 text-center font-medium text-slate-700 border-r border-slate-100 whitespace-nowrap">${row.hari_kerja} hr</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.min_hm_awal, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.max_hm_akhir, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${totalHmClass}">${formatNum(row.total_hm, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-600 border-r border-slate-100">${formatNum(row.avg_hm_per_hari, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${pakaiClass}">${formatNum(row.total_pakai_liter, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${isiClass}">${formatNum(row.total_isi_liter, 1)}</td>
+            <td class="py-1 px-2 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
+            <td class="py-1 px-1.5 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.avg_pakai_per_hari, 1)}</td>
+            <td class="py-1 px-1.5 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      });
+
+      tableBody.innerHTML = html;
+    }
+
+    function showEmptyTable(message) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="14" class="py-12 text-center text-slate-400">
+            <div class="flex flex-col items-center justify-center gap-2">
+              <i class="fa-regular fa-folder-open text-3xl text-slate-300"></i>
+              <span>${message}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // Toggle and render Chart
+    function toggleChart() {
+      isChartVisible = !isChartVisible;
+      if (isChartVisible) {
+        chartContainer.classList.remove("hidden");
+        chartToggleText.textContent = "Sembunyikan Grafik";
+        renderChart(tableData);
+      } else {
+        chartContainer.classList.add("hidden");
+        chartToggleText.textContent = "Grafik Efisiensi";
+      }
+    }
+
+    function renderChart(data) {
+      if (!data || data.length === 0) return;
+      const ctx = document.getElementById("efficiencyChart").getContext("2d");
+
+      // Filter active units with HM > 0
+      const activeData = data.filter(d => d.total_hm > 0);
+      const labels = activeData.map(d => d.unit + (d.period && d.period !== 'Semua Periode' ? ` (${d.period})` : ''));
+      const values = activeData.map(d => d.ltr_per_hm);
+      const colors = values.map(v => v <= 20 ? 'rgba(16, 185, 129, 0.7)' : v <= 40 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(239, 68, 68, 0.7)');
+      const borderColors = values.map(v => v <= 20 ? 'rgb(16, 185, 129)' : v <= 40 ? 'rgb(245, 158, 11)' : 'rgb(239, 68, 68)');
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Rasio Konsumsi (Liter/HM)',
+            data: values,
+            backgroundColor: colors,
+            borderColor: borderColors,
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${context.parsed.y} Liter / Jam Operasi`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Liter / HM', font: { size: 10 } },
+              grid: { color: '#f1f5f9' }
+            },
+            x: {
+              ticks: { font: { size: 10 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // Sort Table Client Side
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === "asc" ? "desc" : "asc";
+      } else {
+        sortColumn = column;
+        sortDirection = "asc";
+      }
+
+      tableData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+        if (typeof valA === "string") valA = valA.toLowerCase();
+        if (typeof valB === "string") valB = valB.toLowerCase();
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      renderTable(tableData);
+      if (isChartVisible) renderChart(tableData);
+    }
+
+    function resetFilter() {
+      filterArea.value = "";
+      filterUnit.value = "";
+      filterGroupBy.value = "unit";
+      initDateFilters();
+      fetchData();
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData();
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData();
+    }
+
+    function exportToExcel() {
+      if (!tableData || tableData.length === 0) {
+        alert("Tidak ada data untuk diekspor!");
+        return;
+      }
+
+      const isMonthly = filterGroupBy.value === "month_unit";
+      const rows = tableData.map((r, i) => {
+        const item = {
+          "No": i + 1,
+        };
+        if (isMonthly) item["Periode"] = r.period;
+        item["Unit Alat"] = r.unit;
+        item["Area"] = r.area || "-";
+        item["Hari Kerja"] = r.hari_kerja;
+        item["HM Awal Min"] = r.min_hm_awal;
+        item["HM Akhir Max"] = r.max_hm_akhir;
+        item["Total Jam HM"] = r.total_hm;
+        item["Avg HM/Hari"] = r.avg_hm_per_hari;
+        item["Total Pemakaian (Liter)"] = r.total_pakai_liter;
+        item["Total Pengisian (Liter)"] = r.total_isi_liter;
+        item["Netto Tangki (Liter)"] = r.netto_liter;
+        item["Avg Pemakaian/Hari (Liter)"] = r.avg_pakai_per_hari;
+        item["Rasio Efisiensi (Liter/HM)"] = r.ltr_per_hm;
+        item["Status Efisiensi"] = r.efisiensi_status;
+        return item;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Summary_Per_Unit");
+      XLSX.writeFile(workbook, `Summary_Per_Unit_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function formatNum(val, dec = 1) {
+      if (val === undefined || val === null || isNaN(val)) return "0";
+      return Number(val).toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+  </script>
+</body>
+</html>

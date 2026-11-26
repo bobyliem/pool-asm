@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laporan Rekonsiliasi & Anomali - Colokan Solar - ASM Workshop</title>
+  <link rel="icon" type="image/png" href="/web/images/logo-sar.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SheetJS for Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Modul Komponen Header & Sidebar -->
+  <script src="/web/components/header.js?v=21" defer></script>
+  <script src="/web/components/sidebar.js?v=21" defer></script>
+
+  <style>
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col h-screen overflow-hidden text-xs">
+
+  <!-- MODUL HEADER -->
+  <app-header app-title="Sampurna Workshop (CSV)" user-name="admin"></app-header>
+
+  <!-- BODY CONTENT (SIDEBAR + MAIN) -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- MODUL NAVIGATION SIDEBAR -->
+    <app-sidebar active-menu="Laporan Rekonsiliasi & Anomali"></app-sidebar>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 px-3 py-2.5 overflow-hidden bg-slate-50 flex flex-col">
+
+      <!-- TOP BAR: Header & Action Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 bg-white border border-slate-300 rounded-lg px-3 py-2 shadow-2xs">
+        
+        <!-- Left: Title & Subtitle -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-shield-halved text-sm"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800 leading-none">Laporan Rekonsiliasi & Anomali Solar</h2>
+              <span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Audit & Finance</span>
+            </div>
+            <span class="text-[11px] text-slate-500 font-medium">Deteksi Kebocoran, Jam Kerja & Evaluasi Rasio Konsumsi Solar</span>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="flex items-center gap-2">
+          <button onclick="fetchData(1)" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-300 shadow-xs flex items-center gap-1.5 transition cursor-pointer font-medium" title="Refresh Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-blue-600 text-[11px]"></i>
+            <span>Refresh</span>
+          </button>
+
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer font-semibold" title="Export Temuan Audit ke Excel">
+            <i class="fa-solid fa-file-excel text-[11px]"></i>
+            <span>Export Audit (.xlsx)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI SUMMARY CARDS (HEIGHT 3X) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-2.5">
+        <!-- 1. Total Anomali -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-rose-400 transition min-h-[72px]" title="Jumlah Kasus Anomali Kritis yang Perlu Investigasi Segera">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-rose-700 tracking-wider">Kasus Anomali</span>
+            <span id="kpiTotalAnomali" class="text-lg font-extrabold text-rose-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Perlu Investigasi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shadow-2xs">
+            <i class="fa-solid fa-triangle-exclamation text-base"></i>
+          </div>
+        </div>
+
+        <!-- 2. Total Peringatan -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-amber-400 transition min-h-[72px]" title="Jumlah Kasus Peringatan / Konsumsi Di Atas Rata-rata">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-amber-700 tracking-wider">Peringatan</span>
+            <span id="kpiTotalPeringatan" class="text-lg font-extrabold text-amber-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Di Atas Toleransi</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+          </div>
+        </div>
+
+        <!-- 3. Operasional Normal -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-emerald-400 transition min-h-[72px]" title="Jumlah Kasus Operasional Normal Sesuai Parameter">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Normal</span>
+            <span id="kpiTotalNormal" class="text-lg font-extrabold text-emerald-700 leading-tight">0</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Operasional Terkendali</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
+            <i class="fa-solid fa-circle-check text-base"></i>
+          </div>
+        </div>
+
+        <!-- 4. BBM Terindikasi -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-red-400 transition min-h-[72px]" title="Total Volume Pemakaian Solar yang Mengandung Anomali / Peringatan">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-red-700 tracking-wider">BBM Terindikasi</span>
+            <span id="kpiPakaiAnomaliLiter" class="text-lg font-extrabold text-red-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Volume Anomali</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-2xs">
+            <i class="fa-solid fa-gas-pump text-base"></i>
+          </div>
+        </div>
+
+        <!-- 5. Netto Total -->
+        <div class="bg-white border border-slate-300 rounded-xl p-3 shadow-xs flex items-center justify-between hover:border-purple-400 transition min-h-[72px] col-span-2 sm:col-span-1" title="Total Selisih Netto (Pengisian - Pemakaian) Keseluruhan Armada">
+          <div class="space-y-0.5">
+            <span class="block text-[10px] uppercase font-bold text-purple-700 tracking-wider">Netto Total</span>
+            <span id="kpiSelisihNettoLiter" class="text-lg font-extrabold text-purple-700 leading-tight">0 Ltr</span>
+            <span class="block text-[10px] text-slate-400 font-medium">Pengisian - Pemakaian</span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs">
+            <i class="fa-solid fa-scale-balanced text-base"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER CARD (FRAME BESAR SEPERTI SUMMARY-PER-DRIVER) -->
+      <div class="bg-white border border-slate-300 rounded-xl p-4 mb-2.5 shadow-xs">
+        <div class="flex items-center justify-between font-bold text-xs text-slate-700 pb-2.5 mb-3 border-b border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-filter text-blue-600"></i>
+            <span>Filter Parameter Rekonsiliasi & Anomali</span>
+          </div>
+          <!-- Audit Alert Callout -->
+          <div class="text-[11px] text-slate-500 font-normal hidden xl:flex items-center gap-2">
+            <span><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i>Kriteria:</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM=0 tp Pakai BBM</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">Rasio &gt; 50 L/HM</span>
+            <span class="bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-medium border border-red-200">HM Mundur / &gt; 24 Jam</span>
+          </div>
+        </div>
+
+        <form id="filterForm" onsubmit="event.preventDefault(); applyFilter();" class="flex flex-wrap items-end gap-3 text-xs">
+          <!-- Periode Date Picker -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Periode (Tgl Awal - Tgl Akhir)</label>
+            <div class="flex items-center gap-2">
+              <input type="date" id="filterTglAwal"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+              <span class="text-slate-400 font-bold">s/d</span>
+              <input type="date" id="filterTglAkhir"
+                class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white">
+            </div>
+          </div>
+
+          <!-- Area Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Area</label>
+            <select id="filterArea" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[140px] cursor-pointer font-medium">
+              <option value="">Semua Area</option>
+            </select>
+          </div>
+
+          <!-- Unit Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto">
+            <label class="block font-semibold text-slate-600 text-[11px]">Unit Alat</label>
+            <select id="filterUnit" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white min-w-[150px] cursor-pointer font-medium">
+              <option value="">Semua Unit</option>
+            </select>
+          </div>
+
+          <!-- Kategori Temuan Dropdown -->
+          <div class="space-y-1 w-full sm:w-auto flex-1 min-w-[200px]">
+            <label class="block font-semibold text-slate-600 text-[11px]">Kategori Temuan</label>
+            <select id="filterKategori" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none bg-white cursor-pointer font-medium">
+              <option value="">Semua Kategori Temuan</option>
+              <option value="Konsumsi Ekstrem">Konsumsi Ekstrem (&gt;50 L/HM)</option>
+              <option value="Pemakaian Solar Tanpa Jam Kerja">Pakai Solar Tanpa HM (HM=0)</option>
+              <option value="Pemakaian Negatif">Pemakaian Negatif</option>
+              <option value="Jam Kerja > 24 Jam">Jam Kerja &gt; 24 Jam/Hari</option>
+              <option value="HM Mundur">HM Mundur (Akhir &lt; Awal)</option>
+              <option value="Konsumsi Tinggi">Konsumsi Tinggi (&gt;35 L/HM)</option>
+              <option value="Konsumsi Besar Tanpa Pengisian">Pakai Besar Tanpa Pengisian</option>
+            </select>
+          </div>
+
+          <!-- Checkbox: Hanya Tampilkan Anomali & Peringatan -->
+          <div class="flex items-center h-[34px]">
+            <label class="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg cursor-pointer select-none text-rose-900 font-bold text-[11px]">
+              <input type="checkbox" id="filterOnlyAnomali" checked onchange="fetchData(1)" class="cursor-pointer text-rose-600 rounded" />
+              <span>Hanya Anomali & Peringatan</span>
+            </label>
+          </div>
+
+          <!-- Tombol Aksi -->
+          <div class="flex items-center gap-2 pt-1 sm:pt-0">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-magnifying-glass"></i> Tampilkan
+            </button>
+            <button type="button" onclick="setQuickToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Hari Ini
+            </button>
+            <button type="button" onclick="setQuickMonth()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium">
+              Bulan Ini
+            </button>
+            <button type="button" onclick="resetFilter()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition cursor-pointer font-medium flex items-center gap-1" title="Reset Filter">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TABLE CONTAINER -->
+      <div class="flex-1 bg-white border border-slate-300 rounded-lg shadow-2xs overflow-hidden flex flex-col">
+        <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
+          <table class="w-full text-left border-collapse min-w-[1250px]" id="auditTable">
+            <thead class="bg-slate-100 text-slate-700 text-[11px] font-bold border-b border-slate-300 sticky top-0 z-10 select-none">
+              <tr>
+                <th class="py-2 px-2.5 text-center w-10 border-r border-slate-200">No</th>
+                <th class="py-2 px-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('tgl')">
+                  Tanggal <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
+                </th>
+                <th class="py-2 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition" onclick="sortTable('unit')">
+                  Unit Alat <i class="fa-solid fa-sort text-[10px] text-slate-400 ml-1"></i>
+                </th>
+                <th class="py-2 px-2.5 text-center border-r border-slate-200">Area</th>
+                <th class="py-2 px-2.5 text-center border-r border-slate-200 w-24">Status Audit</th>
+                <th class="py-2 px-3 border-r border-slate-200" style="min-width: 180px;">Jenis Temuan Anomali</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200" title="HM Awal">HM Awal</th>
+                <th class="py-2 px-2 text-right border-r border-slate-200" title="HM Akhir">HM Akhir</th>
+                <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-amber-50/50" title="Total Jam Kerja HM">Total HM</th>
+                <th class="py-2 px-3 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800" title="Total Pemakaian Solar (Liter)">
+                  Pemakaian (Ltr)
+                </th>
+                <th class="py-2 px-3 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800" title="Total Pengisian Solar Resmi (Liter)">
+                  Pengisian (Ltr)
+                </th>
+                <th class="py-2 px-2.5 text-right border-r border-slate-200 bg-purple-50/50" title="Rasio Pemakaian per Jam Kerja (Liter/HM)">
+                  Rasio (L/HM)
+                </th>
+                <th class="py-2 px-2.5 text-right border-r border-slate-200" title="Selisih Netto = Pengisian - Pemakaian">Netto (Ltr)</th>
+                <th class="py-2 px-3 border-r border-slate-200" style="min-width: 240px;">Analisis & Catatan Audit Finance</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
+              <!-- Loading State -->
+              <tr>
+                <td colspan="14" class="py-12 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-rose-600"></i>
+                    <span>Memindai dan menganalisis anomali solar...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- BOTTOM PAGINATION & FOOTER -->
+        <div class="bg-slate-50 border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+          <div class="flex items-center gap-2">
+            <span>Menampilkan <b id="pageStart" class="text-slate-800">0</b> - <b id="pageEnd" class="text-slate-800">0</b> dari <b id="totalCount" class="text-slate-800">0</b> record audit</span>
+            <span class="text-slate-300">|</span>
+            <div class="flex items-center gap-1">
+              <span>Per halaman:</span>
+              <select id="pageSize" onchange="changePageSize()" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs focus:outline-hidden cursor-pointer">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Pagination Buttons -->
+          <div id="paginationControls" class="flex items-center gap-1">
+            <!-- Buttons dynamically generated -->
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentPage = 1;
+    let pageSize = 50;
+    let totalRows = 0;
+    let tableData = [];
+    let sortColumn = "status_audit";
+    let sortDirection = "asc";
+
+    // DOM Elements
+    const tableBody = document.getElementById("tableBody");
+    const kpiTotalAnomali = document.getElementById("kpiTotalAnomali");
+    const kpiTotalPeringatan = document.getElementById("kpiTotalPeringatan");
+    const kpiTotalNormal = document.getElementById("kpiTotalNormal");
+    const kpiPakaiAnomaliLiter = document.getElementById("kpiPakaiAnomaliLiter");
+    const kpiSelisihNettoLiter = document.getElementById("kpiSelisihNettoLiter");
+
+    const filterTglAwal = document.getElementById("filterTglAwal");
+    const filterTglAkhir = document.getElementById("filterTglAkhir");
+    const filterArea = document.getElementById("filterArea");
+    const filterUnit = document.getElementById("filterUnit");
+    const filterKategori = document.getElementById("filterKategori");
+    const filterOnlyAnomali = document.getElementById("filterOnlyAnomali");
+
+    const pageStart = document.getElementById("pageStart");
+    const pageEnd = document.getElementById("pageEnd");
+    const totalCount = document.getElementById("totalCount");
+    const paginationControls = document.getElementById("paginationControls");
+    const refreshIcon = document.getElementById("refreshIcon");
+
+    // Helper functions for Session Date
+    function getTodayString() {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+
+    function initDateSession() {
+      const today = getTodayString();
+      const savedAwal = sessionStorage.getItem("asm_tgl_awal");
+      const savedAkhir = sessionStorage.getItem("asm_tgl_akhir");
+
+      if (savedAwal) {
+        filterTglAwal.value = savedAwal;
+      } else {
+        filterTglAwal.value = today;
+      }
+
+      if (savedAkhir) {
+        filterTglAkhir.value = savedAkhir;
+      } else {
+        filterTglAkhir.value = today;
+      }
+    }
+
+    function saveDateSession() {
+      if (filterTglAwal.value) sessionStorage.setItem("asm_tgl_awal", filterTglAwal.value);
+      if (filterTglAkhir.value) sessionStorage.setItem("asm_tgl_akhir", filterTglAkhir.value);
+    }
+
+    // On Load
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDateSession();
+      await loadFilterOptions();
+      fetchData(1);
+    });
+
+    async function loadFilterOptions() {
+      try {
+        const res = await fetch("/api/v1/solar/laporan/filters");
+        const json = await res.json();
+        if (json.status === "success" && json.data) {
+          const { areas, units } = json.data;
+          if (Array.isArray(areas) && filterArea) {
+            filterArea.innerHTML = '<option value="">Semua Area</option>' +
+              areas.map(a => `<option value="${a}">${a}</option>`).join("");
+          }
+          if (Array.isArray(units) && filterUnit) {
+            filterUnit.innerHTML = '<option value="">Semua Unit</option>' +
+              units.map(u => `<option value="${u}">${u}</option>`).join("");
+          }
+        }
+      } catch (err) {
+        console.error("Gagal load filter options:", err);
+      }
+    }
+
+    async function fetchData(page = 1) {
+      currentPage = page;
+      refreshIcon.classList.add("fa-spin");
+      saveDateSession();
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: pageSize,
+        onlyAnomali: filterOnlyAnomali.checked ? "true" : "false",
+      });
+
+      if (filterTglAwal.value) params.append("tglAwal", filterTglAwal.value);
+      if (filterTglAkhir.value) params.append("tglAkhir", filterTglAkhir.value);
+      if (filterArea.value) params.append("area", filterArea.value);
+      if (filterUnit.value) params.append("unit", filterUnit.value);
+      if (filterKategori.value) params.append("kategoriAnomali", filterKategori.value);
+
+      try {
+        const res = await fetch(`/api/v1/solar/laporan/rekonsiliasi?${params.toString()}`);
+        const json = await res.json();
+
+        if (json.status === "success") {
+          tableData = json.data || [];
+          renderKPI(json.summary || {});
+          renderTable(tableData);
+          renderPagination(json.meta || {});
+        } else {
+          showEmptyTable(json.message || "Gagal memuat data audit");
+        }
+      } catch (err) {
+        console.error("Fetch data error:", err);
+        showEmptyTable("Terjadi kesalahan jaringan saat mengambil data audit.");
+      } finally {
+        setTimeout(() => refreshIcon.classList.remove("fa-spin"), 400);
+      }
+    }
+
+    function renderKPI(summary) {
+      kpiTotalAnomali.textContent = (summary.total_anomali_rows || 0).toLocaleString("id-ID");
+      kpiTotalPeringatan.textContent = (summary.total_peringatan_rows || 0).toLocaleString("id-ID");
+      kpiTotalNormal.textContent = (summary.total_normal_rows || 0).toLocaleString("id-ID");
+      kpiPakaiAnomaliLiter.textContent = (summary.total_pakai_anomali_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+      kpiSelisihNettoLiter.textContent = (summary.total_selisih_netto_liter || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Ltr";
+    }
+
+    function renderTable(data) {
+      if (!data || data.length === 0) {
+        showEmptyTable("Tidak ada kasus temuan anomali pada filter ini. Operasional terpantau aman.");
+        return;
+      }
+
+      let html = "";
+      const startNo = (currentPage - 1) * pageSize;
+
+      data.forEach((row, idx) => {
+        const no = startNo + idx + 1;
+
+        // Badge Status Audit
+        let statusBadge = "";
+        let rowBgClass = "";
+        if (row.status_audit === "ANOMALI") {
+          statusBadge = `<span class="bg-rose-600 text-white font-extrabold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs"><i class="fa-solid fa-triangle-exclamation text-[9px]"></i> ANOMALI</span>`;
+          rowBgClass = "bg-rose-50/20";
+        } else if (row.status_audit === "PERINGATAN") {
+          statusBadge = `<span class="bg-amber-500 text-white font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs"><i class="fa-solid fa-circle-exclamation text-[9px]"></i> PERINGATAN</span>`;
+          rowBgClass = "bg-amber-50/20";
+        } else {
+          statusBadge = `<span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-circle-check text-[9px] text-emerald-600"></i> NORMAL</span>`;
+        }
+
+        // Temuan text color
+        let temuanColor = "text-slate-700";
+        if (row.status_audit === "ANOMALI") temuanColor = "text-rose-700 font-bold";
+        else if (row.status_audit === "PERINGATAN") temuanColor = "text-amber-800 font-bold";
+
+        // Netto highlight
+        let nettoClass = "text-slate-500";
+        let nettoSign = "";
+        if (row.netto_liter > 0) {
+          nettoClass = "font-bold text-emerald-600";
+          nettoSign = "+";
+        } else if (row.netto_liter < 0) {
+          nettoClass = "font-bold text-rose-600";
+        }
+
+        html += `
+          <tr class="${rowBgClass} hover:bg-blue-50/40 transition">
+            <td class="py-2 px-2.5 text-center text-slate-400 border-r border-slate-100 font-sans">${no}</td>
+            <td class="py-2 px-3 font-semibold text-slate-800 border-r border-slate-100 text-center">${row.tgl}</td>
+            <td class="py-2 px-3 font-bold text-slate-900 border-r border-slate-100 flex items-center gap-1.5">
+              <i class="fa-solid fa-truck-pickup text-slate-400 text-[10px]"></i>
+              <span>${row.unit}</span>
+            </td>
+            <td class="py-2 px-2.5 text-center border-r border-slate-100 font-sans">
+              <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${row.area || '-'}</span>
+            </td>
+            <td class="py-2 px-2.5 text-center border-r border-slate-100">${statusBadge}</td>
+            <td class="py-2 px-3 border-r border-slate-100 ${temuanColor}">${row.jenis_anomali}</td>
+            <td class="py-2 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_awal, 1)}</td>
+            <td class="py-2 px-2 text-right font-medium text-slate-700 border-r border-slate-100">${formatNum(row.hm_akhir, 1)}</td>
+            <td class="py-2 px-2.5 text-right font-bold text-amber-700 bg-amber-50/40 border-r border-slate-100">${formatNum(row.total_hm, 1)}</td>
+            <td class="py-2 px-3 text-right font-bold text-rose-700 bg-rose-50/40 border-r border-slate-100">${formatNum(row.pakai_liter, 1)}</td>
+            <td class="py-2 px-3 text-right font-bold text-emerald-700 bg-emerald-50/40 border-r border-slate-100">${formatNum(row.isi_liter, 1)}</td>
+            <td class="py-2 px-2.5 text-right font-bold text-purple-800 bg-purple-50/20 border-r border-slate-100">
+              ${row.total_hm > 0 ? formatNum(row.ltr_per_hm, 2) : '-'}
+            </td>
+            <td class="py-2 px-2.5 text-right border-r border-slate-100 ${nettoClass}">${nettoSign}${formatNum(row.netto_liter, 1)}</td>
+            <td class="py-2 px-3 text-slate-600 text-[11px] leading-relaxed border-r border-slate-100">
+              ${row.keterangan_audit}
+            </td>
+          </tr>
+        `;
+      });
+
+      tableBody.innerHTML = html;
+    }
+
+    function showEmptyTable(message) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="14" class="py-12 text-center text-slate-400">
+            <div class="flex flex-col items-center justify-center gap-2">
+              <i class="fa-solid fa-circle-check text-3xl text-emerald-500"></i>
+              <span class="font-medium text-slate-600">${message}</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // Pagination
+    function renderPagination(meta) {
+      totalRows = meta.total_rows || 0;
+      const totalPages = Math.ceil(totalRows / pageSize) || 1;
+
+      const start = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+      const end = Math.min(currentPage * pageSize, totalRows);
+
+      pageStart.textContent = start.toLocaleString("id-ID");
+      pageEnd.textContent = end.toLocaleString("id-ID");
+      totalCount.textContent = totalRows.toLocaleString("id-ID");
+
+      let html = "";
+      html += `
+        <button onclick="fetchData(${currentPage - 1})" ${currentPage <= 1 ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
+      `;
+
+      const maxButtons = 5;
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === currentPage ? "bg-blue-600 text-white font-bold" : "bg-white text-slate-700 hover:bg-slate-100";
+        html += `
+          <button onclick="fetchData(${i})" class="px-2 py-0.5 rounded border border-slate-300 ${activeClass} text-xs transition cursor-pointer">
+            ${i}
+          </button>
+        `;
+      }
+
+      html += `
+        <button onclick="fetchData(${currentPage + 1})" ${currentPage >= totalPages ? "disabled" : ""} 
+          class="px-2 py-0.5 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition cursor-pointer">
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      `;
+
+      paginationControls.innerHTML = html;
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById("pageSize").value) || 50;
+      fetchData(1);
+    }
+
+    function applyFilter() {
+      fetchData(1);
+    }
+
+    function resetFilter() {
+      initDateSession();
+      if (filterArea) filterArea.value = "";
+      if (filterUnit) filterUnit.value = "";
+      if (filterKategori) filterKategori.value = "";
+      if (filterOnlyAnomali) filterOnlyAnomali.checked = true;
+      fetchData(1);
+    }
+
+    function setQuickToday() {
+      const today = getTodayString();
+      filterTglAwal.value = today;
+      filterTglAkhir.value = today;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function setQuickMonth() {
+      const now = new Date();
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastDay = `${lastDayDate.getFullYear()}-${String(lastDayDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+      filterTglAwal.value = firstDay;
+      filterTglAkhir.value = lastDay;
+      saveDateSession();
+      fetchData(1);
+    }
+
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === "asc" ? "desc" : "asc";
+      } else {
+        sortColumn = column;
+        sortDirection = "asc";
+      }
+
+      tableData.sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+        if (typeof valA === "string") valA = valA.toLowerCase();
+        if (typeof valB === "string") valB = valB.toLowerCase();
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      renderTable(tableData);
+    }
+
+    function exportToExcel() {
+      if (!tableData || tableData.length === 0) {
+        alert("Tidak ada data untuk diekspor!");
+        return;
+      }
+
+      const rows = tableData.map((r, i) => ({
+        "No": i + 1,
+        "Tanggal": r.tgl,
+        "Unit Alat": r.unit,
+        "Area": r.area || "-",
+        "Status Audit": r.status_audit,
+        "Jenis Temuan": r.jenis_anomali,
+        "HM Awal": r.hm_awal,
+        "HM Akhir": r.hm_akhir,
+        "Total Jam HM": r.total_hm,
+        "Pemakaian (Liter)": r.pakai_liter,
+        "Pengisian (Liter)": r.isi_liter,
+        "Rasio (Liter/HM)": r.total_hm > 0 ? r.ltr_per_hm : 0,
+        "Netto Tangki (Liter)": r.netto_liter,
+        "Keterangan / Analisis Audit": r.keterangan_audit,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Audit_Anomali_Solar");
+      XLSX.writeFile(workbook, `Laporan_Audit_Rekonsiliasi_Anomali_Solar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function formatNum(val, dec = 1) {
+      if (val === undefined || val === null || isNaN(val)) return "0";
+      return Number(val).toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
+  </script>
+</body>
+</html>

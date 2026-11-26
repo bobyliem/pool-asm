@@ -114,10 +114,17 @@ type ColumnCategoryStat struct {
 	Total     int    `gorm:"column:total" json:"total"`
 }
 
+// Site Option untuk filter Area di database workshop (HO)
+type Site struct {
+	ID   string `gorm:"column:id" json:"id"`
+	Name string `gorm:"column:name" json:"name"`
+}
+
 // DTO untuk Item Kartu Unit per Kategori
 type UnitCardItem struct {
 	Statue          string `gorm:"column:statue" json:"statue"`
 	EntryDate       string `gorm:"column:entryDate" json:"entry_date"`
+	AreaName        string `gorm:"column:area_name" json:"area_name"`
 	Kategori        string `gorm:"column:kategori" json:"kategori"`
 	PurposeKategori string `gorm:"column:purpose_kategori" json:"purpose_kategori"`
 	Driver          string `gorm:"column:driver" json:"driver"`
@@ -155,6 +162,7 @@ type ActiveOperationItem struct {
 
 // DTO untuk Laporan SPK Per Cust
 type SpkPerCustItem struct {
+	ID       string     `gorm:"column:id" json:"id"`
 	Site     string     `gorm:"column:site" json:"site"`
 	TglMasuk *time.Time `gorm:"column:tglMasuk" json:"tgl_masuk"`
 	CloseSpk *time.Time `gorm:"column:closeSpk" json:"close_spk"`
