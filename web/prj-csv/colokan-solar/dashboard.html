@@ -1675,6 +1675,23 @@
       }, 4000);
     }
 
+    // Close modal on Escape key press
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        const mColokan = document.getElementById('modalColokan');
+        const mIsi = document.getElementById('modalIsiSolar');
+        const mTangki = document.getElementById('modalIsiSolarTangki');
+
+        if (mColokan && !mColokan.classList.contains('hidden')) {
+          closeModalColokan();
+        } else if (mIsi && !mIsi.classList.contains('hidden')) {
+          closeModalIsiSolar();
+        } else if (mTangki && !mTangki.classList.contains('hidden')) {
+          closeModalIsiSolarTangki();
+        }
+      }
+    });
+
     // Page Initialization
     document.addEventListener('DOMContentLoaded', () => {
       populateHourOptions('colokan_jam');
