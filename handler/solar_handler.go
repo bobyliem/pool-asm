@@ -239,6 +239,20 @@ func (h *SolarHandler) GetLaporanDetailHarian(c *gin.Context) {
 		})
 		return
 	}
+	if filter.TglAwal == "" {
+		if v := c.Query("tgl_awal"); v != "" {
+			filter.TglAwal = v
+		} else if v := c.Query("tglawal"); v != "" {
+			filter.TglAwal = v
+		}
+	}
+	if filter.TglAkhir == "" {
+		if v := c.Query("tgl_akhir"); v != "" {
+			filter.TglAkhir = v
+		} else if v := c.Query("tglakhir"); v != "" {
+			filter.TglAkhir = v
+		}
+	}
 
 	result, err := h.service.GetLaporanDetailHarian(filter)
 	if err != nil {
