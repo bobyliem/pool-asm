@@ -867,11 +867,11 @@ func isSolarReport(body string) bool {
 	return strings.Contains(lower, "laporan solar")
 }
 
-// GetTargetSolarGroup retrieves the configured group ID from app_config or .env
+// GetTargetSolarGroup retrieves the configured group ID from wa_config or .env
 func GetTargetSolarGroup(db *gorm.DB) string {
 	if db != nil {
 		var val string
-		err := db.Raw("SELECT conf_value FROM app_config WHERE conf_key = 'wa_solar_group_id' LIMIT 1").Scan(&val).Error
+		err := db.Raw("SELECT conf_value FROM wa_config WHERE conf_key = 'wa_solar_group_id' LIMIT 1").Scan(&val).Error
 		if err == nil && strings.TrimSpace(val) != "" {
 			return strings.TrimSpace(val)
 		}

@@ -834,9 +834,9 @@ func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone s
 		}
 	}
 
-	// Simpan ke app_config
+	// Simpan ke wa_config
 	err := b.dbCsv.Exec(`
-		INSERT INTO app_config (conf_key, conf_value)
+		INSERT INTO wa_config (conf_key, conf_value)
 		VALUES ('wa_solar_group_id', ?)
 		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
 	`, chatJID.String()).Error
@@ -845,7 +845,7 @@ func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone s
 	}
 
 	_ = b.dbCsv.Exec(`
-		INSERT INTO app_config (conf_key, conf_value)
+		INSERT INTO wa_config (conf_key, conf_value)
 		VALUES ('wa_solar_group_name', ?)
 		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
 	`, groupName).Error
@@ -859,6 +859,6 @@ func (b *WhatsAppBot) handleCommandUnsetGrupSolar(chatJID types.JID, senderPhone
 		return "⛔ Perintah */unsetgrupsolar* hanya dapat dijalankan oleh Admin."
 	}
 
-	_ = b.dbCsv.Exec("DELETE FROM app_config WHERE conf_key IN ('wa_solar_group_id', 'wa_solar_group_name')")
+	_ = b.dbCsv.Exec("DELETE FROM wa_config WHERE conf_key IN ('wa_solar_group_id', 'wa_solar_group_name')")
 	return "✅ Pembatasan grup laporan solar telah dinonaktifkan.\nSekarang bot menerima laporan solar dari semua chat/grup (mode bebas)."
 }

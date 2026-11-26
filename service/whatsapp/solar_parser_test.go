@@ -200,7 +200,7 @@ func TestGroupFilter(t *testing.T) {
 
 	// 1. Set target group
 	targetJID := "120363028372618291@g.us"
-	db.Exec("INSERT INTO app_config (conf_key, conf_value) VALUES ('wa_solar_group_id', ?) ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)", targetJID)
+	db.Exec("INSERT INTO wa_config (conf_key, conf_value) VALUES ('wa_solar_group_id', ?) ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)", targetJID)
 
 	got := whatsapp.GetTargetSolarGroup(db)
 	if got != targetJID {
@@ -209,7 +209,7 @@ func TestGroupFilter(t *testing.T) {
 	t.Logf("Configured target solar group: %s", got)
 
 	// Clean up after test
-	db.Exec("DELETE FROM app_config WHERE conf_key IN ('wa_solar_group_id', 'wa_solar_group_name')")
+	db.Exec("DELETE FROM wa_config WHERE conf_key IN ('wa_solar_group_id', 'wa_solar_group_name')")
 	cleared := whatsapp.GetTargetSolarGroup(db)
 	if cleared != "" {
 		t.Errorf("Expected empty after cleanup, got %s", cleared)
