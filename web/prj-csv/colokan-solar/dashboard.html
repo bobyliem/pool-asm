@@ -271,7 +271,7 @@
             </label>
             <span class="text-[10px] text-slate-500">Minimal: <span id="colokan_min_hm_label" class="font-bold text-blue-700 font-mono">0</span></span>
           </div>
-          <input type="number" step="0.001" id="colokan_hm" required
+          <input type="number" step="0.001" id="colokan_hm" required onchange="checkColokanPemakaian()"
             class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
           <p class="text-[9.5px] text-slate-400 mt-0.5">Format decimal 3 angka di belakang koma (contoh: 19491.200).</p>
         </div>
@@ -282,7 +282,7 @@
             Colokan Solar (cm) <span class="text-rose-500">*</span>
           </label>
           <div class="relative">
-            <input type="number" step="0.1" id="colokan_cm_sesudah" required placeholder="0.0"
+            <input type="number" step="0.1" id="colokan_cm_sesudah" required placeholder="0.0" onchange="checkColokanPemakaian()"
               class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2.5 pr-10 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
             <span class="absolute right-2.5 top-1.5 text-xs font-semibold text-slate-400">cm</span>
           </div>
@@ -392,7 +392,7 @@
             </label>
             <span class="text-[10px] text-slate-500">Minimal: <span id="isi_min_hm_label" class="font-bold text-emerald-700 font-mono">0</span></span>
           </div>
-          <input type="number" step="0.001" id="isi_hm" required
+          <input type="number" step="0.001" id="isi_hm" required onchange="checkIsiPemakaian()"
             class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
         </div>
 
@@ -404,7 +404,7 @@
               Colokan Awal <span class="text-rose-500">*</span>
             </label>
             <div class="relative">
-              <input type="number" step="0.1" id="isi_cm_sebelum" required placeholder="0.0" oninput="updateIsiCalcHint()"
+              <input type="number" step="0.1" id="isi_cm_sebelum" required placeholder="0.0" oninput="updateIsiCalcHint()" onchange="checkIsiPemakaian(); updateIsiCalcHint();"
                 class="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg pl-2 pr-7 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
               <span class="absolute right-1.5 top-1.5 text-[10px] font-semibold text-slate-400">cm</span>
             </div>
@@ -1190,6 +1190,24 @@
       document.getElementById('colokanAlertBox').classList.add('hidden');
     }
 
+    function checkColokanPemakaian() {
+      const cmSesudah = parseFloat(document.getElementById('colokan_cm_sesudah').value);
+      const hm = parseFloat(document.getElementById('colokan_hm').value);
+      const currentHm = parseFloat(document.getElementById('colokan_current_hm').value || '0');
+      const sisaCm = parseFloat(document.getElementById('colokan_sisa_cm').value || '0');
+
+      if (!isNaN(cmSesudah) && !isNaN(hm) && sisaCm > 0) {
+        if (cmSesudah < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+          alert("Indikasi pemakaian unit, cek HM!");
+          showColokanAlert("Indikasi pemakaian unit, cek HM!");
+          return false;
+        } else {
+          hideColokanAlert();
+        }
+      }
+      return true;
+    }
+
     async function handleColokanSubmit(e) {
       e.preventDefault();
       hideColokanAlert();
@@ -1228,6 +1246,13 @@
       if (cmSesudah > (sisaCm + 0.05)) {
         alert("Colokan Solar lebih besar dari saldo sebelumnya!");
         showColokanAlert("Colokan Solar lebih besar dari saldo sebelumnya!");
+        return;
+      }
+
+      // Validasi: jika colokan berkurang (pemakaian), HM harus lebih besar dari HM sebelumnya
+      if (cmSesudah < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+        alert("Indikasi pemakaian unit, cek HM!");
+        showColokanAlert("Indikasi pemakaian unit, cek HM!");
         return;
       }
 
@@ -1335,6 +1360,24 @@
       document.getElementById('isiAlertBox').classList.add('hidden');
     }
 
+    function checkIsiPemakaian() {
+      const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
+      const hm = parseFloat(document.getElementById('isi_hm').value);
+      const currentHm = parseFloat(document.getElementById('isi_current_hm').value || '0');
+      const sisaCm = parseFloat(document.getElementById('isi_sisa_cm').value || '0');
+
+      if (!isNaN(cmSebelum) && !isNaN(hm) && sisaCm > 0) {
+        if (cmSebelum < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+          alert("Indikasi pemakaian unit, cek HM!");
+          showIsiAlert("Indikasi pemakaian unit, cek HM!");
+          return false;
+        } else {
+          hideIsiAlert();
+        }
+      }
+      return true;
+    }
+
     function updateIsiCalcHint() {
       const cmSebelum = parseFloat(document.getElementById('isi_cm_sebelum').value);
       const cmSesudah = parseFloat(document.getElementById('isi_cm_sesudah').value);
@@ -1405,6 +1448,13 @@
       if (cmSebelum > (sisaCm + 0.05)) {
         alert("Colokan Awal lebih besar dari saldo sebelumnya!");
         showIsiAlert("Colokan Awal lebih besar dari saldo sebelumnya!");
+        return;
+      }
+
+      // Validasi: jika colokan awal berkurang (pemakaian), HM harus lebih besar dari HM sebelumnya
+      if (cmSebelum < (sisaCm - 0.05) && (hm - currentHm) <= 0.0001) {
+        alert("Indikasi pemakaian unit, cek HM!");
+        showIsiAlert("Indikasi pemakaian unit, cek HM!");
         return;
       }
 

@@ -1340,6 +1340,9 @@ func (r *solarRepository) SubmitColokan(req models.InputColokanRequest) error {
 	if req.CmSesudah > (sisaCm + 0.05) {
 		return fmt.Errorf("Colokan Solar lebih besar dari saldo sebelumnya!")
 	}
+	if req.CmSesudah < (sisaCm-0.05) && (req.Hm-u.Hm) <= 0.0001 {
+		return fmt.Errorf("Indikasi pemakaian unit, cek HM!")
+	}
 
 	// 3. Validasi HM
 	if req.Hm < u.Hm {
@@ -1415,6 +1418,9 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 	}
 	if cmSebelum > (sisaCm + 0.05) {
 		return fmt.Errorf("Colokan Awal lebih besar dari saldo sebelumnya!")
+	}
+	if cmSebelum < (sisaCm-0.05) && (req.Hm-u.Hm) <= 0.0001 {
+		return fmt.Errorf("Indikasi pemakaian unit, cek HM!")
 	}
 
 	// 3. Validasi selisih antara Colokan (Akhir - Awal) dalam Liter dengan Isi (Liter)
