@@ -1111,8 +1111,8 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		SELECT 
 			u.id, u.unit, u.area, u.tangki, u.induk,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
-			ROUND(COALESCE(s.hm_akhir, u.hm), 3) as hm, 
-			ROUND(COALESCE(s.saldoakhir, u.sisasolar), 2) as sisa_solar, 
+			ROUND(u.hm, 3) as hm, 
+			ROUND(u.sisasolar, 2) as sisa_solar, 
 			ROUND(u.konsumsi, 2) as konsumsi,
 			ROUND(COALESCE(s.pakai, 0), 2) as hari_pakai,
 			ROUND(COALESCE(s.isi, 0), 2) as hari_isi,
