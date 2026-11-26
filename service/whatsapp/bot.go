@@ -538,7 +538,8 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		targetChat := v.Info.Chat
 
 		// 6. Jalankan router perintah
-		b.handleIncomingCommand(targetChat, v.Info.Sender, senderPhone, body)
+		waTimestamp := v.Info.Timestamp
+		b.handleIncomingCommand(targetChat, v.Info.Sender, senderPhone, body, &waTimestamp)
 	}
 }
 
@@ -582,7 +583,16 @@ func (b *WhatsAppBot) resolveSenderPhone(msg *events.Message) string {
 }
 
 // handleIncomingCommand memproses keyword dan mengirimkan balasan
-func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, senderPhone, body string) {
+func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, senderPhone, body string, waTimestamp *time.Time) {
+	// --- Deteksi Laporan Solar (bukan perintah slash, tapi teks bebas) ---
+	if isSolarReport(body) {
+		reply := b.handleSolarReport(chatJID, body, senderPhone, waTimestamp)
+		if reply != "" {
+			b.replyText(chatJID, reply)
+		}
+		return
+	}
+
 	parts := strings.Fields(body)
 	if len(parts) == 0 {
 		return
@@ -602,6 +612,7 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 		"/omset": true, "/omsetpending": true, "/infolelang": true,
 		"/updatelelang": true, "/pendingharian": true, "/tarikdata": true, "/sync": true,
 		"/help": true, "/bantuan": true, "/helpadmin": true, "/bantuanadmin": true,
+		"/idgrup": true, "/infogrup": true, "/setgrupsolar": true, "/unsetgrupsolar": true,
 	}
 
 	if protectedCommands[command] {
@@ -658,6 +669,15 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 
 	case "/helpadmin", "/bantuanadmin":
 		reply = HandleCommandHelpAdmin(b.dbCsv, senderPhone)
+
+	case "/idgrup", "/infogrup":
+		reply = b.handleCommandIdGrup(chatJID, senderPhone)
+
+	case "/setgrupsolar":
+		reply = b.handleCommandSetGrupSolar(chatJID, senderPhone)
+
+	case "/unsetgrupsolar":
+		reply = b.handleCommandUnsetGrupSolar(chatJID, senderPhone)
 
 	default:
 		// Bukan keyword terdaftar, abaikan
@@ -745,4 +765,100 @@ func (b *WhatsAppBot) cleanupDedupLoop() {
 			return true
 		})
 	}
+}
+
+
+// handleCommandIdGrup: /idgrup
+func (b *WhatsAppBot) handleCommandIdGrup(chatJID types.JID, senderPhone string) string {
+	if chatJID.Server != types.GroupServer {
+		return fmt.Sprintf("ℹ️ Perintah */idgrup* harus dijalankan di dalam WhatsApp Group.\n\nID Chat Anda saat ini: `%s`", chatJID.String())
+	}
+
+	groupName := "Grup WhatsApp"
+	memberCount := 0
+	if b.client != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if info, err := b.client.GetGroupInfo(ctx, chatJID); err == nil && info != nil {
+			if info.Name != "" {
+				groupName = info.Name
+			}
+			memberCount = len(info.Participants)
+		}
+	}
+
+	targetGroup := GetTargetSolarGroup(b.dbCsv)
+	isSolarGroup := targetGroup != "" && targetGroup == chatJID.String()
+
+	statusSolar := "❌ Belum diset sebagai grup solar"
+	if isSolarGroup {
+		statusSolar = "✅ *AKTIF sebagai Grup Resmi Laporan Solar*"
+	} else if targetGroup != "" {
+		statusSolar = "⚠️ Grup ini *BUKAN* grup solar (Grup solar terdaftar: `" + targetGroup + "`)"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📋 *INFORMASI GRUP WHATSAPP*\n")
+	sb.WriteString("------------------------------\n")
+	sb.WriteString(fmt.Sprintf("📌 *Nama*: %s\n", groupName))
+	sb.WriteString(fmt.Sprintf("🆔 *ID Grup*: `%s`\n", chatJID.String()))
+	if memberCount > 0 {
+		sb.WriteString(fmt.Sprintf("👥 *Anggota*: %d orang\n", memberCount))
+	}
+	sb.WriteString(fmt.Sprintf("⛽ *Status Laporan Solar*: %s\n", statusSolar))
+	sb.WriteString("------------------------------\n")
+	if !isSolarGroup {
+		sb.WriteString("💡 *Tips*: Ketik */setgrupsolar* di grup ini untuk mengunci penerimaan laporan solar hanya di grup ini.")
+	}
+
+	return sb.String()
+}
+
+// handleCommandSetGrupSolar: /setgrupsolar (Khusus Admin)
+func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone string) string {
+	if !IsAdmin(b.dbCsv, senderPhone) {
+		return "⛔ Perintah */setgrupsolar* hanya dapat dijalankan oleh Admin."
+	}
+	if chatJID.Server != types.GroupServer {
+		return "⚠️ Perintah */setgrupsolar* hanya bisa dijalankan di dalam WhatsApp Group."
+	}
+
+	groupName := "Grup WhatsApp"
+	if b.client != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if info, err := b.client.GetGroupInfo(ctx, chatJID); err == nil && info != nil {
+			if info.Name != "" {
+				groupName = info.Name
+			}
+		}
+	}
+
+	// Simpan ke wa_config
+	err := b.dbCsv.Exec(`
+		INSERT INTO wa_config (conf_key, conf_value)
+		VALUES ('wa_solar_group_id', ?)
+		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
+	`, chatJID.String()).Error
+	if err != nil {
+		return "❌ Gagal menyimpan konfigurasi grup solar: " + err.Error()
+	}
+
+	_ = b.dbCsv.Exec(`
+		INSERT INTO wa_config (conf_key, conf_value)
+		VALUES ('wa_solar_group_name', ?)
+		ON DUPLICATE KEY UPDATE conf_value = VALUES(conf_value)
+	`, groupName).Error
+
+	return fmt.Sprintf("✅ *SUKSES!*\n------------------------------\nGrup *%s* telah ditetapkan sebagai *Grup Resmi Laporan Solar*.\n🆔 ID: `%s`\n\nMulai sekarang, bot hanya akan memproses laporan solar yang dikirimkan di dalam grup ini.", groupName, chatJID.String())
+}
+
+// handleCommandUnsetGrupSolar: /unsetgrupsolar (Khusus Admin)
+func (b *WhatsAppBot) handleCommandUnsetGrupSolar(chatJID types.JID, senderPhone string) string {
+	if !IsAdmin(b.dbCsv, senderPhone) {
+		return "⛔ Perintah */unsetgrupsolar* hanya dapat dijalankan oleh Admin."
+	}
+
+	_ = b.dbCsv.Exec("DELETE FROM wa_config WHERE conf_key IN ('wa_solar_group_id', 'wa_solar_group_name')")
+	return "✅ Pembatasan grup laporan solar telah dinonaktifkan.\nSekarang bot menerima laporan solar dari semua chat/grup (mode bebas)."
 }
