@@ -153,10 +153,10 @@
             <div class="flex items-center gap-1.5 bg-slate-200 border border-slate-400 rounded-lg px-2.5 py-1 shadow-inner">
               <i class="fa-regular fa-calendar-days text-slate-700 text-xs"></i>
               <span class="text-[11px] font-bold text-slate-700">Periode:</span>
-              <input type="date" id="filterTglAwal"
+              <input type="date" id="filterTglAwal" onchange="saveDateSession()"
                 class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
               <span class="text-slate-600 font-extrabold text-[11px]">s/d</span>
-              <input type="date" id="filterTglAkhir"
+              <input type="date" id="filterTglAkhir" onchange="saveDateSession()"
                 class="bg-slate-100 hover:bg-white focus:bg-white text-slate-900 font-bold px-2 py-0.5 rounded border border-slate-400 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer transition">
             </div>
 
@@ -386,31 +386,49 @@
     // Ambil tanggal dari session, jika belum ada set ke hari ini
     function initDateFilters() {
       const today = getTodayString();
-      let tglAwal = sessionStorage.getItem('asm_tgl_awal') || sessionStorage.getItem('csv_spk_tglawal');
-      let tglAkhir = sessionStorage.getItem('asm_tgl_akhir') || sessionStorage.getItem('csv_spk_tglakhir');
+      let tglAwal = '';
+      let tglAkhir = '';
+
+      if (window.ASM_SESSION && typeof window.ASM_SESSION.getDateRange === 'function') {
+        const range = window.ASM_SESSION.getDateRange();
+        tglAwal = range.tglAwal;
+        tglAkhir = range.tglAkhir;
+      }
 
       if (!tglAwal) {
-        tglAwal = today;
-        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+        tglAwal = sessionStorage.getItem('tgl_awal') ||
+                  sessionStorage.getItem('tglawal') ||
+                  sessionStorage.getItem('asm_tgl_awal') ||
+                  sessionStorage.getItem('csv_spk_tglawal') ||
+                  today;
       }
       if (!tglAkhir) {
-        tglAkhir = today;
-        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+        tglAkhir = sessionStorage.getItem('tgl_akhir') ||
+                   sessionStorage.getItem('tglakhir') ||
+                   sessionStorage.getItem('asm_tgl_akhir') ||
+                   sessionStorage.getItem('csv_spk_tglakhir') ||
+                   today;
       }
 
       filterTglAwal.value = tglAwal;
       filterTglAkhir.value = tglAkhir;
+      saveDateSession();
     }
 
     function saveDateSession() {
       const tglAwal = filterTglAwal.value || getTodayString();
       const tglAkhir = filterTglAkhir.value || getTodayString();
-      if (window.ASM_SESSION) {
+      if (window.ASM_SESSION && typeof window.ASM_SESSION.setDateRange === 'function') {
         window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
-      } else {
-        sessionStorage.setItem('asm_tgl_awal', tglAwal);
-        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
       }
+      sessionStorage.setItem('tgl_awal', tglAwal);
+      sessionStorage.setItem('tgl_akhir', tglAkhir);
+      sessionStorage.setItem('tglawal', tglAwal);
+      sessionStorage.setItem('tglakhir', tglAkhir);
+      sessionStorage.setItem('asm_tgl_awal', tglAwal);
+      sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+      sessionStorage.setItem('csv_spk_tglawal', tglAwal);
+      sessionStorage.setItem('csv_spk_tglakhir', tglAkhir);
     }
 
     // On Load
@@ -447,6 +465,7 @@
 
     // Fetch Data from API
     async function fetchData(page = 1) {
+      saveDateSession();
       currentPage = page;
       refreshIcon.classList.add("fa-spin");
 
