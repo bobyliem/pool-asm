@@ -572,6 +572,84 @@
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- MODAL MUTASI 3 HARI TERAKHIR               -->
+  <!-- ========================================== -->
+  <div id="modalMutasi3Hari" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+    <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-3 flex items-center justify-between text-white shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold leading-tight tracking-tight flex items-center gap-2">
+              <span>Riwayat Mutasi 3 Hari Terakhir</span>
+              <span id="mutasiUnitBadge" class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-[11px] font-mono uppercase">-</span>
+            </h3>
+            <p class="text-[10.5px] text-slate-400 mt-0.5">Rincian mutasi HM, waktu kerja, solar awal, pemakaian, pengisian, dan sisa solar.</p>
+          </div>
+        </div>
+        <button onclick="closeModalMutasi()" class="text-slate-400 hover:text-white transition cursor-pointer text-lg leading-none p-1 rounded-md hover:bg-slate-700/50">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable Table) -->
+      <div class="p-3.5 overflow-y-auto flex-1 custom-scrollbar">
+        <!-- Loading State -->
+        <div id="mutasiLoading" class="py-12 flex flex-col items-center justify-center gap-2 text-slate-500">
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600"></i>
+          <span class="text-xs font-semibold">Memuat riwayat mutasi...</span>
+        </div>
+
+        <!-- Empty State -->
+        <div id="mutasiEmpty" class="hidden py-12 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+          <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-1"></i>
+          <span class="text-xs font-bold text-slate-600">Tidak ada riwayat mutasi</span>
+          <span class="text-[11px] text-slate-400">Belum ada catatan mutasi 3 hari terakhir untuk unit ini.</span>
+        </div>
+
+        <!-- Table Container -->
+        <div id="mutasiTableWrapper" class="hidden border border-slate-200 rounded-lg overflow-x-auto shadow-2xs">
+          <table class="w-full text-[11px] border-collapse text-left">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold select-none whitespace-nowrap">
+                <th class="py-1.5 px-2 text-center w-8 border-r border-slate-200">No</th>
+                <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Tanggal & Jam</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Awal</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Akhir</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-blue-50/50 text-blue-900">Wkt Kerja</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">Solar Awal</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800">Pakai</th>
+                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800">Isi</th>
+                <th class="py-1.5 px-2.5 text-right font-black bg-amber-50/50 text-amber-900">Sisa Solar</th>
+              </tr>
+            </thead>
+            <tbody id="mutasiTableBody" class="divide-y divide-slate-100 bg-white font-mono">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-50 border-t border-slate-200 px-4 py-2 flex items-center justify-between text-xs shrink-0">
+        <span class="text-[11px] text-slate-500 flex items-center gap-1">
+          <i class="fa-solid fa-circle-info text-blue-500"></i>
+          <span>Tekan <kbd class="px-1.5 py-0.5 text-[10px] font-semibold text-slate-800 bg-slate-200 border border-slate-300 rounded shadow-2xs">Esc</kbd> untuk menutup</span>
+        </span>
+        <button type="button" onclick="closeModalMutasi()"
+          class="px-3 py-1 bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-700 font-bold rounded-lg transition cursor-pointer">
+          Tutup
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -1028,7 +1106,9 @@
               ${isTangki ? `
                 <!-- Khusus Card Tangki: Sisa Solar + Ketahanan Stok (Kedip jika <= 3 Hari) -->
                 <div class="flex items-center gap-2 rounded-lg p-2 border mb-1.5 transition ${isCriticalStock ? 'bg-rose-50/90 border-rose-300 shadow-rose-100 shadow-sm' : 'bg-amber-50/70 border-amber-200/80'}">
-                  ${getTankSVG(isNotToday)}
+                  <div onclick="openModalMutasi('${escapeQuotes(u.unit)}')" class="cursor-pointer hover:opacity-80 hover:scale-105 active:scale-95 transition-transform" title="Klik icon untuk melihat riwayat mutasi 3 hari terakhir">
+                    ${getTankSVG(isNotToday)}
+                  </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between">
                       <span class="text-[9px] font-bold uppercase tracking-wider ${isCriticalStock ? 'text-rose-700' : 'text-amber-700'}">Sisa Stok Solar:</span>
@@ -1055,7 +1135,9 @@
               ` : `
                 <!-- Unit Alat Berat: Icon Beko (Merah jika belum input hari ini; Hitam jika aktif, Abu-abu jika standby) + HM + Sisa Solar -->
                 <div class="flex items-center gap-2 ${isActive ? 'bg-emerald-50/40 border-emerald-200/70' : 'bg-slate-50 border-slate-200/70'} rounded-lg p-1.5 border mb-1.5">
-                  ${getExcavatorSVG(isActive, isNotToday)}
+                  <div onclick="openModalMutasi('${escapeQuotes(u.unit)}')" class="cursor-pointer hover:opacity-80 hover:scale-105 active:scale-95 transition-transform" title="Klik icon untuk melihat riwayat mutasi 3 hari terakhir">
+                    ${getExcavatorSVG(isActive, isNotToday)}
+                  </div>
                   <div class="flex-1 min-w-0 space-y-0.5">
                     <div class="flex items-baseline justify-between">
                       <span class="text-[9px] font-semibold text-slate-500 uppercase">Hour Meter:</span>
@@ -1688,6 +1770,81 @@
     }
 
     // ==========================================
+    // MODAL MUTASI 3 HARI LOGIC
+    // ==========================================
+    async function openModalMutasi(unitName) {
+      const modal = document.getElementById('modalMutasi3Hari');
+      const badge = document.getElementById('mutasiUnitBadge');
+      const loading = document.getElementById('mutasiLoading');
+      const empty = document.getElementById('mutasiEmpty');
+      const wrapper = document.getElementById('mutasiTableWrapper');
+      const tbody = document.getElementById('mutasiTableBody');
+
+      badge.textContent = unitName;
+      loading.classList.remove('hidden');
+      empty.classList.add('hidden');
+      wrapper.classList.add('hidden');
+      tbody.innerHTML = '';
+
+      modal.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`/api/v1/solar/dashboard/unit-mutasi?unit=${encodeURIComponent(unitName)}`);
+        const json = await res.json();
+
+        loading.classList.add('hidden');
+
+        if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
+          wrapper.classList.remove('hidden');
+          let html = '';
+          json.data.forEach((r, idx) => {
+            const pakaiVal = (r.pakai !== undefined && r.pakai !== null) ? String(r.pakai).trim() : '-';
+            const isiVal = (r.isi !== undefined && r.isi !== null) ? String(r.isi).trim() : '-';
+            const pakaiNum = parseFloat(pakaiVal);
+            const isiNum = parseFloat(isiVal);
+            const pakaiClass = (!isNaN(pakaiNum) && pakaiNum > 0) ? 'text-rose-600 font-bold' : 'text-slate-400';
+            const isiClass = (!isNaN(isiNum) && isiNum > 0) ? 'text-emerald-600 font-bold' : 'text-slate-400';
+
+            const formatVal = (val, dec = 1) => {
+              if (val === '-' || val === '' || val === null || val === undefined) return '-';
+              const n = parseFloat(val);
+              if (isNaN(n)) return val;
+              return formatNumber(n, dec);
+            };
+
+            html += `
+              <tr class="hover:bg-slate-50/80 transition">
+                <td class="py-1 px-2 text-center text-slate-400 font-sans border-r border-slate-100 text-[10px]">${idx + 1}</td>
+                <td class="py-1 px-2.5 text-center font-sans font-bold text-slate-700 border-r border-slate-100 whitespace-nowrap">${r.tgl}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm)}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm_end)}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 font-bold ${r.wkt_kerja > 0 ? 'text-blue-700' : 'text-slate-400'}">${formatNumber(r.wkt_kerja, 2)}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-600">${formatVal(r.solar_awal, 1)}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 ${pakaiClass}">${formatVal(r.pakai, 1)}</td>
+                <td class="py-1 px-2.5 text-right border-r border-slate-100 ${isiClass}">${formatVal(r.isi, 1)}</td>
+                <td class="py-1 px-2.5 text-right font-bold text-slate-900 bg-amber-50/30">${formatVal(r.sisa_solar, 1)}</td>
+              </tr>
+            `;
+          });
+          tbody.innerHTML = html;
+        } else {
+          empty.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error('Error fetching unit mutasi:', err);
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        const emptyLabel = empty.querySelector('span.text-xs');
+        if (emptyLabel) emptyLabel.textContent = 'Gagal memuat data mutasi';
+      }
+    }
+
+    function closeModalMutasi() {
+      const modal = document.getElementById('modalMutasi3Hari');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // ==========================================
     // TOAST NOTIFICATION HELPER
     // ==========================================
     function showToast(message, type = 'info') {
@@ -1720,8 +1877,11 @@
         const mColokan = document.getElementById('modalColokan');
         const mIsi = document.getElementById('modalIsiSolar');
         const mTangki = document.getElementById('modalIsiSolarTangki');
+        const mMutasi = document.getElementById('modalMutasi3Hari');
 
-        if (mColokan && !mColokan.classList.contains('hidden')) {
+        if (mMutasi && !mMutasi.classList.contains('hidden')) {
+          closeModalMutasi();
+        } else if (mColokan && !mColokan.classList.contains('hidden')) {
           closeModalColokan();
         } else if (mIsi && !mIsi.classList.contains('hidden')) {
           closeModalIsiSolar();

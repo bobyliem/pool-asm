@@ -345,3 +345,14 @@ type InputIsiSolarRequest struct {
 	CmAkhir   float64 `json:"cm_akhir"`
 	CmSesudah float64 `json:"cm_sesudah"`
 }
+
+type UnitMutasiItem struct {
+	Tgl       string  `gorm:"column:tgl" json:"tgl"`
+	Hm        float64 `gorm:"column:hm" json:"hm"`
+	HmEnd     float64 `gorm:"column:hm_end" json:"hm_end"`
+	WktKerja  float64 `gorm:"column:wkt_kerja" json:"wkt_kerja"`
+	SolarAwal float64 `gorm:"column:solarAwal" json:"solar_awal"`
+	Pakai     string  `gorm:"column:pakai" json:"pakai"`
+	Isi       string  `gorm:"column:isi" json:"isi"`
+	SisaSolar float64 `gorm:"column:sisaSolar" json:"sisa_solar"`
+}

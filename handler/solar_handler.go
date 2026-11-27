@@ -491,3 +491,33 @@ func (h *SolarHandler) SubmitIsiSolar(c *gin.Context) {
 		"message": fmt.Sprintf("Data pengisian solar unit %s jam %02d:00 sebesar %.1f L berhasil disimpan!", req.Unit, req.Jam, req.IsiLiter),
 	})
 }
+
+// GetUnitMutasi3Hari handles GET /api/v1/solar/dashboard/unit-mutasi
+func (h *SolarHandler) GetUnitMutasi3Hari(c *gin.Context) {
+	unit := c.Query("unit")
+	if unit == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    400,
+			"message": "Parameter unit wajib diisi",
+		})
+		return
+	}
+
+	items, err := h.service.GetUnitMutasi3Hari(unit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    500,
+			"message": "Gagal memuat mutasi 3 hari: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"code":    200,
+		"message": "success",
+		"data":    items,
+	})
+}
