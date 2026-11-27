@@ -1110,7 +1110,7 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 
 		query := fmt.Sprintf(`
 		SELECT 
-			u.id, u.unit, u.area, u.tangki, u.induk,
+			u.id, u.unit, u.area, u.tangki, u.induk, COALESCE(u.aktif, 1) as aktif,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
 			ROUND(u.hm, 3) as hm, 
 			ROUND(u.sisasolar, 2) as sisa_solar, 
@@ -1156,7 +1156,9 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		}
 
 		for i := range items {
-			if items[i].Tangki == "Yes" {
+			if items[i].Aktif == 0 {
+				items[i].Status = "INACTIVE"
+			} else if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
 
 				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
@@ -1190,8 +1192,17 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc, inactive paling bawah
 		sort.Slice(items, func(i, j int) bool {
+			isInactiveI := items[i].Aktif == 0
+			isInactiveJ := items[j].Aktif == 0
+			if isInactiveI != isInactiveJ {
+				return !isInactiveI // aktif duluan, inactive di bawah
+			}
+			if isInactiveI && isInactiveJ {
+				return items[i].Unit < items[j].Unit
+			}
+
 			isTangkiI := items[i].Tangki == "Yes"
 			isTangkiJ := items[j].Tangki == "Yes"
 			if isTangkiI != isTangkiJ {
@@ -1223,7 +1234,7 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 	} else {
 		query := fmt.Sprintf(`
 		SELECT 
-			u.id, u.unit, u.area, u.tangki, u.induk,
+			u.id, u.unit, u.area, u.tangki, u.induk, COALESCE(u.aktif, 1) as aktif,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
 			ROUND(u.hm, 3) as hm, 
 			ROUND(u.sisasolar, 2) as sisa_solar, 
@@ -1268,7 +1279,9 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		}
 
 		for i := range items {
-			if items[i].Tangki == "Yes" {
+			if items[i].Aktif == 0 {
+				items[i].Status = "INACTIVE"
+			} else if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
 
 				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
@@ -1300,8 +1313,17 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc, inactive paling bawah
 		sort.Slice(items, func(i, j int) bool {
+			isInactiveI := items[i].Aktif == 0
+			isInactiveJ := items[j].Aktif == 0
+			if isInactiveI != isInactiveJ {
+				return !isInactiveI // aktif duluan, inactive di bawah
+			}
+			if isInactiveI && isInactiveJ {
+				return items[i].Unit < items[j].Unit
+			}
+
 			isTangkiI := items[i].Tangki == "Yes"
 			isTangkiJ := items[j].Tangki == "Yes"
 			if isTangkiI != isTangkiJ {

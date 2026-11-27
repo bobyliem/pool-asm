@@ -310,6 +310,7 @@ type DashboardSolarUnitCard struct {
 	Area          string  `json:"area"`
 	Tangki        string  `json:"tangki"`
 	Induk         int     `json:"induk"`
+	Aktif         int     `gorm:"column:aktif" json:"aktif"`
 	IndukName     string  `json:"induk_name"`
 	Hm            float64 `json:"hm"`
 	SisaSolar     float64 `json:"sisa_solar"`

@@ -987,9 +987,15 @@
       const todayStr = getTodayDateStr();
       const targetDate = selectedDate || todayStr;
 
-      // Pisahkan unit Tangki dan Anak-anaknya (Unit Alat Berat)
-      const tangkiList = filtered.filter(u => (u.tangki || '').toUpperCase() === 'YES');
-      const childrenList = filtered.filter(u => (u.tangki || '').toUpperCase() !== 'YES');
+      // Pisahkan unit:
+      // 1. Inactive (u.aktif === 0)
+      // 2. Active Tangki (u.aktif !== 0 && u.tangki == 'Yes')
+      // 3. Active Children (u.aktif !== 0 && u.tangki != 'Yes')
+      const inactiveList = filtered.filter(u => u.aktif === 0);
+      const activeList = filtered.filter(u => u.aktif !== 0);
+
+      const tangkiList = activeList.filter(u => (u.tangki || '').toUpperCase() === 'YES');
+      const childrenList = activeList.filter(u => (u.tangki || '').toUpperCase() !== 'YES');
 
       // Sort tangki: induk asc, unit asc
       tangkiList.sort((a, b) => {
@@ -1008,9 +1014,15 @@
         return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true });
       });
 
+      // Sort inactive: unit asc
+      inactiveList.sort((a, b) => {
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true });
+      });
+
       function buildCardHTML(u, cardNum) {
+        const isInactive = (u.aktif === 0);
         const isTangki = (u.tangki || '').toUpperCase() === 'YES';
-        const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
+        const isActive = !isInactive && (u.status || '').toUpperCase() === 'BEROPERASI';
         const isCriticalStock = isTangki && (u.days_of_supply !== undefined && u.days_of_supply !== null && u.days_of_supply <= 3);
         const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
 
@@ -1022,7 +1034,9 @@
         const sisaLtr = u.sisa_solar || 0;
         const sisaCm = (u.konsumsi && u.konsumsi > 0) ? (sisaLtr / u.konsumsi) : 0;
         let fuelColor = 'text-emerald-600';
-        if (!isActive && !isTangki) {
+        if (isInactive) {
+          fuelColor = 'text-slate-500 font-bold';
+        } else if (!isActive && !isTangki) {
           fuelColor = 'text-slate-700 font-bold'; // Unit standby: sisa liter hitam/abu2
         } else if (sisaLtr < 100) {
           fuelColor = 'text-rose-600';
@@ -1032,7 +1046,9 @@
 
         // Status badge
         let statusBadge = '';
-        if (isTangki) {
+        if (isInactive) {
+          statusBadge = '<span class="bg-rose-100 text-rose-700 text-[9px] font-bold px-1.5 py-0.2 rounded">INACTIVE</span>';
+        } else if (isTangki) {
           statusBadge = '<span class="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs">TANGKI</span>';
         } else if (isActive) {
           statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.2 rounded">AKTIF</span>';
@@ -1041,14 +1057,14 @@
         }
 
         // Styling Input Terakhir:
-        // - Unit Standby: Selalu abu-abu monokrom (background, teks, icon tanda seru abu-abu)
+        // - Unit Inactive / Standby: Selalu abu-abu monokrom (background, teks, icon tanda seru abu-abu)
         // - Unit Aktif / Tangki: Jika belum input hari ini (isNotToday), beri warna merah peringatan
         let lastInputBoxClass = 'bg-slate-50/70 border border-slate-100 text-slate-500';
         let lastInputIconClass = 'fa-clock text-slate-400 text-[9px]';
         let lastInputLabelClass = 'text-slate-400';
         let lastInputTimeClass = 'text-slate-700';
 
-        if (!isActive && !isTangki) {
+        if (isInactive || (!isActive && !isTangki)) {
           lastInputBoxClass = 'bg-slate-50 border border-slate-200 text-slate-500';
           lastInputIconClass = isNotToday ? 'fa-triangle-exclamation text-slate-400 text-[10px]' : 'fa-clock text-slate-400 text-[9px]';
           lastInputLabelClass = 'text-slate-400';
@@ -1061,7 +1077,7 @@
         }
 
         return `
-          <div class="unit-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
+          <div class="unit-card ${isInactive ? 'bg-slate-50 border-slate-300 opacity-90' : 'bg-white border-slate-200'} border rounded-xl p-2.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
             
             <!-- Card Header: Unit Name, Numbering & Badges -->
             <div>
@@ -1242,6 +1258,24 @@
             `;
           }
 
+          html += buildCardHTML(u, `#${cardCounter++}`);
+        });
+      }
+
+      // 3. Tampilkan unit Inactive di paling bawah dengan garis horizontal pembatas
+      if (inactiveList.length > 0) {
+        html += `
+          <div class="col-span-full w-full my-3 flex items-center gap-3" style="grid-column: 1 / -1;">
+            <div class="h-0.5 bg-slate-300 flex-1"></div>
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-0.5 rounded-full border border-slate-300 shadow-2xs">
+              <i class="fa-solid fa-power-off text-rose-500 text-[10px]"></i>
+              <span class="text-slate-800 font-extrabold uppercase tracking-wide">Inactive</span>
+            </div>
+            <div class="h-0.5 bg-slate-300 flex-1"></div>
+          </div>
+        `;
+
+        inactiveList.forEach(u => {
           html += buildCardHTML(u, `#${cardCounter++}`);
         });
       }
