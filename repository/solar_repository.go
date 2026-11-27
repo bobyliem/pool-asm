@@ -38,6 +38,7 @@ type SolarRepository interface {
 	GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error)
 	SubmitColokan(req models.InputColokanRequest) error
 	SubmitIsiSolar(req models.InputIsiSolarRequest) error
+	GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error)
 }
 
 type solarRepository struct {
@@ -1109,7 +1110,7 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 
 		query := fmt.Sprintf(`
 		SELECT 
-			u.id, u.unit, u.area, u.tangki, u.induk,
+			u.id, u.unit, u.area, u.tangki, u.induk, COALESCE(u.aktif, 1) as aktif,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
 			ROUND(u.hm, 3) as hm, 
 			ROUND(u.sisasolar, 2) as sisa_solar, 
@@ -1155,7 +1156,9 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		}
 
 		for i := range items {
-			if items[i].Tangki == "Yes" {
+			if items[i].Aktif == 0 {
+				items[i].Status = "INACTIVE"
+			} else if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
 
 				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
@@ -1189,8 +1192,17 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc, inactive paling bawah
 		sort.Slice(items, func(i, j int) bool {
+			isInactiveI := items[i].Aktif == 0
+			isInactiveJ := items[j].Aktif == 0
+			if isInactiveI != isInactiveJ {
+				return !isInactiveI // aktif duluan, inactive di bawah
+			}
+			if isInactiveI && isInactiveJ {
+				return items[i].Unit < items[j].Unit
+			}
+
 			isTangkiI := items[i].Tangki == "Yes"
 			isTangkiJ := items[j].Tangki == "Yes"
 			if isTangkiI != isTangkiJ {
@@ -1222,7 +1234,7 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 	} else {
 		query := fmt.Sprintf(`
 		SELECT 
-			u.id, u.unit, u.area, u.tangki, u.induk,
+			u.id, u.unit, u.area, u.tangki, u.induk, COALESCE(u.aktif, 1) as aktif,
 			COALESCE(parent.unit, CASE WHEN u.induk = 0 THEN 'Supplier Luar' ELSE '-' END) as induk_name,
 			ROUND(u.hm, 3) as hm, 
 			ROUND(u.sisasolar, 2) as sisa_solar, 
@@ -1267,7 +1279,9 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 		}
 
 		for i := range items {
-			if items[i].Tangki == "Yes" {
+			if items[i].Aktif == 0 {
+				items[i].Status = "INACTIVE"
+			} else if items[i].Tangki == "Yes" {
 				items[i].Status = "TANGKI INDUK"
 
 				// Hitung rata-rata pengeluaran solar harian (AVG L/Hari) & Ketahanan Stok (Hari)
@@ -1299,8 +1313,17 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc, inactive paling bawah
 		sort.Slice(items, func(i, j int) bool {
+			isInactiveI := items[i].Aktif == 0
+			isInactiveJ := items[j].Aktif == 0
+			if isInactiveI != isInactiveJ {
+				return !isInactiveI // aktif duluan, inactive di bawah
+			}
+			if isInactiveI && isInactiveJ {
+				return items[i].Unit < items[j].Unit
+			}
+
 			isTangkiI := items[i].Tangki == "Yes"
 			isTangkiJ := items[j].Tangki == "Yes"
 			if isTangkiI != isTangkiJ {
@@ -1492,4 +1515,25 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 	}
 
 	return nil
+}
+
+// GetUnitMutasi3Hari mengambil riwayat mutasi 3 hari terakhir untuk unit tertentu
+func (r *solarRepository) GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error) {
+	query := `
+		SELECT CONCAT(DATE_FORMAT(tgl, '%d-%b-%Y'), ' ', LPAD(jam,2,0), ':00') AS tgl
+			, hm, hm_end
+			, ROUND(hm_end-hm,2) AS wkt_kerja
+			, awal AS solarAwal
+			, CASE WHEN isi < 0 THEN ROUND(isi*-1,3) WHEN isi = 0 THEN '-' ELSE 0 END AS pakai
+			, CASE WHEN isi > 0 THEN isi WHEN isi = 0 THEN '-' ELSE 0 END AS isi
+			, akhir AS sisaSolar
+		FROM dt_solar_his
+		WHERE unit = ? AND tgl >= (SELECT COALESCE(MAX(tgl), CURDATE()) FROM dt_solar_his WHERE unit = ?) - INTERVAL 2 DAY
+		ORDER BY unit, tgl, jam, id
+	`
+	var items []models.UnitMutasiItem
+	if err := r.db.Raw(query, unit, unit).Scan(&items).Error; err != nil {
+		return nil, fmt.Errorf("gagal mengambil riwayat mutasi unit %s: %w", unit, err)
+	}
+	return items, nil
 }

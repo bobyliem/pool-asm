@@ -43,6 +43,7 @@ type SolarService interface {
 	GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error)
 	SubmitColokan(req models.InputColokanRequest) error
 	SubmitIsiSolar(req models.InputIsiSolarRequest) error
+	GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error)
 }
 
 type solarService struct {
@@ -486,4 +487,9 @@ func (s *solarService) SubmitColokan(req models.InputColokanRequest) error {
 // SubmitIsiSolar processes fuel filling input
 func (s *solarService) SubmitIsiSolar(req models.InputIsiSolarRequest) error {
 	return s.repo.SubmitIsiSolar(req)
+}
+
+// GetUnitMutasi3Hari retrieves unit mutation records for the last 3 days
+func (s *solarService) GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error) {
+	return s.repo.GetUnitMutasi3Hari(unit)
 }

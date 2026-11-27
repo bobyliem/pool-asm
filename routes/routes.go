@@ -294,6 +294,7 @@ func SetupRouter(dbCsv *gorm.DB, dbHo *gorm.DB, waBot *whatsapp.WhatsAppBot) *gi
 
 			// Dashboard Solar Endpoints
 			api.GET("/solar/dashboard/units", solarHandler.GetDashboardSolarUnits)
+			api.GET("/solar/dashboard/unit-mutasi", solarHandler.GetUnitMutasi3Hari)
 			api.POST("/solar/dashboard/input-colokan", solarHandler.SubmitColokan)
 			api.POST("/solar/dashboard/input-isi", solarHandler.SubmitIsiSolar)
 		}

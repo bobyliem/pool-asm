@@ -310,6 +310,7 @@ type DashboardSolarUnitCard struct {
 	Area          string  `json:"area"`
 	Tangki        string  `json:"tangki"`
 	Induk         int     `json:"induk"`
+	Aktif         int     `gorm:"column:aktif" json:"aktif"`
 	IndukName     string  `json:"induk_name"`
 	Hm            float64 `json:"hm"`
 	SisaSolar     float64 `json:"sisa_solar"`
@@ -344,4 +345,15 @@ type InputIsiSolarRequest struct {
 	IsiLiter  float64 `json:"isi_liter"`
 	CmAkhir   float64 `json:"cm_akhir"`
 	CmSesudah float64 `json:"cm_sesudah"`
+}
+
+type UnitMutasiItem struct {
+	Tgl       string  `gorm:"column:tgl" json:"tgl"`
+	Hm        float64 `gorm:"column:hm" json:"hm"`
+	HmEnd     float64 `gorm:"column:hm_end" json:"hm_end"`
+	WktKerja  float64 `gorm:"column:wkt_kerja" json:"wkt_kerja"`
+	SolarAwal float64 `gorm:"column:solarAwal" json:"solar_awal"`
+	Pakai     string  `gorm:"column:pakai" json:"pakai"`
+	Isi       string  `gorm:"column:isi" json:"isi"`
+	SisaSolar float64 `gorm:"column:sisaSolar" json:"sisa_solar"`
 }
