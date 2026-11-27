@@ -151,14 +151,14 @@
           <!-- Tanggal Awal -->
           <div class="flex items-center gap-1.5">
             <span class="text-[11px] font-bold text-slate-600">Dari:</span>
-            <input type="date" id="filterTglAwal" onchange="fetchData(1)"
+            <input type="date" id="filterTglAwal" onchange="onDateChange()"
               class="bg-slate-200 border border-slate-400 font-bold text-slate-800 text-xs px-2 py-0.5 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner cursor-pointer" />
           </div>
 
           <!-- Tanggal Akhir -->
           <div class="flex items-center gap-1.5">
             <span class="text-[11px] font-bold text-slate-600">Sampai:</span>
-            <input type="date" id="filterTglAkhir" onchange="fetchData(1)"
+            <input type="date" id="filterTglAkhir" onchange="onDateChange()"
               class="bg-slate-200 border border-slate-400 font-bold text-slate-800 text-xs px-2 py-0.5 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner cursor-pointer" />
           </div>
 
@@ -296,25 +296,83 @@
           }
           if (currentVal) areaSelect.value = currentVal;
 
-          // Set default dates if empty: 30 hari terakhir
+          // Set default dates if empty: ambil dari session atau fallback ke hari ini
           const tglAwalInput = document.getElementById('filterTglAwal');
           const tglAkhirInput = document.getElementById('filterTglAkhir');
           if (!tglAwalInput.value || !tglAkhirInput.value) {
-            if (json.data.max_tgl) {
-              tglAkhirInput.value = json.data.max_tgl;
-              const d = new Date(json.data.max_tgl);
-              d.setDate(d.getDate() - 30);
-              tglAwalInput.value = d.toISOString().split('T')[0];
-            } else {
-              const today = new Date().toISOString().split('T')[0];
-              tglAwalInput.value = today;
-              tglAkhirInput.value = today;
-            }
+            initDateFilters();
           }
         }
       } catch (err) {
         console.error('Error loadFilterOptions:', err);
       }
+    }
+
+    function getTodayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Ambil tanggal dari session, seperti biasa
+    function initDateFilters() {
+      const today = getTodayString();
+      let tglAwal = '';
+      let tglAkhir = '';
+
+      if (window.ASM_SESSION && typeof window.ASM_SESSION.getDateRange === 'function') {
+        const range = window.ASM_SESSION.getDateRange();
+        tglAwal = range.tglAwal;
+        tglAkhir = range.tglAkhir;
+      }
+
+      if (!tglAwal) {
+        tglAwal = sessionStorage.getItem('tgl_awal') ||
+                  sessionStorage.getItem('tglawal') ||
+                  sessionStorage.getItem('asm_tgl_awal') ||
+                  sessionStorage.getItem('csv_spk_tglawal') ||
+                  today;
+      }
+      if (!tglAkhir) {
+        tglAkhir = sessionStorage.getItem('tgl_akhir') ||
+                   sessionStorage.getItem('tglakhir') ||
+                   sessionStorage.getItem('asm_tgl_akhir') ||
+                   sessionStorage.getItem('csv_spk_tglakhir') ||
+                   today;
+      }
+
+      const tglAwalInput = document.getElementById('filterTglAwal');
+      const tglAkhirInput = document.getElementById('filterTglAkhir');
+      if (tglAwalInput) tglAwalInput.value = tglAwal;
+      if (tglAkhirInput) tglAkhirInput.value = tglAkhir;
+      saveDateSession();
+    }
+
+    function saveDateSession() {
+      const tglAwalInput = document.getElementById('filterTglAwal');
+      const tglAkhirInput = document.getElementById('filterTglAkhir');
+      const tglAwal = tglAwalInput ? tglAwalInput.value : '';
+      const tglAkhir = tglAkhirInput ? tglAkhirInput.value : '';
+      if (tglAwal && tglAkhir) {
+        if (window.ASM_SESSION && typeof window.ASM_SESSION.setDateRange === 'function') {
+          window.ASM_SESSION.setDateRange(tglAwal, tglAkhir);
+        }
+        sessionStorage.setItem('tgl_awal', tglAwal);
+        sessionStorage.setItem('tgl_akhir', tglAkhir);
+        sessionStorage.setItem('tglawal', tglAwal);
+        sessionStorage.setItem('tglakhir', tglAkhir);
+        sessionStorage.setItem('asm_tgl_awal', tglAwal);
+        sessionStorage.setItem('asm_tgl_akhir', tglAkhir);
+        sessionStorage.setItem('csv_spk_tglawal', tglAwal);
+        sessionStorage.setItem('csv_spk_tglakhir', tglAkhir);
+      }
+    }
+
+    function onDateChange() {
+      saveDateSession();
+      fetchData(1);
     }
 
     function onAreaChange() {
@@ -343,6 +401,7 @@
         start.setDate(start.getDate() - days);
         tglAwalInput.value = start.toISOString().split('T')[0];
       }
+      saveDateSession();
       fetchData(1);
     }
 
@@ -890,6 +949,7 @@
 
     // Initial Execution
     document.addEventListener('DOMContentLoaded', async () => {
+      initDateFilters();
       await loadFilterOptions();
       fetchData(1);
     });
