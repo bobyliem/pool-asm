@@ -500,8 +500,21 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		fmt.Printf("❌ [WhatsApp] Bot telah Logged Out dari WhatsApp: %s (Reason: %v)\n", v.PermanentDisconnectDescription(), v.Reason)
 
 	case *events.Message:
-		// 1. Abaikan pesan dari diri sendiri
-		if v.Info.IsFromMe {
+		// 1. Ekstrak isi teks pesan terlebih dahulu
+		body := ""
+		if v.Message.GetConversation() != "" {
+			body = v.Message.GetConversation()
+		} else if v.Message.GetExtendedTextMessage() != nil {
+			body = v.Message.GetExtendedTextMessage().GetText()
+		}
+
+		body = strings.TrimSpace(body)
+		if body == "" {
+			return
+		}
+
+		// Abaikan pesan dari diri sendiri, KECUALI jika itu adalah slash command (misal user mengetik /idgroup dari HP bot)
+		if v.Info.IsFromMe && !strings.HasPrefix(body, "/") {
 			return
 		}
 
@@ -514,19 +527,6 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		msgID := v.Info.ID
 		if _, exists := b.dedupMap.LoadOrStore(msgID, time.Now()); exists {
 			return // Pesan duplikat diabaikan
-		}
-
-		// 4. Ekstrak isi teks pesan
-		body := ""
-		if v.Message.GetConversation() != "" {
-			body = v.Message.GetConversation()
-		} else if v.Message.GetExtendedTextMessage() != nil {
-			body = v.Message.GetExtendedTextMessage().GetText()
-		}
-
-		body = strings.TrimSpace(body)
-		if body == "" {
-			return
 		}
 
 		// 5. Resolusi Nomor Pengirim untuk Cek Hak Akses (konversi LID ke nomor telepon asli jika perlu)
@@ -670,14 +670,16 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 	case "/helpadmin", "/bantuanadmin":
 		reply = HandleCommandHelpAdmin(b.dbCsv, senderPhone)
 
-	case "/idgrup", "/infogrup":
+	case "/idgrup", "/idgroup", "/infogrup", "/infogroup", "/groupid", "/grupid", "/cekid":
 		reply = b.handleCommandIdGrup(chatJID, senderPhone)
 
-	case "/setgrupsolar":
+	case "/setgrupsolar", "/setgroupsolar":
 		reply = b.handleCommandSetGrupSolar(chatJID, senderPhone, parameter)
 
-	case "/unsetgrupsolar":
+	case "/unsetgrupsolar", "/unsetgroupsolar":
 		reply = b.handleCommandUnsetGrupSolar(chatJID, senderPhone)
+
+
 
 	default:
 		// Bukan keyword terdaftar, abaikan
