@@ -1189,18 +1189,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
 		sort.Slice(items, func(i, j int) bool {
-			rank := func(item models.DashboardSolarUnitCard) int {
-				if item.Tangki == "Yes" {
-					return 1
+			isTangkiI := items[i].Tangki == "Yes"
+			isTangkiJ := items[j].Tangki == "Yes"
+			if isTangkiI != isTangkiJ {
+				return isTangkiI // Tangki selalu duluan
+			}
+			if isTangkiI && isTangkiJ {
+				if items[i].Induk != items[j].Induk {
+					return items[i].Induk < items[j].Induk
 				}
+				return items[i].Unit < items[j].Unit
+			}
+			// Non-tangki: kelompokkan per induk
+			if items[i].Induk != items[j].Induk {
+				return items[i].Induk < items[j].Induk
+			}
+			rank := func(item models.DashboardSolarUnitCard) int {
 				if item.Status == "STANDBY" {
 					return 3
 				}
 				return 2 // BEROPERASI
 			}
-
 			rankI := rank(items[i])
 			rankJ := rank(items[j])
 			if rankI != rankJ {
@@ -1288,18 +1299,29 @@ func (r *solarRepository) GetDashboardSolarUnits(filter models.DashboardSolarFil
 			}
 		}
 
-		// Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
+		// Urutkan: Tangki duluan (induk asc, unit asc), lalu anak-anak grouped by induk asc, status asc, unit asc
 		sort.Slice(items, func(i, j int) bool {
-			rank := func(item models.DashboardSolarUnitCard) int {
-				if item.Tangki == "Yes" {
-					return 1
+			isTangkiI := items[i].Tangki == "Yes"
+			isTangkiJ := items[j].Tangki == "Yes"
+			if isTangkiI != isTangkiJ {
+				return isTangkiI // Tangki selalu duluan
+			}
+			if isTangkiI && isTangkiJ {
+				if items[i].Induk != items[j].Induk {
+					return items[i].Induk < items[j].Induk
 				}
+				return items[i].Unit < items[j].Unit
+			}
+			// Non-tangki: kelompokkan per induk
+			if items[i].Induk != items[j].Induk {
+				return items[i].Induk < items[j].Induk
+			}
+			rank := func(item models.DashboardSolarUnitCard) int {
 				if item.Status == "STANDBY" {
 					return 3
 				}
 				return 2 // BEROPERASI
 			}
-
 			rankI := rank(items[i])
 			rankJ := rank(items[j])
 			if rankI != rankJ {
@@ -1376,16 +1398,17 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 		ID        int
 		Hm        float64
 		Tangki    string
+		Induk     int
 		Konsumsi  float64
 		Sisasolar float64
 	}
 	var u UnitCheck
-	err := r.db.Raw("SELECT id, hm, tangki, konsumsi, sisasolar FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
+	err := r.db.Raw("SELECT id, hm, tangki, induk, konsumsi, sisasolar FROM dt_solar_unit WHERE unit = ? LIMIT 1", req.Unit).Scan(&u).Error
 	if err != nil || u.ID == 0 {
 		return fmt.Errorf("unit '%s' tidak ditemukan di master dt_solar_unit", req.Unit)
 	}
 
-	// Khusus Unit Tangki: TANGKI-CCK dan TANGKI-PION
+	// Khusus Unit Tangki:
 	if u.Tangki == "Yes" {
 		if req.IsiLiter <= 0 {
 			return fmt.Errorf("jumlah pengisian (Liter) harus lebih besar dari 0")
@@ -1398,8 +1421,18 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 			return fmt.Errorf("pengisian data terakhir pada tanggal %s adalah jam %02d:00. Jam input (%02d:00) harus lebih besar", req.Tanggal, lastJam, req.Jam)
 		}
 
+		// Tangki yang induk nya <> 0 (misal TANGKI-PION):
+		// CALL sp_tangki_ext(tanggal, jam, namaTangki, isi[liter]);
+		if u.Induk != 0 {
+			callSQL := "CALL sp_tangki_ext(?, ?, ?, ?)"
+			if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.Unit, req.IsiLiter).Error; err != nil {
+				return fmt.Errorf("gagal mengeksekusi sp_tangki_ext: %w", err)
+			}
+			return nil
+		}
+
+		// Tangki yang induk nya = 0 (misal TANGKI-CCK):
 		// CALL sp_tangki_sedot(tanggal, jam, 14, isi_liter, isi_liter, 15, 'FillUnit');
-		// 14 = default value; 15 = dt_solar_unit.id (TANGKI-PION=15, TANGKI-CCK=14)
 		callSQL := "CALL sp_tangki_sedot(?, ?, 14, ?, ?, ?, 'FillUnit')"
 		if err := r.db.Exec(callSQL, req.Tanggal, req.Jam, req.IsiLiter, req.IsiLiter, u.ID).Error; err != nil {
 			return fmt.Errorf("gagal mengeksekusi sp_tangki_sedot: %w", err)

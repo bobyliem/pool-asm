@@ -906,30 +906,34 @@
         if (empty) empty.classList.add('hidden');
       }
 
-      // Urutkan berdasarkan status asc (standby di urutan bawah), dan nama unit
-      filtered.sort((a, b) => {
-        const getRank = (u) => {
-          if ((u.tangki || '').toUpperCase() === 'YES') return 1; // Tangki Induk di posisi atas
-          if ((u.status || '').toUpperCase() === 'STANDBY') return 3; // Standby di urutan bawah
-          return 2; // Aktif / Beroperasi
-        };
-        const rankA = getRank(a);
-        const rankB = getRank(b);
-        if (rankA !== rankB) {
-          return rankA - rankB;
-        }
-        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true, sensitivity: 'base' });
-      });
-
       const todayStr = getTodayDateStr();
       const targetDate = selectedDate || todayStr;
 
-      let html = '';
-      filtered.forEach((u, idx) => {
+      // Pisahkan unit Tangki dan Anak-anaknya (Unit Alat Berat)
+      const tangkiList = filtered.filter(u => (u.tangki || '').toUpperCase() === 'YES');
+      const childrenList = filtered.filter(u => (u.tangki || '').toUpperCase() !== 'YES');
+
+      // Sort tangki: induk asc, unit asc
+      tangkiList.sort((a, b) => {
+        if ((a.induk || 0) !== (b.induk || 0)) return (a.induk || 0) - (b.induk || 0);
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true });
+      });
+
+      // Sort children: grouped by induk asc, status (aktif duluan, standby terakhir), unit asc
+      childrenList.sort((a, b) => {
+        const indukA = a.induk || 0;
+        const indukB = b.induk || 0;
+        if (indukA !== indukB) return indukA - indukB;
+        const isStandbyA = (a.status || '').toUpperCase() === 'STANDBY';
+        const isStandbyB = (b.status || '').toUpperCase() === 'STANDBY';
+        if (isStandbyA !== isStandbyB) return isStandbyA ? 1 : -1;
+        return (a.unit || '').localeCompare(b.unit || '', undefined, { numeric: true });
+      });
+
+      function buildCardHTML(u, cardNum) {
         const isTangki = (u.tangki || '').toUpperCase() === 'YES';
         const isActive = (u.status || '').toUpperCase() === 'BEROPERASI';
         const isCriticalStock = isTangki && (u.days_of_supply !== undefined && u.days_of_supply !== null && u.days_of_supply <= 3);
-        const cardNum = `#${idx + 1}`;
         const areaColor = (u.area || '').toLowerCase() === 'cicangkal' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800';
 
         // Validasi input terakhir bukan hari ini (icon jadi merah jika bukan hari ini)
@@ -978,7 +982,7 @@
           lastInputTimeClass = 'text-rose-700';
         }
 
-        html += `
+        return `
           <div class="unit-card bg-white border border-slate-200 rounded-xl p-2.5 shadow-2xs hover:shadow-md hover:border-blue-400 transition flex flex-col justify-between">
             
             <!-- Card Header: Unit Name, Numbering & Badges -->
@@ -1123,7 +1127,42 @@
 
           </div>
         `;
-      });
+      }
+
+      let html = '';
+      let cardCounter = 1;
+
+      // 1. Tampilkan unit Tangki terlebih dahulu
+      if (tangkiList.length > 0) {
+        tangkiList.forEach(u => {
+          html += buildCardHTML(u, `#${cardCounter++}`);
+        });
+      }
+
+      // 2. Tampilkan unit Anak-anak, ganti baris dengan garis horizontal saat beda induk (termasuk transisi dari Tangki ke Anak)
+      if (childrenList.length > 0) {
+        let currentInduk = null;
+
+        childrenList.forEach(u => {
+          const unitInduk = u.induk || 0;
+          if (unitInduk !== currentInduk) {
+            currentInduk = unitInduk;
+            const indukLabel = u.induk_name && u.induk_name !== '-' ? u.induk_name : `Induk #${unitInduk}`;
+            html += `
+              <div class="col-span-full w-full my-2.5 flex items-center gap-3" style="grid-column: 1 / -1;">
+                <div class="h-0.5 bg-slate-200 flex-1"></div>
+                <div class="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-100/90 px-3 py-0.5 rounded-full border border-slate-200 shadow-2xs">
+                  <i class="fa-solid fa-gas-pump text-amber-500 text-[10px]"></i>
+                  <span>Anak: <span class="text-slate-900 font-extrabold">${indukLabel}</span></span>
+                </div>
+                <div class="h-0.5 bg-slate-200 flex-1"></div>
+              </div>
+            `;
+          }
+
+          html += buildCardHTML(u, `#${cardCounter++}`);
+        });
+      }
 
       grid.innerHTML = html;
     }
