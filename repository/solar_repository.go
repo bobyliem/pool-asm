@@ -1013,7 +1013,7 @@ func (r *solarRepository) GetLaporanMonitoringTangki(filter models.LaporanMonito
 		FROM dt_solar_summary s
 		JOIN dt_solar_unit u ON s.unit = u.unit
 		%s
-		ORDER BY s.tgl DESC
+		ORDER BY s.tgl ASC, s.id ASC
 		LIMIT %d OFFSET %d
 	`, whereClause, limit, offset)
 
