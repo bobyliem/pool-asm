@@ -504,7 +504,7 @@ func (h *SolarHandler) GetUnitMutasi3Hari(c *gin.Context) {
 		return
 	}
 
-	items, err := h.service.GetUnitMutasi3Hari(unit)
+	items, isTangki, err := h.service.GetUnitMutasi3Hari(unit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
@@ -515,9 +515,10 @@ func (h *SolarHandler) GetUnitMutasi3Hari(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"code":    200,
-		"message": "success",
-		"data":    items,
+		"status":    "success",
+		"code":      200,
+		"message":   "success",
+		"is_tangki": isTangki,
+		"data":      items,
 	})
 }

@@ -1,6 +1,7 @@
 package whatsapp_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -245,4 +246,54 @@ Sesudah: (cm)`
 		t.Errorf("Expected date %s, got %s", expectedDate, r.Tanggal.Format("2006-01-02"))
 	}
 	t.Logf("Successfully parsed date with typo '26 NOV 026' -> %s", r.Tanggal.Format("2006-01-02"))
+}
+
+
+func TestAlphanumericUnitMatching(t *testing.T) {
+	dsn := "root:P@ssw0rd@tcp(127.0.0.1:3307)/imp_sampurna?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("Failed to connect DB: %v", err)
+	}
+
+	testCases := []struct {
+		inputUnit    string
+		expectedUnit string
+	}{
+		{"sk05", "SK200-10 05"},
+		{"SK.05", "SK200-10 05"},
+		{"SK-05", "SK200-10 05"},
+		{"SK 05", "SK200-10 05"},
+		{"komatsu", "PC200-8"},
+		{"KOMATSU.", "PC200-8"},
+		{"SK 200 (04 bleker", "KOB 04"},
+		{"SK200-04", "KOB 04"},
+		{"SK.330.02", "SK330-8 02"},
+		{"sk 330 02", "SK330-8 02"},
+		{"sk.330.02", "SK330-8 02"},
+		{"330.01", "SK330-8"},
+		{"330 01", "SK330-8"},
+		{"330-01", "SK330-8"},
+		{"LDR.cat.950.g.02", "CAT 950G 02"},
+		{"ldr cat 950 g 02", "CAT 950G 02"},
+		{"SK.200.03", "KOB 03"},
+		{"KOB 03", "KOB 03"},
+		{"kob-03", "KOB 03"},
+	}
+
+	now := time.Now()
+	for _, tc := range testCases {
+		msg := fmt.Sprintf("Laporan solar\nTgl: 27/11/2026\nUnit: %s\nHm: 1000\nColokan 30cm\nIsi solar: (jerigen)\nSesudah: (cm)", tc.inputUnit)
+		res := whatsapp.ParseSolarWA(db, msg, &now)
+		if len(res.Reports) == 0 {
+			t.Errorf("Failed to parse unit '%s': %v", tc.inputUnit, res.Errors)
+			continue
+		}
+		got := res.Reports[0].Unit
+		if got != tc.expectedUnit {
+			t.Errorf("Unit '%s' matched to '%s', expected '%s'", tc.inputUnit, got, tc.expectedUnit)
+		} else {
+			t.Logf("✓ '%s' successfully matched to '%s'", tc.inputUnit, got)
+		}
+	}
 }
