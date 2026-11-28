@@ -507,43 +507,68 @@ func containsGaIsi(block string) bool {
 
 // ==================== UNIT MATCHING ====================
 
+// stripNonAlphanumeric removes all spaces, dots, dashes, parentheses, symbols, etc., leaving only lowercase a-z and 0-9
+func stripNonAlphanumeric(s string) string {
+	s = strings.TrimSpace(s)
+	re := regexp.MustCompile("[^a-zA-Z0-9]+")
+	return strings.ToLower(re.ReplaceAllString(s, ""))
+}
+
 // matchUnit tries to match raw unit text to a master unit via alias or unit name
+// Menggunakan normalisasi alfanumerik (menghilangkan spasi, titik, simbol) untuk memperbesar potensi kecocokan
 func matchUnit(rawUnit string, units []SolarUnit) (bool, SolarUnit) {
-	cleaned := cleanUnitText(rawUnit)
+	rawAlpha := stripNonAlphanumeric(rawUnit)
+	if rawAlpha == "" {
+		return false, SolarUnit{}
+	}
 
-	// 1. Exact alias match (case-insensitive)
+	// 1. Exact alphanumeric match against Alias (e.g. "sk.330.02" -> "sk33002" == "sk33002")
 	for _, u := range units {
 		if u.Alias != "" && u.Alias != "0" {
-			if strings.EqualFold(cleaned, cleanUnitText(u.Alias)) {
+			aliasAlpha := stripNonAlphanumeric(u.Alias)
+			if aliasAlpha != "" && rawAlpha == aliasAlpha {
 				return true, u
 			}
 		}
 	}
 
-	// 2. Exact unit match (case-insensitive)
+	// 2. Exact alphanumeric match against Unit name (e.g. "cat950g02" == "cat950g02")
 	for _, u := range units {
-		if strings.EqualFold(cleaned, cleanUnitText(u.Unit)) {
+		unitAlpha := stripNonAlphanumeric(u.Unit)
+		if unitAlpha != "" && rawAlpha == unitAlpha {
 			return true, u
 		}
 	}
 
-	// 3. Fuzzy alias match (contains)
+	// 3. Alphanumeric Contains: raw text contains alias (e.g. "sk20004bleker" contains "sk20004")
 	for _, u := range units {
 		if u.Alias != "" && u.Alias != "0" {
-			if fuzzyMatchUnit(cleaned, cleanUnitText(u.Alias)) {
+			aliasAlpha := stripNonAlphanumeric(u.Alias)
+			if len(aliasAlpha) >= 3 && strings.Contains(rawAlpha, aliasAlpha) {
 				return true, u
 			}
 		}
 	}
 
-	// 4. Fuzzy unit match
+	// 4. Alphanumeric Contains: raw text contains unit name (e.g. "cat950g02loader" contains "cat950g02")
 	for _, u := range units {
-		if fuzzyMatchUnit(cleaned, cleanUnitText(u.Unit)) {
+		unitAlpha := stripNonAlphanumeric(u.Unit)
+		if len(unitAlpha) >= 3 && strings.Contains(rawAlpha, unitAlpha) {
 			return true, u
 		}
 	}
 
-	// 5. Special pattern matching for compressed/abbreviated names
+	// 5. Alphanumeric Reverse Contains: alias contains raw text (min 4 karakter alfanumerik)
+	for _, u := range units {
+		if u.Alias != "" && u.Alias != "0" {
+			aliasAlpha := stripNonAlphanumeric(u.Alias)
+			if len(rawAlpha) >= 4 && strings.Contains(aliasAlpha, rawAlpha) {
+				return true, u
+			}
+		}
+	}
+
+	// 6. Special pattern matching untuk singkatan unik (misal 01/330 -> 330.01)
 	for _, u := range units {
 		if specialMatchUnit(rawUnit, u) {
 			return true, u
@@ -555,17 +580,7 @@ func matchUnit(rawUnit string, units []SolarUnit) (bool, SolarUnit) {
 
 // cleanUnitText normalizes unit text for comparison
 func cleanUnitText(s string) string {
-	s = strings.TrimSpace(s)
-	// Remove common noise characters
-	s = strings.ReplaceAll(s, ".", "")
-	s = strings.ReplaceAll(s, "(", "")
-	s = strings.ReplaceAll(s, ")", "")
-	s = strings.ReplaceAll(s, "-", "")
-	s = strings.ReplaceAll(s, "_", "")
-	// Collapse multiple spaces
-	re := regexp.MustCompile(`\s+`)
-	s = re.ReplaceAllString(s, " ")
-	return strings.TrimSpace(s)
+	return stripNonAlphanumeric(s)
 }
 
 // fuzzyMatchUnit does a fuzzy comparison between two cleaned unit strings

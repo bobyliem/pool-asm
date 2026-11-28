@@ -589,7 +589,7 @@
               <span>Riwayat Mutasi 3 Hari Terakhir</span>
               <span id="mutasiUnitBadge" class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-[11px] font-mono uppercase">-</span>
             </h3>
-            <p class="text-[10.5px] text-slate-400 mt-0.5">Rincian mutasi HM, waktu kerja, solar awal, pemakaian, pengisian, dan sisa solar.</p>
+            <p id="mutasiSubtitle" class="text-[10.5px] text-slate-400 mt-0.5">Rincian mutasi HM, waktu kerja, solar awal, pemakaian, pengisian, dan sisa solar.</p>
           </div>
         </div>
         <button onclick="closeModalMutasi()" class="text-slate-400 hover:text-white transition cursor-pointer text-lg leading-none p-1 rounded-md hover:bg-slate-700/50">
@@ -615,18 +615,8 @@
         <!-- Table Container -->
         <div id="mutasiTableWrapper" class="hidden border border-slate-200 rounded-lg overflow-x-auto shadow-2xs">
           <table class="w-full text-[11px] border-collapse text-left">
-            <thead>
-              <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold select-none whitespace-nowrap">
-                <th class="py-1.5 px-2 text-center w-8 border-r border-slate-200">No</th>
-                <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Tanggal & Jam</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Awal</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Akhir</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-blue-50/50 text-blue-900">Wkt Kerja</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200">Solar Awal</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800">Pakai</th>
-                <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800">Isi</th>
-                <th class="py-1.5 px-2.5 text-right font-black bg-amber-50/50 text-amber-900">Sisa Solar</th>
-              </tr>
+            <thead id="mutasiTableHead">
+              <!-- Rendered dynamically -->
             </thead>
             <tbody id="mutasiTableBody" class="divide-y divide-slate-100 bg-white font-mono">
               <!-- Rendered via JS -->
@@ -1809,16 +1799,19 @@
     async function openModalMutasi(unitName) {
       const modal = document.getElementById('modalMutasi3Hari');
       const badge = document.getElementById('mutasiUnitBadge');
+      const subtitle = document.getElementById('mutasiSubtitle');
       const loading = document.getElementById('mutasiLoading');
       const empty = document.getElementById('mutasiEmpty');
       const wrapper = document.getElementById('mutasiTableWrapper');
+      const thead = document.getElementById('mutasiTableHead');
       const tbody = document.getElementById('mutasiTableBody');
 
       badge.textContent = unitName;
       loading.classList.remove('hidden');
       empty.classList.add('hidden');
       wrapper.classList.add('hidden');
-      tbody.innerHTML = '';
+      if (thead) thead.innerHTML = '';
+      if (tbody) tbody.innerHTML = '';
 
       modal.classList.remove('hidden');
 
@@ -1830,6 +1823,46 @@
 
         if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
           wrapper.classList.remove('hidden');
+
+          const isTangki = Boolean(json.is_tangki) || (allUnitsData.find(u => u.unit === unitName)?.tangki || '').toUpperCase() === 'YES';
+
+          if (subtitle) {
+            if (isTangki) {
+              subtitle.textContent = 'Rincian mutasi solar awal, pemakaian (pompa ke unit), pengisian, dan sisa stok solar.';
+            } else {
+              subtitle.textContent = 'Rincian mutasi HM, waktu kerja, solar awal, pemakaian, pengisian, dan sisa solar.';
+            }
+          }
+
+          if (thead) {
+            if (isTangki) {
+              thead.innerHTML = `
+                <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold select-none whitespace-nowrap">
+                  <th class="py-1.5 px-2 text-center w-8 border-r border-slate-200">No</th>
+                  <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Tanggal & Jam</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200">Solar Awal</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800">Pakai</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800">Isi</th>
+                  <th class="py-1.5 px-2.5 text-right font-black bg-amber-50/50 text-amber-900">Sisa Solar</th>
+                </tr>
+              `;
+            } else {
+              thead.innerHTML = `
+                <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold select-none whitespace-nowrap">
+                  <th class="py-1.5 px-2 text-center w-8 border-r border-slate-200">No</th>
+                  <th class="py-1.5 px-2.5 text-center border-r border-slate-200">Tanggal & Jam</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Awal</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200">HM Akhir</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-blue-50/50 text-blue-900">Wkt Kerja</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200">Solar Awal</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-rose-50/50 text-rose-800">Pakai</th>
+                  <th class="py-1.5 px-2.5 text-right border-r border-slate-200 bg-emerald-50/50 text-emerald-800">Isi</th>
+                  <th class="py-1.5 px-2.5 text-right font-black bg-amber-50/50 text-amber-900">Sisa Solar</th>
+                </tr>
+              `;
+            }
+          }
+
           let html = '';
           json.data.forEach((r, idx) => {
             const pakaiVal = (r.pakai !== undefined && r.pakai !== null) ? String(r.pakai).trim() : '-';
@@ -1846,19 +1879,32 @@
               return formatNumber(n, dec);
             };
 
-            html += `
-              <tr class="hover:bg-slate-50/80 transition">
-                <td class="py-1 px-2 text-center text-slate-400 font-sans border-r border-slate-100 text-[10px]">${idx + 1}</td>
-                <td class="py-1 px-2.5 text-center font-sans font-bold text-slate-700 border-r border-slate-100 whitespace-nowrap">${r.tgl}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm)}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm_end)}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 font-bold ${r.wkt_kerja > 0 ? 'text-blue-700' : 'text-slate-400'}">${formatNumber(r.wkt_kerja, 2)}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-600">${formatVal(r.solar_awal, 1)}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 ${pakaiClass}">${formatVal(r.pakai, 1)}</td>
-                <td class="py-1 px-2.5 text-right border-r border-slate-100 ${isiClass}">${formatVal(r.isi, 1)}</td>
-                <td class="py-1 px-2.5 text-right font-bold text-slate-900 bg-amber-50/30">${formatVal(r.sisa_solar, 1)}</td>
-              </tr>
-            `;
+            if (isTangki) {
+              html += `
+                <tr class="hover:bg-slate-50/80 transition">
+                  <td class="py-1 px-2 text-center text-slate-400 font-sans border-r border-slate-100 text-[10px]">${idx + 1}</td>
+                  <td class="py-1 px-2.5 text-center font-sans font-bold text-slate-700 border-r border-slate-100 whitespace-nowrap">${r.tgl}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-600">${formatVal(r.solar_awal, 1)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 ${pakaiClass}">${formatVal(r.pakai, 1)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 ${isiClass}">${formatVal(r.isi, 1)}</td>
+                  <td class="py-1 px-2.5 text-right font-bold text-slate-900 bg-amber-50/30">${formatVal(r.sisa_solar, 1)}</td>
+                </tr>
+              `;
+            } else {
+              html += `
+                <tr class="hover:bg-slate-50/80 transition">
+                  <td class="py-1 px-2 text-center text-slate-400 font-sans border-r border-slate-100 text-[10px]">${idx + 1}</td>
+                  <td class="py-1 px-2.5 text-center font-sans font-bold text-slate-700 border-r border-slate-100 whitespace-nowrap">${r.tgl}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-700">${formatHM(r.hm_end)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 font-bold ${r.wkt_kerja > 0 ? 'text-blue-700' : 'text-slate-400'}">${formatNumber(r.wkt_kerja, 2)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 text-slate-600">${formatVal(r.solar_awal, 1)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 ${pakaiClass}">${formatVal(r.pakai, 1)}</td>
+                  <td class="py-1 px-2.5 text-right border-r border-slate-100 ${isiClass}">${formatVal(r.isi, 1)}</td>
+                  <td class="py-1 px-2.5 text-right font-bold text-slate-900 bg-amber-50/30">${formatVal(r.sisa_solar, 1)}</td>
+                </tr>
+              `;
+            }
           });
           tbody.innerHTML = html;
         } else {

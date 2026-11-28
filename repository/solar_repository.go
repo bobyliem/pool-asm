@@ -38,7 +38,7 @@ type SolarRepository interface {
 	GetDashboardSolarUnits(filter models.DashboardSolarFilter) ([]models.DashboardSolarUnitCard, error)
 	SubmitColokan(req models.InputColokanRequest) error
 	SubmitIsiSolar(req models.InputIsiSolarRequest) error
-	GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error)
+	GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, bool, error)
 }
 
 type solarRepository struct {
@@ -1518,22 +1518,42 @@ func (r *solarRepository) SubmitIsiSolar(req models.InputIsiSolarRequest) error 
 }
 
 // GetUnitMutasi3Hari mengambil riwayat mutasi 3 hari terakhir untuk unit tertentu
-func (r *solarRepository) GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, error) {
-	query := `
-		SELECT CONCAT(DATE_FORMAT(tgl, '%d-%b-%Y'), ' ', LPAD(jam,2,0), ':00') AS tgl
-			, hm, hm_end
-			, ROUND(hm_end-hm,2) AS wkt_kerja
-			, awal AS solarAwal
-			, CASE WHEN isi < 0 THEN ROUND(isi*-1,3) WHEN isi = 0 THEN '-' ELSE 0 END AS pakai
-			, CASE WHEN isi > 0 THEN isi WHEN isi = 0 THEN '-' ELSE 0 END AS isi
-			, akhir AS sisaSolar
-		FROM dt_solar_his
-		WHERE unit = ? AND tgl >= (SELECT COALESCE(MAX(tgl), CURDATE()) FROM dt_solar_his WHERE unit = ?) - INTERVAL 2 DAY
-		ORDER BY unit, tgl, jam, id
-	`
+func (r *solarRepository) GetUnitMutasi3Hari(unit string) ([]models.UnitMutasiItem, bool, error) {
+	// Cek apakah unit merupakan tangki (tangki = 'Yes')
+	var tangki string
+	_ = r.db.Raw("SELECT tangki FROM dt_solar_unit WHERE unit = ? LIMIT 1", unit).Scan(&tangki).Error
+	isTangki := strings.EqualFold(tangki, "Yes")
+
+	var query string
+	if isTangki {
+		query = `
+			SELECT CONCAT(DATE_FORMAT(tgl, '%d-%b-%Y'), ' ', LPAD(jam,2,0), ':00') AS tgl
+				, awal AS solarAwal
+				, CASE WHEN isi < 0 THEN ROUND(isi*-1,3) WHEN isi = 0 THEN '-' ELSE 0 END AS pakai
+				, CASE WHEN isi > 0 THEN isi WHEN isi = 0 THEN '-' ELSE 0 END AS isi
+				, akhir AS sisaSolar
+			FROM dt_solar_his
+			WHERE unit = ? AND tgl >= (SELECT COALESCE(MAX(tgl), CURDATE()) FROM dt_solar_his WHERE unit = ?) - INTERVAL 2 DAY
+			ORDER BY unit, tgl, jam, id
+		`
+	} else {
+		query = `
+			SELECT CONCAT(DATE_FORMAT(tgl, '%d-%b-%Y'), ' ', LPAD(jam,2,0), ':00') AS tgl
+				, hm, hm_end
+				, ROUND(hm_end-hm,2) AS wkt_kerja
+				, awal AS solarAwal
+				, CASE WHEN isi < 0 THEN ROUND(isi*-1,3) WHEN isi = 0 THEN '-' ELSE 0 END AS pakai
+				, CASE WHEN isi > 0 THEN isi WHEN isi = 0 THEN '-' ELSE 0 END AS isi
+				, akhir AS sisaSolar
+			FROM dt_solar_his
+			WHERE unit = ? AND tgl >= (SELECT COALESCE(MAX(tgl), CURDATE()) FROM dt_solar_his WHERE unit = ?) - INTERVAL 2 DAY
+			ORDER BY unit, tgl, jam, id
+		`
+	}
+
 	var items []models.UnitMutasiItem
 	if err := r.db.Raw(query, unit, unit).Scan(&items).Error; err != nil {
-		return nil, fmt.Errorf("gagal mengambil riwayat mutasi unit %s: %w", unit, err)
+		return nil, isTangki, fmt.Errorf("gagal mengambil riwayat mutasi unit %s: %w", unit, err)
 	}
-	return items, nil
+	return items, isTangki, nil
 }
