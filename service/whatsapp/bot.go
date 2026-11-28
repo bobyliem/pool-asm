@@ -446,6 +446,51 @@ func (b *WhatsAppBot) GetPendingHarianMessage() string {
 	return HandleCommandPendingHarian(b.dbCsv)
 }
 
+// extractMessageBody mengekstrak isi teks pesan dari berbagai wrapper pesan whatsmeow (termasuk disappearing / ephemeral message)
+func extractMessageBody(msg *waProto.Message) string {
+	if msg == nil {
+		return ""
+	}
+	if msg.GetConversation() != "" {
+		return msg.GetConversation()
+	}
+	if msg.GetExtendedTextMessage() != nil && msg.GetExtendedTextMessage().GetText() != "" {
+		return msg.GetExtendedTextMessage().GetText()
+	}
+	if msg.GetEphemeralMessage() != nil && msg.GetEphemeralMessage().GetMessage() != nil {
+		return extractMessageBody(msg.GetEphemeralMessage().GetMessage())
+	}
+	if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+		return extractMessageBody(msg.GetViewOnceMessage().GetMessage())
+	}
+	if msg.GetViewOnceMessageV2() != nil && msg.GetViewOnceMessageV2().GetMessage() != nil {
+		return extractMessageBody(msg.GetViewOnceMessageV2().GetMessage())
+	}
+	if msg.GetDocumentWithCaptionMessage() != nil && msg.GetDocumentWithCaptionMessage().GetMessage() != nil {
+		return extractMessageBody(msg.GetDocumentWithCaptionMessage().GetMessage())
+	}
+	return ""
+}
+
+// isAllowedSelfMessage mengecek apakah pesan dari nomor bot sendiri diizinkan untuk diproses
+func isAllowedSelfMessage(body string) bool {
+	lower := strings.ToLower(strings.TrimSpace(body))
+	if strings.HasPrefix(lower, "/") {
+		return true
+	}
+	prefixes := []string{
+		"idgroup", "idgrup", "infogroup", "infogrup", "groupid", "grupid", "cekid",
+		"setgroupsolar", "setgrupsolar", "unsetgroupsolar", "unsetgrupsolar",
+		"help", "bantuan",
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // eventHandler menangani semua event pesan masuk dari WhatsApp
 func (b *WhatsAppBot) eventHandler(evt interface{}) {
 	switch v := evt.(type) {
@@ -500,21 +545,15 @@ func (b *WhatsAppBot) eventHandler(evt interface{}) {
 		fmt.Printf("❌ [WhatsApp] Bot telah Logged Out dari WhatsApp: %s (Reason: %v)\n", v.PermanentDisconnectDescription(), v.Reason)
 
 	case *events.Message:
-		// 1. Ekstrak isi teks pesan terlebih dahulu
-		body := ""
-		if v.Message.GetConversation() != "" {
-			body = v.Message.GetConversation()
-		} else if v.Message.GetExtendedTextMessage() != nil {
-			body = v.Message.GetExtendedTextMessage().GetText()
-		}
-
+		// 1. Ekstrak isi teks pesan (mendukung pesan biasa, extended text, maupun disappearing/ephemeral)
+		body := extractMessageBody(v.Message)
 		body = strings.TrimSpace(body)
 		if body == "" {
 			return
 		}
 
-		// Abaikan pesan dari diri sendiri, KECUALI jika itu adalah slash command (misal user mengetik /idgroup dari HP bot)
-		if v.Info.IsFromMe && !strings.HasPrefix(body, "/") {
+		// Abaikan pesan dari diri sendiri, KECUALI jika itu adalah slash command atau command bot (misal user mengetik /idgroup dari HP bot)
+		if v.Info.IsFromMe && !isAllowedSelfMessage(body) {
 			return
 		}
 
@@ -593,26 +632,37 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 		return
 	}
 
-	parts := strings.Fields(body)
+	cleanBody := strings.TrimSpace(body)
+	parts := strings.Fields(cleanBody)
 	if len(parts) == 0 {
 		return
 	}
 
-	command := strings.ToLower(parts[0])
+	// Tangani format mention bot di grup: misal "@628xxx /idgroup" atau "@bot idgroup"
+	if strings.HasPrefix(parts[0], "@") && len(parts) > 1 {
+		parts = parts[1:]
+	}
+
+	rawCmd := parts[0]
+	// Hapus suffix mention pada command, misal "/idgroup@s.whatsapp.net" -> "/idgroup"
+	if idx := strings.Index(rawCmd, "@"); idx != -1 {
+		rawCmd = rawCmd[:idx]
+	}
+	command := strings.ToLower(rawCmd)
+
 	parameter := ""
 	if len(parts) > 1 {
 		// Ambil sisa teks setelah keyword
-		idx := strings.Index(body, parts[0]) + len(parts[0])
-		parameter = strings.TrimSpace(body[idx:])
+		idx := strings.Index(cleanBody, parts[0]) + len(parts[0])
+		parameter = strings.TrimSpace(cleanBody[idx:])
 	}
 
-	// Daftar Perintah yang diproteksi otorisasi
+	// Daftar Perintah yang diproteksi otorisasi (/idgroup dan /setgroupsolar tidak diblokir di sini)
 	protectedCommands := map[string]bool{
 		"/spk": true, "/nopol": true, "/omsetclosing": true,
 		"/omset": true, "/omsetpending": true, "/infolelang": true,
 		"/updatelelang": true, "/pendingharian": true, "/tarikdata": true, "/sync": true,
 		"/help": true, "/bantuan": true, "/helpadmin": true, "/bantuanadmin": true,
-		"/setgrupsolar": true, "/unsetgrupsolar": true,
 	}
 
 	if protectedCommands[command] {
@@ -670,13 +720,14 @@ func (b *WhatsAppBot) handleIncomingCommand(chatJID, senderJID types.JID, sender
 	case "/helpadmin", "/bantuanadmin":
 		reply = HandleCommandHelpAdmin(b.dbCsv, senderPhone)
 
-	case "/idgrup", "/idgroup", "/infogrup", "/infogroup", "/groupid", "/grupid", "/cekid":
+	case "/idgrup", "/idgroup", "/infogrup", "/infogroup", "/groupid", "/grupid", "/cekid",
+		"idgrup", "idgroup", "infogrup", "infogroup", "groupid", "grupid", "cekid":
 		reply = b.handleCommandIdGrup(chatJID, senderPhone)
 
-	case "/setgrupsolar", "/setgroupsolar":
+	case "/setgrupsolar", "/setgroupsolar", "setgrupsolar", "setgroupsolar":
 		reply = b.handleCommandSetGrupSolar(chatJID, senderPhone, parameter)
 
-	case "/unsetgrupsolar", "/unsetgroupsolar":
+	case "/unsetgrupsolar", "/unsetgroupsolar", "unsetgrupsolar", "unsetgroupsolar":
 		reply = b.handleCommandUnsetGrupSolar(chatJID, senderPhone)
 
 
@@ -810,7 +861,7 @@ func (b *WhatsAppBot) handleCommandIdGrup(chatJID types.JID, senderPhone string)
 	sb.WriteString(fmt.Sprintf("⛽ *Status Laporan Solar*: %s\n", statusSolar))
 	sb.WriteString("------------------------------\n")
 	if !isSolarGroup {
-		sb.WriteString("💡 *Tips*: Ketik */setgrupsolar* di grup ini untuk mengunci penerimaan laporan solar hanya di grup ini.")
+		sb.WriteString("💡 *Tips*: Ketik */setgroupsolar* di grup ini untuk mengunci penerimaan laporan solar hanya di grup ini.")
 	}
 
 	return sb.String()
@@ -819,6 +870,9 @@ func (b *WhatsAppBot) handleCommandIdGrup(chatJID types.JID, senderPhone string)
 // handleCommandSetGrupSolar: /setgrupsolar [id_grup_opsional / passkey] (Khusus Admin)
 func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone, parameter string) string {
 	param := strings.TrimSpace(parameter)
+
+	targetGroup := GetTargetSolarGroup(b.dbCsv)
+	initialSetup := targetGroup == "" // Belum ada grup solar terdaftar di wa_config
 
 	// Cek otorisasi admin (via nomor HP atau passkey di tabel settings)
 	isAdmin := IsAdmin(b.dbCsv, senderPhone)
@@ -832,8 +886,9 @@ func (b *WhatsAppBot) handleCommandSetGrupSolar(chatJID types.JID, senderPhone, 
 		}
 	}
 
-	if !isAdmin {
-		return "⛔ Perintah */setgrupsolar* hanya dapat dijalankan oleh Admin.\n(Gunakan: `/setgrupsolar [password_admin]` jika nomor belum terdaftar)"
+	// Jika bukan admin dan bukan setup pertama kali, minta otorisasi admin
+	if !isAdmin && !initialSetup {
+		return "⛔ Perintah */setgroupsolar* hanya dapat dijalankan oleh Admin.\n(Gunakan: `/setgroupsolar [password_admin]` jika nomor belum terdaftar)"
 	}
 
 	targetJID := chatJID
